@@ -33,7 +33,7 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 Install the package via Composer:
 
 ```bash
-composer require bjanczak/filament-short-url
+composer require janczakb/filament-short-url
 ```
 
 Publish and run the database migrations:
@@ -86,11 +86,22 @@ public function panel(Panel $panel): Panel
     return $panel
         ->plugins([
             FilamentShortUrlPlugin::make()
-                ->navigationGroup('Tools')   // optional
-                ->navigationSort(50),        // optional
+                ->navigationGroup('Marketing')      // optional — sidebar group name
+                ->navigationLabel('Short Links')    // optional — override menu item name
+                ->navigationIcon('heroicon-o-link') // optional — override menu icon
+                ->navigationSort(50),               // optional — sort order in sidebar
         ]);
 }
 ```
+
+All plugin configuration methods are optional. If not set, the plugin will use sensible defaults (label and icon from the translation files).
+
+| Method | Default | Description |
+|--------|---------|-------------|
+| `navigationGroup(string)` | `null` | Groups the menu item under a sidebar section |
+| `navigationLabel(string)` | `'Short URLs'` | Overrides the menu item display name |
+| `navigationIcon(string)` | `heroicon-o-link` | Overrides the Heroicon used in the sidebar |
+| `navigationSort(int)` | `50` | Controls the sort order within the group |
 
 ---
 
