@@ -26,6 +26,15 @@ class ShortUrlResource extends Resource
 
     public static function getNavigationLabel(): string
     {
+        try {
+            $label = FilamentShortUrlPlugin::get()->getNavigationLabel();
+            if ($label) {
+                return $label;
+            }
+        } catch (\Throwable) {
+            // Ignore
+        }
+
         return __('filament-short-url::default.navigation_label');
     }
 
@@ -40,6 +49,20 @@ class ShortUrlResource extends Resource
     }
 
     // ─── Plugin-aware navigation overrides ───────────────────────────────────
+
+    public static function getNavigationIcon(): string|\BackedEnum|null
+    {
+        try {
+            $icon = FilamentShortUrlPlugin::get()->getNavigationIcon();
+            if ($icon) {
+                return $icon;
+            }
+        } catch (\Throwable) {
+            // Ignore
+        }
+
+        return static::$navigationIcon;
+    }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {

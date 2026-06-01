@@ -12,6 +12,10 @@ class FilamentShortUrlPlugin implements Plugin
 
     protected ?int $navigationSort = null;
 
+    protected ?string $navigationLabel = null;
+
+    protected ?string $navigationIcon = null;
+
     protected ?string $routePrefix = null;
 
     // ─── Factory ─────────────────────────────────────────────────────────────
@@ -67,6 +71,8 @@ class FilamentShortUrlPlugin implements Plugin
 
     /**
      * Set the navigation sort order.
+     *
+     * @example FilamentShortUrlPlugin::make()->navigationSort(50)
      */
     public function navigationSort(int $sort): static
     {
@@ -78,5 +84,39 @@ class FilamentShortUrlPlugin implements Plugin
     public function getNavigationSort(): ?int
     {
         return $this->navigationSort;
+    }
+
+    /**
+     * Override the navigation label (menu item name).
+     *
+     * @example FilamentShortUrlPlugin::make()->navigationLabel('Short Links')
+     */
+    public function navigationLabel(string $label): static
+    {
+        $this->navigationLabel = $label;
+
+        return $this;
+    }
+
+    public function getNavigationLabel(): ?string
+    {
+        return $this->navigationLabel;
+    }
+
+    /**
+     * Override the navigation icon.
+     *
+     * @example FilamentShortUrlPlugin::make()->navigationIcon('heroicon-o-link')
+     */
+    public function navigationIcon(string $icon): static
+    {
+        $this->navigationIcon = $icon;
+
+        return $this;
+    }
+
+    public function getNavigationIcon(): ?string
+    {
+        return $this->navigationIcon;
     }
 }
