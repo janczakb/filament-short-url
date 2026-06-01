@@ -33,69 +33,79 @@ class AggregateAndPruneVisitsCommand extends Command
             $this->info('Found ' . count($dates) . ' days to aggregate.');
 
             foreach ($dates as $date) {
-                // Find all visits on this day
-                $visits = ShortUrlVisit::whereDate('visited_at', '=', $date)->get();
-                $visitsByUrl = $visits->groupBy('short_url_id');
+                // Accumulate stats per short_url_id using chunked reads — avoids loading
+                // potentially millions of rows into PHP memory at once.
+                $statsByUrl = [];
 
-                foreach ($visitsByUrl as $urlId => $urlVisits) {
-                    $total = $urlVisits->count();
-                    $unique = $urlVisits->unique('ip_hash')->count();
+                ShortUrlVisit::whereDate('visited_at', '=', $date)
+                    ->chunk(1000, function ($chunk) use (&$statsByUrl): void {
+                        foreach ($chunk as $visit) {
+                            $urlId = $visit->short_url_id;
 
-                    // Group helper
-                    $groupByField = function ($collection, $field) {
-                        return $collection->whereNotNull($field)
-                            ->groupBy($field)
-                            ->map(fn ($group) => $group->count())
-                            ->toArray();
-                    };
+                            if (! isset($statsByUrl[$urlId])) {
+                                $statsByUrl[$urlId] = [
+                                    'total' => 0,
+                                    'ip_hashes' => [],
+                                    'device_stats' => [],
+                                    'browser_stats' => [],
+                                    'os_stats' => [],
+                                    'country_stats' => [],
+                                    'city_stats' => [],
+                                    'referer_stats' => [],
+                                    'utm_source_stats' => [],
+                                    'utm_medium_stats' => [],
+                                    'utm_campaign_stats' => [],
+                                ];
+                            }
 
-                    $deviceStats = $groupByField($urlVisits, 'device_type');
-                    $browserStats = $groupByField($urlVisits, 'browser');
-                    $osStats = $groupByField($urlVisits, 'operating_system');
+                            $s = &$statsByUrl[$urlId];
+                            $s['total']++;
 
-                    // Country
-                    $countryStats = $urlVisits->whereNotNull('country')
-                        ->groupBy('country')
-                        ->map(fn ($group) => $group->count())
-                        ->toArray();
+                            if ($visit->ip_hash) {
+                                $s['ip_hashes'][$visit->ip_hash] = true;
+                            }
 
-                    // City
-                    $cityStats = $urlVisits->whereNotNull('city')
-                        ->map(function ($visit) {
-                            $visit->city_key = "{$visit->city} ({$visit->country_code})";
-                            return $visit;
-                        })
-                        ->groupBy('city_key')
-                        ->map(fn ($group) => $group->count())
-                        ->toArray();
+                            $inc = function (?string $value, string $key) use (&$s): void {
+                                if ($value) {
+                                    $s[$key][$value] = ($s[$key][$value] ?? 0) + 1;
+                                }
+                            };
 
-                    // Referer
-                    $refererStats = $urlVisits->whereNotNull('referer_host')
-                        ->groupBy('referer_host')
-                        ->map(fn ($group) => $group->count())
-                        ->toArray();
+                            $inc($visit->device_type, 'device_stats');
+                            $inc($visit->browser, 'browser_stats');
+                            $inc($visit->operating_system, 'os_stats');
+                            $inc($visit->country, 'country_stats');
+                            $inc($visit->utm_source, 'utm_source_stats');
+                            $inc($visit->utm_medium, 'utm_medium_stats');
+                            $inc($visit->utm_campaign, 'utm_campaign_stats');
 
-                    // UTM
-                    $utmSourceStats = $groupByField($urlVisits, 'utm_source');
-                    $utmMediumStats = $groupByField($urlVisits, 'utm_medium');
-                    $utmCampaignStats = $groupByField($urlVisits, 'utm_campaign');
+                            if ($visit->city) {
+                                $cityKey = "{$visit->city} ({$visit->country_code})";
+                                $s['city_stats'][$cityKey] = ($s['city_stats'][$cityKey] ?? 0) + 1;
+                            }
 
-                    // Upsert into short_url_daily_stats
+                            if ($visit->referer_host) {
+                                $s['referer_stats'][$visit->referer_host] = ($s['referer_stats'][$visit->referer_host] ?? 0) + 1;
+                            }
+                        }
+                    });
+
+                foreach ($statsByUrl as $urlId => $s) {
                     ShortUrlDailyStats::updateOrCreate([
                         'short_url_id' => $urlId,
                         'date' => $date,
                     ], [
-                        'visits_count' => $total,
-                        'unique_visits_count' => $unique,
-                        'device_stats' => $deviceStats,
-                        'browser_stats' => $browserStats,
-                        'os_stats' => $osStats,
-                        'country_stats' => $countryStats,
-                        'city_stats' => $cityStats,
-                        'referer_stats' => $refererStats,
-                        'utm_source_stats' => $utmSourceStats,
-                        'utm_medium_stats' => $utmMediumStats,
-                        'utm_campaign_stats' => $utmCampaignStats,
+                        'visits_count' => $s['total'],
+                        'unique_visits_count' => count($s['ip_hashes']),
+                        'device_stats' => $s['device_stats'],
+                        'browser_stats' => $s['browser_stats'],
+                        'os_stats' => $s['os_stats'],
+                        'country_stats' => $s['country_stats'],
+                        'city_stats' => $s['city_stats'],
+                        'referer_stats' => $s['referer_stats'],
+                        'utm_source_stats' => $s['utm_source_stats'],
+                        'utm_medium_stats' => $s['utm_medium_stats'],
+                        'utm_campaign_stats' => $s['utm_campaign_stats'],
                     ]);
                 }
 

@@ -234,7 +234,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_retention_days'))
                                             ->helperText(__('filament-short-url::default.settings_retention_days_helper'))
                                             ->numeric()
-                                            ->minValue(1)
+                                            ->minValue(0)
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('pruning_enabled')),
                                     ]),
