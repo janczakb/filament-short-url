@@ -2,6 +2,7 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Tables;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
