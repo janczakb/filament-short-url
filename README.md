@@ -6,17 +6,17 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 
 ## Features
 
-- 🔗 **Short URL Generation** — custom or auto-generated collision-free base62 keys.
-- 🌍 **Multiple Geo-IP Drivers** — offline detection using local MaxMind databases, edge-provided CDN headers (Cloudflare, CloudFront), or fallback API integration.
-- 📈 **Real-Time Statistics Dashboard** — sortable log of visits with cached aggregate performance metrics (browsers, devices, OS, referers, country maps, timeline charts).
-- 🎨 **QR Code Designer** — live design canvas (sizes, dot styles, gradient configurations, and background transparency triggers) with instant SVG download.
-- ⚡ **Ultra-Fast Redirects** — redirects resolve in milliseconds; analytical tasks and GA4 payloads are processed asynchronously via Laravel Queue jobs.
-- 🎯 **Google Analytics 4 Measurement Protocol** — native server-side event tracking, bypassing browser-side AdBlockers completely.
-- ⚙️ **Reactive UTM Campaign Builder** — double-way synchronized UTM builder panel inside the Filament form, syncing seamlessly with destination URLs in real-time.
-- 🔒 **Single-Use & Expirable Links** — automatically deactivates links after a single visit or at a specified date/time.
-- ➡️ **Query Parameter Forwarding** — dynamically appends incoming client query parameters (e.g. ad clicks, discount codes) to the final destination URL.
-- 🛠️ **Dedicated Settings Interface** — full administrator control panel inside Filament to manage routing, Geo-IP, and GA4 credentials without editing `.env` files.
-- 💻 **Fluent Developer Builder** — static Model builder patterns and trace tagging support.
+- 🔗 **Short URL Generation** — Create custom links or let the system auto-generate collision-free Base62 keys.
+- 🌍 **Multiple Geo-IP Drivers** — High-speed offline detection using local MaxMind databases, edge-provided CDN headers (Cloudflare, CloudFront, generic), or fallback API integration.
+- 📈 **Real-Time Statistics Dashboard** — Track visits in real-time with cached aggregate metrics (countries, devices, browsers, operating systems, referrers, traffic charts, and maps).
+- 🎨 **SVG QR Code Designer** — Built-in interactive design canvas in Filament to customize dot styles, margins, gradient coloring, and background transparency with instant SVG download.
+- ⚡ **Ultra-Fast Redirects** — Redirections resolve in milliseconds. Analytical tasks, event dispatching, and GA4 payloads are processed asynchronously via Laravel Queue jobs.
+- 🎯 **Google Analytics 4 server-side tracking** — Native integration with the GA4 Measurement Protocol to bypass client-side AdBlockers completely.
+- ⚙️ **Dual-way UTM Campaign Builder** — Built-in form builder synchronizes UTM parameters with your destination URLs in real-time (two-way binding).
+- 🔒 **Link Rules & Expiry** — Disable links manually, set expiration dates, or activate single-use links that deactivate automatically after the first click.
+- ➡️ **Query Parameter Forwarding** — Dynamically forward client query parameters (e.g. ad tokens, discount codes) to the destination URL.
+- 🛠️ **Dedicated Settings GUI** — Manage global configuration (routing, Geo-IP, GA4, cache) directly inside the Filament panel without modifying files or `.env` files.
+- 💻 **Fluent Developer Builder** — Native model query builder pattern and robust programmatic generation APIs.
 
 ---
 
@@ -47,27 +47,27 @@ php artisan migrate
 
 ## Publishing Package Assets
 
-The package is built with standard publishing tags to let developers easily customize and override the default assets within the host application directory:
+Customize and override views, translations, or configuration files by publishing the package assets:
 
 ### 1. Publish Config File
-Copies the default config file to `config/filament-short-url.php` for code-level customization:
+Copies the default config file to `config/filament-short-url.php`:
 ```bash
 php artisan vendor:publish --tag=filament-short-url-config
 ```
 
 ### 2. Publish Translation Files
-Copies localization files to `lang/vendor/filament-short-url/` so you can modify or add new languages (Polish and English included by default):
+Copies localization files to `lang/vendor/filament-short-url/` (English and Polish included by default):
 ```bash
 php artisan vendor:publish --tag=filament-short-url-translations
 ```
 
 ### 3. Publish Blade Views & Templates
-Copies the dashboard components, charts, and QR designer templates to `resources/views/vendor/filament-short-url/` to completely override the styling:
+Copies the dashboard components, charts, and QR designer templates to `resources/views/vendor/filament-short-url/`:
 ```bash
 php artisan vendor:publish --tag=filament-short-url-views
 ```
 
-### 4. Publish Everything at Once
+### 4. Publish All Assets
 ```bash
 php artisan vendor:publish --provider="Bjanczak\FilamentShortUrl\FilamentShortUrlServiceProvider"
 ```
@@ -94,31 +94,79 @@ public function panel(Panel $panel): Panel
 }
 ```
 
-All plugin configuration methods are optional. If not set, the plugin will use sensible defaults (label and icon from the translation files).
+### Navigation Configuration Options
+All fluent methods on the plugin are optional. If not called, the plugin falls back to defaults or translation files:
 
 | Method | Default | Description |
 |--------|---------|-------------|
-| `navigationGroup(string)` | `null` | Groups the menu item under a sidebar section |
-| `navigationLabel(string)` | `'Short URLs'` | Overrides the menu item display name |
-| `navigationIcon(string)` | `heroicon-o-link` | Overrides the Heroicon used in the sidebar |
-| `navigationSort(int)` | `50` | Controls the sort order within the group |
+| `navigationGroup(string)` | `null` | Groups the resource menu item under a sidebar section. |
+| `navigationLabel(string)` | `'Short URLs'` | Overrides the menu item display name. |
+| `navigationIcon(string)` | `heroicon-o-link` | Overrides the Heroicon used in the sidebar. |
+| `navigationSort(int)` | `50` | Controls the sort order within the navigation list. |
 
 ---
 
-## Usage in Code
+## Global Settings GUI
 
-### 1. Programmatic Creation via Fluent Builder
-You can easily create, configure, and append tracking tags to short URLs programmatically using the fluent builder:
+The package comes with a built-in admin settings dashboard. You can access it by clicking the **Settings** action button on the top-right header of the Short URLs resource. 
+
+Settings are stored dynamically in `storage/app/filament-short-url-settings.json` and immediately override config defaults.
+
+The settings panel allows you to configure:
+
+### 1. General Routing & Queueing
+*   **Route Prefix**: The slug prepended to short URLs (e.g. `s` for `/s/{key}`).
+*   **Default Redirect Status**: Choose `302 (Found / Temporary)` or `301 (Moved Permanently)`. 
+    *   *Note: `302` is highly recommended for analytics accuracy because browsers cache `301` redirects, skipping subsequent logs.*
+*   **Key Length**: Default character count (base62) for auto-generated keys (default: `6`).
+*   **Queue Connection**: Define the Laravel queue connection (e.g. `redis`, `database`, `sync`) used for processing visit analytics asynchronously.
+
+### 2. Geo-IP Country Detection
+Toggle country tracking and select from three drivers:
+*   **Headers** (Edge Resolution): Automatically detects client country using standard edge headers (e.g. Cloudflare's `CF-IPCountry`, AWS CloudFront's `CloudFront-Viewer-Country`, or generic proxies).
+*   **MaxMind** (Offline Resolution): Reads from a local GeoIP2 database (such as the free GeoLite2-Country database).
+*   **IP-API** (Online Fallback): Makes an external API call to `ip-api.com` with configurable timeout.
+
+### 3. Google Analytics 4 (GA4) Integration
+Sends server-side `short_url_visit` hits using the **GA4 Measurement Protocol API**. This bypasses browser-side AdBlockers entirely.
+*   **GA4 API Secret**: Create this secret in Google Analytics under `Admin -> Data Streams -> Measurement Protocol API secrets`.
+*   **Firebase App ID / Measurement ID**: The target analytics stream identifier.
+
+---
+
+## Configuration Reference (.env)
+
+You can also pre-configure all parameters via your `.env` file:
+
+| Environment Variable | Config Path | Default | Description |
+|---|---|---|---|
+| `SHORT_URL_PREFIX` | `route_prefix` | `'s'` | URL prefix for short URL redirects. |
+| `SHORT_URL_GEO_IP` | `geo_ip.enabled` | `true` | Globally enable/disable Geo-IP tracking. |
+| `SHORT_URL_GEO_IP_DRIVER` | `geo_ip.driver` | `'headers'` | Geo-IP resolver driver (`headers`, `maxmind`, `ip-api`). |
+| `SHORT_URL_MAXMIND_DB` | `geo_ip.maxmind.database_path` | `database_path('geoip/GeoLite2-Country.mmdb')` | Path to local MaxMind db. |
+| `SHORT_URL_STATS_CACHE_TTL` | `geo_ip.stats_cache_ttl` | `300` | Caching TTL in seconds for dashboard charts. |
+| `SHORT_URL_QUEUE` | `queue_connection` | `'sync'` | Queue connection for recording visits. |
+| `SHORT_URL_CACHE_TTL` | `cache_ttl` | `3600` | Redirection model caching TTL (set to `0` to disable). |
+| `GA4_API_SECRET` | `ga4.api_secret` | `null` | Google Analytics 4 Measurement Protocol API Secret. |
+| `FIREBASE_APP_ID` | `ga4.firebase_app_id` | `null` | Google Analytics 4 Firebase App ID (or uses Measurement ID). |
+
+---
+
+## Programmatic Usage (Fluent Builder)
+
+You can programmatically generate, customize, and trace short URLs anywhere in your code using the static `destination` builder on the `ShortUrl` model:
 
 ```php
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 
-$shortUrl = ShortUrl::destination('https://example.com/very/long/url')
-    ->urlKey('promo2026')   // optional, auto-generated if empty
-    ->notes('Spring campaign promo')
-    ->singleUse()           // deactivates after first visit
-    ->forwardQueryParams()  // forward incoming visitor query strings
-    ->withTracing([         // dynamically filters and appends UTM parameters
+$shortUrl = ShortUrl::destination('https://example.com/products/promo')
+    ->urlKey('promo2026')   // Optional, auto-generated base62 key if omitted
+    ->notes('Spring social promo')
+    ->singleUse()           // Deactivates the link automatically after the first visit
+    ->forwardQueryParams()  // Appends incoming URL query strings to destination
+    ->expiresAt(now()->addDays(7)) // Automatic link expiration
+    ->trackVisits(true)     // Enable or disable click logs
+    ->withTracing([         // Dynamically filter and append UTM parameters
         'utm_source'   => 'linkedin',
         'utm_medium'   => 'social',
         'utm_campaign' => 'spring_sale',
@@ -126,11 +174,36 @@ $shortUrl = ShortUrl::destination('https://example.com/very/long/url')
     ])
     ->create();
 
-// Output the public short URL string
-echo $shortUrl->getShortUrl(); // https://yourapp.com/s/promo2026
+// Get the full URL string
+echo $shortUrl->getShortUrl(); // https://yourdomain.com/s/promo2026
 ```
 
-### 2. Standard Service Injection
+### Fluent Builder API Reference
+
+| Method | Argument Type | Description |
+|--------|---------------|-------------|
+| `urlKey()` | `string` | Sets a custom redirection key (slug). |
+| `notes()` | `string` | Appends internal notes for administrators. |
+| `singleUse()` | `bool` (default `true`) | Makes the short URL expire immediately after the first successful click. |
+| `forwardQueryParams()` | `bool` (default `true`) | Forwards client-side incoming parameters (e.g. `?gclid=xxx`) to the final target. |
+| `expiresAt()` | `DateTimeInterface\|Carbon\|null` | Automatically sets a timestamp after which the URL returns a `410 Gone` error. |
+| `trackVisits()` | `bool` (default `true`) | Toggles statistical logging for this link. |
+| `withTracing()` | `array` | Appends non-empty tracking parameters (like UTM codes) directly to the target URL. |
+| `create()` | `void` | Persists the model to the database and returns the `ShortUrl` instance. |
+
+---
+
+## Model Helpers & Service
+
+### ShortUrl Model Methods
+*   `isActive(): bool` — Checks if the short URL is enabled and within its activation/expiration timestamps.
+*   `isExpired(): bool` — Checks if the URL has passed its expiration date.
+*   `getShortUrl(): string` — Resolves the complete URL string.
+*   `incrementVisits(bool $isUnique = false): void` — Atomically increments visit counts.
+*   `getCachedStats(): array` — Returns cached key metrics for dashboard charts.
+
+### Injecting the Service
+For standard creations, you can inject `ShortUrlService`:
 ```php
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 
@@ -146,7 +219,7 @@ $shortUrl = $service->create([
 
 ## Events
 
-You can listen to short URL visits dynamically in your application (e.g. for real-time alerts or external webhooks):
+The package fires the `ShortUrlVisited` event inside the queue job. You can listen to it to trigger custom logic, Slack notifications, or syncing external CRMs:
 
 ```php
 use Bjanczak\FilamentShortUrl\Events\ShortUrlVisited;
@@ -154,9 +227,14 @@ use Illuminate\Support\Facades\Event;
 
 Event::listen(ShortUrlVisited::class, function (ShortUrlVisited $event) {
     $event->shortUrl; // The ShortUrl model instance
-    $event->visit;    // The ShortUrlVisit model instance (contains resolved client IP, browser, OS, country, etc.)
+    $event->visit;    // The ShortUrlVisit model (contains resolved IP, country, device, browser, OS, referrer)
 });
 ```
+
+---
+
+## Visitor Filtering (Bot Detection)
+Visits from scrapers, search bots, and web crawlers are automatically ignored to keep stats clean. The system matches user agents against a custom list (including Googlebot, Bingbot, Applebot, Facebook, Twitter, and generic curl/http request clients).
 
 ---
 
