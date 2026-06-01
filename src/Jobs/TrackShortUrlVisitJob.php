@@ -41,6 +41,12 @@ class TrackShortUrlVisitJob implements ShouldQueue
         public readonly string $userAgent,
         public readonly ?string $refererUrl,
         public readonly ?string $countryCode = null,
+        public readonly ?string $city = null,
+        public readonly ?string $utmSource = null,
+        public readonly ?string $utmMedium = null,
+        public readonly ?string $utmCampaign = null,
+        public readonly ?string $utmTerm = null,
+        public readonly ?string $utmContent = null,
     ) {
         $this->onQueue(config('filament-short-url.queue_name', 'default'));
     }
@@ -62,7 +68,19 @@ class TrackShortUrlVisitJob implements ShouldQueue
         ]);
 
         $countryCode = isset($this->countryCode) ? $this->countryCode : null;
-        $visit = $tracker->record($shortUrl, $request, $countryCode);
+        $city = isset($this->city) ? $this->city : null;
+
+        $visit = $tracker->record(
+            shortUrl: $shortUrl,
+            request: $request,
+            preResolvedCountryCode: $countryCode,
+            preResolvedCity: $city,
+            utmSource: $this->utmSource,
+            utmMedium: $this->utmMedium,
+            utmCampaign: $this->utmCampaign,
+            utmTerm: $this->utmTerm,
+            utmContent: $this->utmContent,
+        );
 
         // Null means bot/crawler — nothing to dispatch or report
         if ($visit === null) {

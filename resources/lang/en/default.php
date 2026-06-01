@@ -211,4 +211,20 @@ return [
     'form_section_tracking' => 'Visit Tracking',
     'form_section_tracked_fields' => 'Tracked Fields',
     'form_section_analytics' => 'Third-Party Analytics',
+
+    // New Dashboard Analytics Keys
+    'stats_card_top_source' => 'Top UTM Source',
+    'stats_card_top_country' => 'Top Country',
+    'stats_filter_date_range' => 'Date Range',
+    'stats_preset_24_hours' => 'Last 24 Hours',
+    'stats_preset_7_days' => 'Last 7 Days',
+    'stats_preset_30_days' => 'Last 30 Days',
+    'stats_preset_90_days' => 'Last 90 Days',
+    'stats_preset_custom' => 'Custom Range',
+    'stats_breakdown_cities' => 'Top Cities',
+    'stats_no_city_data' => 'No city data.',
+    'stats_breakdown_utm_source' => 'Campaign Sources',
+    'stats_breakdown_utm_medium' => 'Campaign Mediums',
+    'stats_breakdown_utm_campaign' => 'Campaign Names',
+    'stats_no_utm_data' => 'No UTM data recorded.',
 ];

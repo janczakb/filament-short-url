@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * @property int $id
@@ -255,8 +256,8 @@ class ShortUrl extends Model
                 $dirtyKey = "{$prefix}dirty_ids";
 
                 // Check if Redis is being used for the cache to prevent set race conditions
-                if (cache()->getDefaultDriver() === 'redis' && class_exists(\Illuminate\Support\Facades\Redis::class)) {
-                    \Illuminate\Support\Facades\Redis::sadd($dirtyKey, $this->id);
+                if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
+                    Redis::sadd($dirtyKey, $this->id);
                 } else {
                     // Fallback to array for standard cache drivers
                     $dirtyIds = cache()->get($dirtyKey, []);
@@ -282,33 +283,57 @@ class ShortUrl extends Model
      *
      * @return array<string, mixed>
      */
-    public function getCachedStats(): array
+    public function getCachedStats(?string $dateFrom = null, ?string $dateTo = null): array
     {
-        $cacheTtl = (int) config('filament-short-url.geo_ip.stats_cache_ttl', 300);
-        $cacheKey = "short_url_stats_{$this->id}";
+        $dateFromClean = $dateFrom ? Carbon::parse($dateFrom)->toDateString() : null;
+        $dateToClean = $dateTo ? Carbon::parse($dateTo)->toDateString() : null;
 
-        return cache()->remember($cacheKey, $cacheTtl, function () {
+        $cacheTtl = (int) config('filament-short-url.geo_ip.stats_cache_ttl', 300);
+        $cacheKey = "short_url_stats_{$this->id}_".($dateFromClean ?: 'all').'_'.($dateToClean ?: 'all');
+
+        return cache()->remember($cacheKey, $cacheTtl, function () use ($dateFromClean, $dateToClean) {
             $visits = $this->visits();
 
-            $totalVisits = (int) ($this->total_visits ?? 0);
-            $uniqueVisits = (int) ($this->unique_visits ?? 0);
-            $visitsToday = (clone $visits)->where('visited_at', '>=', today()->startOfDay())->count();
-            $visitsThisWeek = (clone $visits)->where('visited_at', '>=', now()->startOfWeek())->count();
-            $visitsThisMonth = (clone $visits)->where('visited_at', '>=', now()->startOfMonth())->count();
+            if ($dateFromClean) {
+                $visits->whereDate('visited_at', '>=', $dateFromClean);
+            }
+            if ($dateToClean) {
+                $visits->whereDate('visited_at', '<=', $dateToClean);
+            }
 
-            // Visits by day — last 30 days
-            $visitsByDayRaw = (clone $visits)
-                ->where('visited_at', '>=', now()->subDays(29)->startOfDay())
-                ->selectRaw('DATE(visited_at) as date, COUNT(*) as count')
-                ->groupBy('date')
-                ->orderBy('date')
-                ->pluck('count', 'date')
-                ->toArray();
+            $chartFrom = $dateFromClean ? Carbon::parse($dateFromClean) : now()->subDays(29)->startOfDay();
+            $chartTo = $dateToClean ? Carbon::parse($dateToClean) : now()->endOfDay();
 
-            $visitsByDay = [];
-            for ($i = 29; $i >= 0; $i--) {
-                $date = now()->subDays($i)->format('Y-m-d');
-                $visitsByDay[$date] = $visitsByDayRaw[$date] ?? 0;
+            $totalVisits = (clone $visits)->count();
+            $uniqueVisits = (clone $visits)->distinct('ip_hash')->count('ip_hash');
+
+            $visitsToday = $this->visits()->where('visited_at', '>=', today()->startOfDay())->count();
+            $visitsThisWeek = $this->visits()->where('visited_at', '>=', now()->startOfWeek())->count();
+            $visitsThisMonth = $this->visits()->where('visited_at', '>=', now()->startOfMonth())->count();
+
+            $daysDiff = (int) $chartFrom->diffInDays($chartTo);
+
+            if ($daysDiff > 90) {
+                $visitsByDayRaw = (clone $visits)
+                    ->selectRaw('DATE_FORMAT(visited_at, "%Y-%m") as date, COUNT(*) as count')
+                    ->groupBy('date')
+                    ->orderBy('date')
+                    ->pluck('count', 'date')
+                    ->toArray();
+                $visitsByDay = $visitsByDayRaw;
+            } else {
+                $visitsByDayRaw = (clone $visits)
+                    ->selectRaw('DATE(visited_at) as date, COUNT(*) as count')
+                    ->groupBy('date')
+                    ->orderBy('date')
+                    ->pluck('count', 'date')
+                    ->toArray();
+
+                $visitsByDay = [];
+                for ($i = $daysDiff; $i >= 0; $i--) {
+                    $date = (clone $chartTo)->subDays($i)->format('Y-m-d');
+                    $visitsByDay[$date] = $visitsByDayRaw[$date] ?? 0;
+                }
             }
 
             // Top countries
@@ -320,6 +345,17 @@ class ShortUrl extends Model
                 ->limit(10)
                 ->get()
                 ->mapWithKeys(fn ($row) => [$row->country => $row->count])
+                ->toArray();
+
+            // Top cities
+            $visitsByCity = (clone $visits)
+                ->whereNotNull('city')
+                ->selectRaw('city, country_code, COUNT(*) as count')
+                ->groupBy('city', 'country_code')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get()
+                ->mapWithKeys(fn ($row) => ["{$row->city} ({$row->country_code})" => $row->count])
                 ->toArray();
 
             // Device types
@@ -351,14 +387,42 @@ class ShortUrl extends Model
                 ->pluck('count', 'operating_system')
                 ->toArray();
 
-            // Top referers
+            // Top referrer hosts
             $visitsByReferer = (clone $visits)
-                ->whereNotNull('referer_url')
-                ->selectRaw('referer_url, COUNT(*) as count')
-                ->groupBy('referer_url')
+                ->whereNotNull('referer_host')
+                ->selectRaw('referer_host, COUNT(*) as count')
+                ->groupBy('referer_host')
                 ->orderByDesc('count')
                 ->limit(10)
-                ->pluck('count', 'referer_url')
+                ->pluck('count', 'referer_host')
+                ->toArray();
+
+            // UTM Breakdowns
+            $utmSources = (clone $visits)
+                ->whereNotNull('utm_source')
+                ->selectRaw('utm_source, COUNT(*) as count')
+                ->groupBy('utm_source')
+                ->orderByDesc('count')
+                ->limit(8)
+                ->pluck('count', 'utm_source')
+                ->toArray();
+
+            $utmMediums = (clone $visits)
+                ->whereNotNull('utm_medium')
+                ->selectRaw('utm_medium, COUNT(*) as count')
+                ->groupBy('utm_medium')
+                ->orderByDesc('count')
+                ->limit(8)
+                ->pluck('count', 'utm_medium')
+                ->toArray();
+
+            $utmCampaigns = (clone $visits)
+                ->whereNotNull('utm_campaign')
+                ->selectRaw('utm_campaign, COUNT(*) as count')
+                ->groupBy('utm_campaign')
+                ->orderByDesc('count')
+                ->limit(8)
+                ->pluck('count', 'utm_campaign')
                 ->toArray();
 
             return [
@@ -369,10 +433,14 @@ class ShortUrl extends Model
                 'visitsThisMonth' => $visitsThisMonth,
                 'visitsByDay' => $visitsByDay,
                 'visitsByCountry' => $visitsByCountry,
+                'visitsByCity' => $visitsByCity,
                 'visitsByDevice' => $visitsByDevice,
                 'visitsByBrowser' => $visitsByBrowser,
                 'visitsByOs' => $visitsByOs,
                 'visitsByReferer' => $visitsByReferer,
+                'utmSources' => $utmSources,
+                'utmMediums' => $utmMediums,
+                'utmCampaigns' => $utmCampaigns,
             ];
         });
     }

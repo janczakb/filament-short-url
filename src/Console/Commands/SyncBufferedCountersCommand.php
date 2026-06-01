@@ -6,6 +6,7 @@ use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 
 class SyncBufferedCountersCommand extends Command
 {
@@ -21,12 +22,12 @@ class SyncBufferedCountersCommand extends Command
         $dirtyKey = "{$prefix}dirty_ids";
 
         // Pull the list atomically to avoid race conditions with incoming clicks
-        if (Cache::getDefaultDriver() === 'redis' && class_exists(\Illuminate\Support\Facades\Redis::class)) {
-            $tempKey = "{$dirtyKey}:temp:" . time();
+        if (Cache::getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
+            $tempKey = "{$dirtyKey}:temp:".time();
             try {
-                \Illuminate\Support\Facades\Redis::rename($dirtyKey, $tempKey);
-                $dirtyIds = \Illuminate\Support\Facades\Redis::smembers($tempKey);
-                \Illuminate\Support\Facades\Redis::del($tempKey);
+                Redis::rename($dirtyKey, $tempKey);
+                $dirtyIds = Redis::smembers($tempKey);
+                Redis::del($tempKey);
             } catch (\Throwable) {
                 // If key does not exist or rename fails, fallback
                 $dirtyIds = [];

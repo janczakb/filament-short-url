@@ -63,4 +63,22 @@ class ClientIpExtractor
 
         return null;
     }
+
+    /**
+     * Extract the edge-provided city name from CDN/proxy headers.
+     */
+    public static function getCity(Request $request): ?string
+    {
+        if (config('filament-short-url.trust_cdn_headers', false)) {
+            if ($cfCity = $request->header('CF-IPCity')) {
+                return trim($cfCity);
+            }
+
+            if ($cfViewerCity = $request->header('CloudFront-Viewer-City')) {
+                return trim($cfViewerCity);
+            }
+        }
+
+        return null;
+    }
 }

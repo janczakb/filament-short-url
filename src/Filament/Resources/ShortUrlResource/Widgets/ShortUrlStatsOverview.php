@@ -10,13 +10,27 @@ class ShortUrlStatsOverview extends BaseWidget
 {
     public ?ShortUrl $record = null;
 
+    public ?string $dateFrom = null;
+
+    public ?string $dateTo = null;
+
     protected function getStats(): array
     {
         if (! $this->record) {
             return [];
         }
 
-        $stats = $this->record->getCachedStats();
+        $stats = $this->record->getCachedStats($this->dateFrom, $this->dateTo);
+
+        $topSource = 'Direct';
+        if (! empty($stats['utmSources'])) {
+            $topSource = array_key_first($stats['utmSources']);
+        }
+
+        $topCountry = '—';
+        if (! empty($stats['visitsByCountry'])) {
+            $topCountry = array_key_first($stats['visitsByCountry']);
+        }
 
         return [
             Stat::make(__('filament-short-url::default.stats_card_total'), number_format($stats['totalVisits'] ?? 0))
@@ -27,17 +41,13 @@ class ShortUrlStatsOverview extends BaseWidget
                 ->icon('heroicon-o-user-group')
                 ->color('info'),
 
-            Stat::make(__('filament-short-url::default.stats_card_today'), number_format($stats['visitsToday'] ?? 0))
-                ->icon('heroicon-o-sun')
+            Stat::make(__('filament-short-url::default.stats_card_top_source'), $topSource)
+                ->icon('heroicon-o-megaphone')
                 ->color('warning'),
 
-            Stat::make(__('filament-short-url::default.stats_card_week'), number_format($stats['visitsThisWeek'] ?? 0))
-                ->icon('heroicon-o-calendar-days')
+            Stat::make(__('filament-short-url::default.stats_card_top_country'), $topCountry)
+                ->icon('heroicon-o-globe-alt')
                 ->color('success'),
-
-            Stat::make(__('filament-short-url::default.stats_card_month'), number_format($stats['visitsThisMonth'] ?? 0))
-                ->icon('heroicon-o-calendar')
-                ->color('gray'),
         ];
     }
 }

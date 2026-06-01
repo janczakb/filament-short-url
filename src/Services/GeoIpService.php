@@ -17,31 +17,32 @@ use Illuminate\Support\Facades\Log;
  */
 class GeoIpService
 {
-    private const API_URL = 'http://ip-api.com/json/%s?fields=status,country,countryCode';
+    private const API_URL = 'http://ip-api.com/json/%s?fields=status,country,countryCode,city';
 
-    /** @var array<string, array{country: string|null, country_code: string|null}> */
+    /** @var array<string, array{country: string|null, country_code: string|null, city: string|null}> */
     private static array $runtimeCache = [];
 
     /**
-     * Resolve country data for the given IP address.
+     * Resolve country and city data for the given IP address.
      *
-     * @return array{country: string|null, country_code: string|null}
+     * @return array{country: string|null, country_code: string|null, city: string|null}
      */
-    public function resolve(string $ip, ?string $preResolvedCountryCode = null): array
+    public function resolve(string $ip, ?string $preResolvedCountryCode = null, ?string $preResolvedCity = null): array
     {
-        $empty = ['country' => null, 'country_code' => null];
+        $empty = ['country' => null, 'country_code' => null, 'city' => null];
 
         if (! config('filament-short-url.geo_ip.enabled', true)) {
             return $empty;
         }
 
-        // 1. Prioritise edge-provided CDN country code (extremely fast, zero latency)
+        // 1. Prioritise edge-provided CDN country code & city (extremely fast, zero latency)
         if ($preResolvedCountryCode) {
             $code = strtoupper(trim($preResolvedCountryCode));
 
             return [
                 'country' => $this->getCountryName($code),
                 'country_code' => $code,
+                'city' => $preResolvedCity,
             ];
         }
 
@@ -129,9 +130,9 @@ class GeoIpService
     }
 
     /**
-     * Resolve country using local MaxMind GeoIP2 DB.
+     * Resolve country and city using local MaxMind GeoIP2 DB.
      *
-     * @return array{country: string, country_code: string}|null
+     * @return array{country: string|null, country_code: string|null, city: string|null}|null
      */
     private function lookupMaxMind(string $ip): ?array
     {
@@ -151,11 +152,24 @@ class GeoIpService
 
         try {
             $reader = new Reader($dbPath);
+            $dbType = $reader->metadata()->databaseType;
+
+            if (str_contains($dbType, 'City')) {
+                $record = $reader->city($ip);
+
+                return [
+                    'country' => $record->country->name ?? null,
+                    'country_code' => $record->country->isoCode ?? null,
+                    'city' => $record->city->name ?? null,
+                ];
+            }
+
             $record = $reader->country($ip);
 
             return [
                 'country' => $record->country->name ?? null,
                 'country_code' => $record->country->isoCode ?? null,
+                'city' => null,
             ];
         } catch (\Throwable $e) {
             Log::warning('[FilamentShortUrl] MaxMind GeoIP lookup failed', [
@@ -168,9 +182,9 @@ class GeoIpService
     }
 
     /**
-     * Resolve country using free ip-api.com.
+     * Resolve country and city using free ip-api.com.
      *
-     * @return array{country: string, country_code: string}|null
+     * @return array{country: string|null, country_code: string|null, city: string|null}|null
      */
     private function fetchFromApi(string $ip): ?array
     {
@@ -193,6 +207,7 @@ class GeoIpService
             return [
                 'country' => $data['country'] ?? null,
                 'country_code' => $data['countryCode'] ?? null,
+                'city' => $data['city'] ?? null,
             ];
         } catch (\Throwable $e) {
             Log::warning('[FilamentShortUrl] GeoIP lookup failed', [

@@ -127,7 +127,7 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
                     ->label(__('filament-short-url::default.stats_action_export'))
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->action(function (Tables\Contracts\HasTable $livewire) {
+                    ->action(function (HasTable $livewire) {
                         return response()->streamDownload(function () use ($livewire) {
                             $handle = fopen('php://output', 'w');
                             // Add UTF-8 BOM for Microsoft Excel

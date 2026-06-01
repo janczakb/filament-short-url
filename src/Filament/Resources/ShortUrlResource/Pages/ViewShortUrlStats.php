@@ -5,9 +5,12 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Resources\Pages\Page;
+use Filament\Schemas\Schema;
 
 class ViewShortUrlStats extends Page implements HasForms
 {
@@ -23,10 +26,74 @@ class ViewShortUrlStats extends Page implements HasForms
 
     public int $totalVisits = 0;
 
+    public ?array $filterData = [];
+
     public function mount(ShortUrl $record): void
     {
         $this->record = $record;
-        $this->totalVisits = $record->getCachedStats()['totalVisits'] ?? 0;
+
+        $this->form->fill([
+            'preset' => '30_days',
+            'date_from' => now()->subDays(29)->format('Y-m-d'),
+            'date_to' => now()->format('Y-m-d'),
+        ]);
+
+        if (empty($this->filterData)) {
+            $this->filterData = [
+                'preset' => '30_days',
+                'date_from' => now()->subDays(29)->format('Y-m-d'),
+                'date_to' => now()->format('Y-m-d'),
+            ];
+        }
+
+        $this->totalVisits = $record->getCachedStats($this->filterData['date_from'], $this->filterData['date_to'])['totalVisits'] ?? 0;
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('preset')
+                    ->label(__('filament-short-url::default.stats_filter_date_range'))
+                    ->options([
+                        '24_hours' => __('filament-short-url::default.stats_preset_24_hours'),
+                        '7_days' => __('filament-short-url::default.stats_preset_7_days'),
+                        '30_days' => __('filament-short-url::default.stats_preset_30_days'),
+                        '90_days' => __('filament-short-url::default.stats_preset_90_days'),
+                        'custom' => __('filament-short-url::default.stats_preset_custom'),
+                    ])
+                    ->live()
+                    ->afterStateUpdated(function ($state, $set) {
+                        $to = now()->format('Y-m-d');
+                        $from = match ($state) {
+                            '24_hours' => now()->subDay()->format('Y-m-d'),
+                            '7_days' => now()->subDays(6)->format('Y-m-d'),
+                            '30_days' => now()->subDays(29)->format('Y-m-d'),
+                            '90_days' => now()->subDays(89)->format('Y-m-d'),
+                            'custom' => now()->subDays(29)->format('Y-m-d'),
+                            default => null,
+                        };
+                        if ($from) {
+                            $set('date_from', $from);
+                            $set('date_to', $to);
+                        }
+                    }),
+
+                DatePicker::make('date_from')
+                    ->label(__('filament-short-url::default.stats_filter_visited_from'))
+                    ->native(false)
+                    ->live()
+                    ->visible(fn ($get) => $get('preset') === 'custom')
+                    ->required(),
+
+                DatePicker::make('date_to')
+                    ->label(__('filament-short-url::default.stats_filter_visited_until'))
+                    ->native(false)
+                    ->live()
+                    ->visible(fn ($get) => $get('preset') === 'custom')
+                    ->required(),
+            ])
+            ->statePath('filterData');
     }
 
     protected function getHeaderWidgets(): array

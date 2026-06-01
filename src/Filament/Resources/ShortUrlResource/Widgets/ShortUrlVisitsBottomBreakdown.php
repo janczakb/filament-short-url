@@ -9,6 +9,10 @@ class ShortUrlVisitsBottomBreakdown extends Widget
 {
     public ?ShortUrl $record = null;
 
+    public ?string $dateFrom = null;
+
+    public ?string $dateTo = null;
+
     protected string $view = 'filament-short-url::widgets.visits-bottom-breakdown';
 
     protected int|string|array $columnSpan = 'full';
@@ -29,17 +33,23 @@ class ShortUrlVisitsBottomBreakdown extends Widget
                 'visitsByBrowser' => [],
                 'visitsByOs' => [],
                 'visitsByReferer' => [],
+                'utmSources' => [],
+                'utmMediums' => [],
+                'utmCampaigns' => [],
                 'totalVisits' => 0,
             ];
         }
 
-        $stats = $this->record->getCachedStats();
+        $stats = $this->record->getCachedStats($this->dateFrom, $this->dateTo);
 
         return [
             'visitsByDevice' => $stats['visitsByDevice'] ?? [],
             'visitsByBrowser' => $stats['visitsByBrowser'] ?? [],
             'visitsByOs' => $stats['visitsByOs'] ?? [],
             'visitsByReferer' => $stats['visitsByReferer'] ?? [],
+            'utmSources' => $stats['utmSources'] ?? [],
+            'utmMediums' => $stats['utmMediums'] ?? [],
+            'utmCampaigns' => $stats['utmCampaigns'] ?? [],
             'totalVisits' => $stats['totalVisits'] ?? 0,
         ];
     }

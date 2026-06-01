@@ -9,6 +9,10 @@ class ShortUrlVisitsChart extends ChartWidget
 {
     public ?ShortUrl $record = null;
 
+    public ?string $dateFrom = null;
+
+    public ?string $dateTo = null;
+
     protected ?string $maxHeight = '200px';
 
     protected int|string|array $columnSpan = [
@@ -29,7 +33,7 @@ class ShortUrlVisitsChart extends ChartWidget
             ];
         }
 
-        $stats = $this->record->getCachedStats();
+        $stats = $this->record->getCachedStats($this->dateFrom, $this->dateTo);
         $visitsByDay = $stats['visitsByDay'] ?? [];
 
         return [

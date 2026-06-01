@@ -25,6 +25,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 '2024_01_01_000001_create_short_urls_table',
                 '2024_01_01_000002_create_short_url_visits_table',
+                '2026_06_01_000003_add_utm_city_referer_to_short_url_visits_table',
             ])
             ->hasCommand(SyncBufferedCountersCommand::class)
             ->hasRoutes(['web']);

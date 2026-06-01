@@ -34,6 +34,7 @@ class ShortUrlRedirectController extends Controller
             $connection = config('filament-short-url.queue_connection', 'sync');
             $ipAddress = ClientIpExtractor::getIp($request);
             $countryCode = ClientIpExtractor::getCountryCode($request);
+            $city = ClientIpExtractor::getCity($request);
 
             $job = new TrackShortUrlVisitJob(
                 shortUrl: $shortUrl,
@@ -41,6 +42,12 @@ class ShortUrlRedirectController extends Controller
                 userAgent: $request->userAgent() ?? '',
                 refererUrl: $request->header('Referer'),
                 countryCode: $countryCode,
+                city: $city,
+                utmSource: $request->query('utm_source'),
+                utmMedium: $request->query('utm_medium'),
+                utmCampaign: $request->query('utm_campaign'),
+                utmTerm: $request->query('utm_term'),
+                utmContent: $request->query('utm_content'),
             );
 
             if ($connection) {

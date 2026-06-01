@@ -212,4 +212,20 @@ return [
     'form_section_tracking' => 'Śledzenie wizyt',
     'form_section_tracked_fields' => 'Śledzone pola',
     'form_section_analytics' => 'Zewnętrzne systemy analityczne',
+
+    // New Dashboard Analytics Keys
+    'stats_card_top_source' => 'Główne źródło UTM',
+    'stats_card_top_country' => 'Główny kraj',
+    'stats_filter_date_range' => 'Zakres dat',
+    'stats_preset_24_hours' => 'Ostatnie 24 godziny',
+    'stats_preset_7_days' => 'Ostatnie 7 dni',
+    'stats_preset_30_days' => 'Ostatnie 30 dni',
+    'stats_preset_90_days' => 'Ostatnie 90 dni',
+    'stats_preset_custom' => 'Własny zakres',
+    'stats_breakdown_cities' => 'Najpopularniejsze miasta',
+    'stats_no_city_data' => 'Brak danych o miastach.',
+    'stats_breakdown_utm_source' => 'Źródła kampanii',
+    'stats_breakdown_utm_medium' => 'Media kampanii',
+    'stats_breakdown_utm_campaign' => 'Nazwy kampanii',
+    'stats_no_utm_data' => 'Brak danych o parametrach UTM.',
 ];

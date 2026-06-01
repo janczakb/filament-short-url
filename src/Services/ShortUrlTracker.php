@@ -23,8 +23,17 @@ class ShortUrlTracker
      *
      * Returns null if the visit was from a bot/crawler (we don't track those).
      */
-    public function record(ShortUrl $shortUrl, Request $request, ?string $preResolvedCountryCode = null): ?ShortUrlVisit
-    {
+    public function record(
+        ShortUrl $shortUrl,
+        Request $request,
+        ?string $preResolvedCountryCode = null,
+        ?string $preResolvedCity = null,
+        ?string $utmSource = null,
+        ?string $utmMedium = null,
+        ?string $utmCampaign = null,
+        ?string $utmTerm = null,
+        ?string $utmContent = null,
+    ): ?ShortUrlVisit {
         $ip = ClientIpExtractor::getIp($request);
         $ipHash = hash('sha256', $ip);
         $ua = $request->userAgent() ?? '';
@@ -36,8 +45,8 @@ class ShortUrlTracker
         }
 
         $geo = config('filament-short-url.geo_ip.enabled', true)
-            ? $this->geoIp->resolve($ip, $preResolvedCountryCode)
-            : ['country' => null, 'country_code' => null];
+            ? $this->geoIp->resolve($ip, $preResolvedCountryCode, $preResolvedCity)
+            : ['country' => null, 'country_code' => null, 'city' => null];
 
         // Determine uniqueness: first time this IP hash visits this URL.
         // We check BEFORE insert to avoid a self-referential race.
@@ -56,9 +65,42 @@ class ShortUrlTracker
         $visit->operating_system_version = $shortUrl->track_operating_system_version
             ? $parsed['operating_system_version'] : null;
         $visit->device_type = $shortUrl->track_device_type ? $parsed['device_type'] : null;
-        $visit->referer_url = $shortUrl->track_referer_url ? $request->header('Referer') : null;
         $visit->country = $geo['country'];
         $visit->country_code = $geo['country_code'];
+        $visit->city = $geo['city'] ?? null;
+
+        $visit->utm_source = $utmSource;
+        $visit->utm_medium = $utmMedium;
+        $visit->utm_campaign = $utmCampaign;
+        $visit->utm_term = $utmTerm;
+        $visit->utm_content = $utmContent;
+
+        // Clean & normalize referer URL to host domain
+        if ($shortUrl->track_referer_url && $referer = $request->header('Referer')) {
+            $visit->referer_url = $referer;
+            $refererHost = parse_url($referer, PHP_URL_HOST);
+            if ($refererHost) {
+                $refererHost = preg_replace('/^www\./', '', strtolower($refererHost));
+                if (str_contains($refererHost, 'facebook.com')) {
+                    $refererHost = 'facebook.com';
+                } elseif (str_contains($refererHost, 'linkedin.com')) {
+                    $refererHost = 'linkedin.com';
+                } elseif (str_contains($refererHost, 'twitter.com') || str_contains($refererHost, 't.co')) {
+                    $refererHost = 'twitter.com';
+                } elseif (str_contains($refererHost, 'google.')) {
+                    $refererHost = 'google.com';
+                } elseif (str_contains($refererHost, 'instagram.com')) {
+                    $refererHost = 'instagram.com';
+                } elseif (str_contains($refererHost, 'youtube.com')) {
+                    $refererHost = 'youtube.com';
+                }
+                $visit->referer_host = $refererHost;
+            } else {
+                $visit->referer_host = 'Direct';
+            }
+        } else {
+            $visit->referer_host = 'Direct';
+        }
 
         $visit->save();
 
