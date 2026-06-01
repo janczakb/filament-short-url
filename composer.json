@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "bjanczak/filament-short-url",
+    "name": "janczakb/filament-short-url",
     "description": "A professional Short URL manager plugin for Filament v5 with QR code design, visit tracking, geo-IP detection, and analytics.",
     "keywords": ["filament", "short-url", "qr-code", "analytics", "tracking", "laravel"],
-    "homepage": "https://github.com/bjanczak/filament-short-url",
+    "homepage": "https://github.com/janczakb/filament-short-url",
     "license": "MIT",
     "authors": [
         {
