@@ -26,8 +26,13 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2024_01_01_000001_create_short_urls_table',
                 '2024_01_01_000002_create_short_url_visits_table',
                 '2026_06_01_000003_add_utm_city_referer_to_short_url_visits_table',
+                '2026_06_01_000004_add_targeting_and_security_to_short_urls_table',
+                '2026_06_01_000005_create_short_url_daily_stats_table',
             ])
-            ->hasCommand(SyncBufferedCountersCommand::class)
+            ->hasCommands([
+                SyncBufferedCountersCommand::class,
+                Console\Commands\AggregateAndPruneVisitsCommand::class,
+            ])
             ->hasRoutes(['web']);
     }
 

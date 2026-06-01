@@ -54,7 +54,7 @@ class ViewShortUrlStats extends Page implements HasForms
         return $schema
             ->components([
                 Select::make('preset')
-                    ->label(__('filament-short-url::default.stats_filter_date_range'))
+                    ->hiddenLabel()
                     ->options([
                         '24_hours' => __('filament-short-url::default.stats_preset_24_hours'),
                         '7_days' => __('filament-short-url::default.stats_preset_7_days'),
@@ -63,6 +63,7 @@ class ViewShortUrlStats extends Page implements HasForms
                         'custom' => __('filament-short-url::default.stats_preset_custom'),
                     ])
                     ->live()
+                    ->columnSpan(fn ($get) => $get('preset') === 'custom' ? 1 : 'full')
                     ->afterStateUpdated(function ($state, $set) {
                         $to = now()->format('Y-m-d');
                         $from = match ($state) {
@@ -80,19 +81,24 @@ class ViewShortUrlStats extends Page implements HasForms
                     }),
 
                 DatePicker::make('date_from')
-                    ->label(__('filament-short-url::default.stats_filter_visited_from'))
+                    ->hiddenLabel()
+                    ->placeholder(__('filament-short-url::default.stats_filter_visited_from'))
                     ->native(false)
                     ->live()
+                    ->columnSpan(1)
                     ->visible(fn ($get) => $get('preset') === 'custom')
                     ->required(),
 
                 DatePicker::make('date_to')
-                    ->label(__('filament-short-url::default.stats_filter_visited_until'))
+                    ->hiddenLabel()
+                    ->placeholder(__('filament-short-url::default.stats_filter_visited_until'))
                     ->native(false)
                     ->live()
+                    ->columnSpan(1)
                     ->visible(fn ($get) => $get('preset') === 'custom')
                     ->required(),
             ])
+            ->columns(3)
             ->statePath('filterData');
     }
 

@@ -6,9 +6,10 @@ use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\RateLimiter;
+use Symfony\Component\HttpFoundation\Response;
 
 class ShortUrlRedirectController extends Controller
 {
@@ -16,7 +17,7 @@ class ShortUrlRedirectController extends Controller
         private readonly ShortUrlService $service,
     ) {}
 
-    public function __invoke(Request $request, string $key): RedirectResponse
+    public function __invoke(Request $request, string $key): Response
     {
         $shortUrl = ShortUrl::findByKey($key);
 
@@ -30,6 +31,66 @@ class ShortUrlRedirectController extends Controller
             abort(410);
         }
 
+        // 1. Rate Limiting Check
+        if (config('filament-short-url.rate_limiting.enabled', false)) {
+            $maxAttempts = (int) config('filament-short-url.rate_limiting.max_attempts', 60);
+            $decaySeconds = (int) config('filament-short-url.rate_limiting.decay_seconds', 60);
+            $limiterKey = "short_url_limit:{$key}:" . $request->ip();
+
+            if (RateLimiter::tooManyAttempts($limiterKey, $maxAttempts)) {
+                $retryAfter = RateLimiter::availableIn($limiterKey);
+                abort(429, 'Too many requests. Please try again in ' . $retryAfter . ' seconds.', [
+                    'Retry-After' => $retryAfter,
+                ]);
+            }
+            RateLimiter::hit($limiterKey, $decaySeconds);
+        }
+
+        // 2. Password Protection Check
+        if (! empty($shortUrl->password)) {
+            $sessionKey = "short-url-auth-{$shortUrl->id}";
+            if (! session()->get($sessionKey)) {
+                if ($request->isMethod('POST')) {
+                    $submitted = $request->input('password');
+                    if ($submitted === $shortUrl->password) {
+                        session()->put($sessionKey, true);
+                        return redirect()->to($request->fullUrl());
+                    }
+
+                    $errors = new \Illuminate\Support\MessageBag([
+                        'password' => __('filament-short-url::default.password_error') ?? 'Incorrect password.',
+                    ]);
+                    return response(view('filament-short-url::password-prompt', ['errors' => $errors]))
+                        ->header('Content-Type', 'text/html');
+                }
+
+                return response(view('filament-short-url::password-prompt'))
+                    ->header('Content-Type', 'text/html');
+            }
+        }
+
+        // 3. Resolve Destination URL (evaluating targeting rules)
+        $destination = $shortUrl->resolveDestinationUrl($request);
+
+        // Forward query parameters if configured
+        if ($shortUrl->forward_query_params) {
+            $queryParams = $request->query();
+            // Remove routing/auth parameters so they don't leak to destination
+            unset($queryParams['confirmed'], $queryParams['password']);
+
+            if (! empty($queryParams)) {
+                $separator = str_contains($destination, '?') ? '&' : '?';
+                $destination .= $separator . http_build_query($queryParams);
+            }
+        }
+
+        // 4. Warning / Intermediate Page Check
+        if ($shortUrl->show_warning_page && ! $request->has('confirmed')) {
+            return response(view('filament-short-url::warning', ['destinationUrl' => $destination]))
+                ->header('Content-Type', 'text/html');
+        }
+
+        // 5. Track Visit
         if ($shortUrl->track_visits) {
             $connection = config('filament-short-url.queue_connection', 'sync');
             $ipAddress = ClientIpExtractor::getIp($request);
@@ -72,8 +133,6 @@ class ShortUrlRedirectController extends Controller
             cache()->forget("filament-short-url:{$shortUrl->url_key}");
         }
 
-        $redirectUrl = $this->service->resolveRedirectUrl($shortUrl, $request);
-
-        return redirect()->away($redirectUrl, $shortUrl->redirect_status_code);
+        return redirect()->away($destination, $shortUrl->redirect_status_code);
     }
 }

@@ -3,7 +3,8 @@
 use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlRedirectController;
 use Illuminate\Support\Facades\Route;
 
-Route::get(
+Route::match(
+    ['GET', 'POST'],
     config('filament-short-url.route_prefix', 's').'/{key}',
     ShortUrlRedirectController::class
 )

@@ -67,6 +67,9 @@ class ShortUrl extends Model
         'track_referer_url',
         'qr_options',
         'ga_tracking_id',
+        'password',
+        'show_warning_page',
+        'targeting_rules',
         'total_visits',
         'unique_visits',
     ];
@@ -85,6 +88,8 @@ class ShortUrl extends Model
         'track_device_type' => 'boolean',
         'track_referer_url' => 'boolean',
         'qr_options' => 'array',
+        'show_warning_page' => 'boolean',
+        'targeting_rules' => 'array',
         'activated_at' => 'datetime',
         'deactivated_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -95,6 +100,11 @@ class ShortUrl extends Model
     public function visits(): HasMany
     {
         return $this->hasMany(ShortUrlVisit::class, 'short_url_id');
+    }
+
+    public function dailyStats(): HasMany
+    {
+        return $this->hasMany(ShortUrlDailyStats::class, 'short_url_id');
     }
 
     // ─── Scopes ──────────────────────────────────────────────────────────────
@@ -238,39 +248,97 @@ class ShortUrl extends Model
     }
 
     /**
+     * Resolve the targeted destination URL based on request headers/context.
+     */
+    public function resolveDestinationUrl(\Illuminate\Http\Request $request): string
+    {
+        $rules = $this->targeting_rules;
+
+        if (empty($rules)) {
+            return $this->destination_url;
+        }
+
+        $type = $rules['type'] ?? 'none';
+
+        if ($type === 'device') {
+            $ua = strtolower($request->userAgent() ?? '');
+            if (str_contains($ua, 'iphone') || str_contains($ua, 'ipad') || str_contains($ua, 'ipod')) {
+                return $rules['device']['ios'] ?? $this->destination_url;
+            }
+            if (str_contains($ua, 'android')) {
+                return $rules['device']['android'] ?? $this->destination_url;
+            }
+            return $rules['device']['desktop'] ?? $this->destination_url;
+        }
+
+        if ($type === 'geo') {
+            $countryCode = \Bjanczak\FilamentShortUrl\Services\ClientIpExtractor::getCountryCode($request);
+            if (! $countryCode) {
+                // Try resolving via GeoIpService
+                $ip = \Bjanczak\FilamentShortUrl\Services\ClientIpExtractor::getIp($request);
+                $geo = app(\Bjanczak\FilamentShortUrl\Services\GeoIpService::class)->resolve($ip);
+                $countryCode = $geo['country_code'] ?? null;
+            }
+
+            if ($countryCode) {
+                $countryCode = strtoupper(trim($countryCode));
+                foreach ($rules['geo'] ?? [] as $rule) {
+                    if (strtoupper($rule['country_code'] ?? '') === $countryCode) {
+                        return $rule['url'] ?? $this->destination_url;
+                    }
+                }
+            }
+        }
+
+        if ($type === 'rotation') {
+            $items = $rules['rotation'] ?? [];
+            if (! empty($items)) {
+                $totalWeight = array_sum(array_column($items, 'weight'));
+                if ($totalWeight > 0) {
+                    $rand = mt_rand(1, $totalWeight);
+                    $currentWeight = 0;
+                    foreach ($items as $item) {
+                        $currentWeight += (int) ($item['weight'] ?? 0);
+                        if ($rand <= $currentWeight) {
+                            return $item['url'] ?? $this->destination_url;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $this->destination_url;
+    }
+
+    /**
      * Atomically increment visit counters — single query when unique,
      * to avoid race conditions and two round-trips. Supports write-back caching.
      */
     public function incrementVisits(bool $isUnique = false): void
     {
         if (config('filament-short-url.counter_buffering.enabled', false)) {
-            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
-            try {
-                // Safely increment total visits in cache
-                cache()->increment("{$prefix}total:{$this->id}");
+            if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
+                $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+                try {
+                    cache()->increment("{$prefix}total:{$this->id}");
 
-                if ($isUnique) {
-                    cache()->increment("{$prefix}unique:{$this->id}");
-                }
-
-                $dirtyKey = "{$prefix}dirty_ids";
-
-                // Check if Redis is being used for the cache to prevent set race conditions
-                if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
-                    Redis::sadd($dirtyKey, $this->id);
-                } else {
-                    // Fallback to array for standard cache drivers
-                    $dirtyIds = cache()->get($dirtyKey, []);
-                    if (! in_array($this->id, $dirtyIds)) {
-                        $dirtyIds[] = $this->id;
-                        cache()->put($dirtyKey, $dirtyIds, now()->addDays(7));
+                    if ($isUnique) {
+                        cache()->increment("{$prefix}unique:{$this->id}");
                     }
-                }
 
-                return;
-            } catch (\Throwable) {
-                // Fallback to database below if cache fails or doesn't support increments
+                    Redis::sadd("{$prefix}dirty_ids", $this->id);
+
+                    return;
+                } catch (\Throwable) {
+                    // Fallback to queue job below
+                }
             }
+
+            // Safe fallback: Dispatch async job so clicks are queued and not lost on cache clear
+            $connection = config('filament-short-url.queue_connection', 'sync');
+            dispatch(new \Bjanczak\FilamentShortUrl\Jobs\IncrementVisitJob($this->id, $isUnique)->onConnection($connection ?: 'sync'));
+
+            return;
         }
 
         $this->newQuery()
@@ -292,155 +360,186 @@ class ShortUrl extends Model
         $cacheKey = "short_url_stats_{$this->id}_".($dateFromClean ?: 'all').'_'.($dateToClean ?: 'all');
 
         return cache()->remember($cacheKey, $cacheTtl, function () use ($dateFromClean, $dateToClean) {
-            $visits = $this->visits();
+            $today = Carbon::today()->toDateString();
 
+            // 1. Fetch daily stats (aggregated historical data)
+            $dailyQuery = $this->dailyStats()->where('date', '<', $today);
             if ($dateFromClean) {
-                $visits->whereDate('visited_at', '>=', $dateFromClean);
+                $dailyQuery->where('date', '>=', $dateFromClean);
             }
-            if ($dateToClean) {
-                $visits->whereDate('visited_at', '<=', $dateToClean);
+            if ($dateToClean && $dateToClean < $today) {
+                $dailyQuery->where('date', '<=', $dateToClean);
+            }
+            $dailyStatsRows = $dailyQuery->get();
+
+            // 2. Fetch raw visits for today (if within date range)
+            $includeToday = ($dateToClean === null || $dateToClean >= $today);
+            if ($dateFromClean && $dateFromClean > $today) {
+                $includeToday = false;
             }
 
-            $chartFrom = $dateFromClean ? Carbon::parse($dateFromClean) : now()->subDays(29)->startOfDay();
-            $chartTo = $dateToClean ? Carbon::parse($dateToClean) : now()->endOfDay();
+            $rawVisits = [];
+            if ($includeToday) {
+                $rawVisits = $this->visits()->whereDate('visited_at', '=', $today)->get();
+            }
 
-            $totalVisits = (clone $visits)->count();
-            $uniqueVisits = (clone $visits)->distinct('ip_hash')->count('ip_hash');
+            // Helper to merge associative stats arrays
+            $mergeStats = function (array $base, ?array $additional): array {
+                if (empty($additional)) {
+                    return $base;
+                }
+                foreach ($additional as $key => $val) {
+                    $base[$key] = ($base[$key] ?? 0) + $val;
+                }
+                return $base;
+            };
 
-            $visitsToday = $this->visits()->where('visited_at', '>=', today()->startOfDay())->count();
-            $visitsThisWeek = $this->visits()->where('visited_at', '>=', now()->startOfWeek())->count();
-            $visitsThisMonth = $this->visits()->where('visited_at', '>=', now()->startOfMonth())->count();
+            // Initialize metrics
+            $totalVisits = 0;
+            $uniqueVisitsCount = 0;
+            $visitsToday = count($rawVisits);
+            $visitsThisWeek = 0;
+            $visitsThisMonth = 0;
 
-            $daysDiff = (int) $chartFrom->diffInDays($chartTo);
+            $visitsByCountry = [];
+            $visitsByCity = [];
+            $visitsByDevice = [];
+            $visitsByBrowser = [];
+            $visitsByOs = [];
+            $visitsByReferer = [];
+            $utmSources = [];
+            $utmMediums = [];
+            $utmCampaigns = [];
 
-            if ($daysDiff > 90) {
-                $visitsByDayRaw = (clone $visits)
-                    ->selectRaw('DATE_FORMAT(visited_at, "%Y-%m") as date, COUNT(*) as count')
-                    ->groupBy('date')
-                    ->orderBy('date')
-                    ->pluck('count', 'date')
-                    ->toArray();
-                $visitsByDay = $visitsByDayRaw;
-            } else {
-                $visitsByDayRaw = (clone $visits)
-                    ->selectRaw('DATE(visited_at) as date, COUNT(*) as count')
-                    ->groupBy('date')
-                    ->orderBy('date')
-                    ->pluck('count', 'date')
-                    ->toArray();
+            // Sum up daily stats
+            $startOfWeek = now()->startOfWeek()->toDateString();
+            $startOfMonth = now()->startOfMonth()->toDateString();
 
-                $visitsByDay = [];
-                for ($i = $daysDiff; $i >= 0; $i--) {
-                    $date = (clone $chartTo)->subDays($i)->format('Y-m-d');
-                    $visitsByDay[$date] = $visitsByDayRaw[$date] ?? 0;
+            foreach ($dailyStatsRows as $row) {
+                $totalVisits += $row->visits_count;
+                $uniqueVisitsCount += $row->unique_visits_count;
+
+                $rowDate = $row->date->toDateString();
+                if ($rowDate >= $startOfWeek) {
+                    $visitsThisWeek += $row->visits_count;
+                }
+                if ($rowDate >= $startOfMonth) {
+                    $visitsThisMonth += $row->visits_count;
+                }
+
+                $visitsByCountry = $mergeStats($visitsByCountry, $row->country_stats);
+                $visitsByCity = $mergeStats($visitsByCity, $row->city_stats);
+                $visitsByDevice = $mergeStats($visitsByDevice, $row->device_stats);
+                $visitsByBrowser = $mergeStats($visitsByBrowser, $row->browser_stats);
+                $visitsByOs = $mergeStats($visitsByOs, $row->os_stats);
+                $visitsByReferer = $mergeStats($visitsByReferer, $row->referer_stats);
+                $utmSources = $mergeStats($utmSources, $row->utm_source_stats);
+                $utmMediums = $mergeStats($utmMediums, $row->utm_medium_stats);
+                $utmCampaigns = $mergeStats($utmCampaigns, $row->utm_campaign_stats);
+            }
+
+            // Combine today's raw visits
+            if ($includeToday) {
+                $totalVisits += count($rawVisits);
+                $uniqueVisitsCount += count(array_unique(array_filter($rawVisits->pluck('ip_hash')->toArray())));
+
+                $visitsThisWeek += count($rawVisits);
+                $visitsThisMonth += count($rawVisits);
+
+                foreach ($rawVisits as $visit) {
+                    if ($visit->country) {
+                        $visitsByCountry[$visit->country] = ($visitsByCountry[$visit->country] ?? 0) + 1;
+                    }
+                    if ($visit->city) {
+                        $cityKey = "{$visit->city} ({$visit->country_code})";
+                        $visitsByCity[$cityKey] = ($visitsByCity[$cityKey] ?? 0) + 1;
+                    }
+                    if ($visit->device_type) {
+                        $visitsByDevice[$visit->device_type] = ($visitsByDevice[$visit->device_type] ?? 0) + 1;
+                    }
+                    if ($visit->browser) {
+                        $visitsByBrowser[$visit->browser] = ($visitsByBrowser[$visit->browser] ?? 0) + 1;
+                    }
+                    if ($visit->operating_system) {
+                        $visitsByOs[$visit->operating_system] = ($visitsByOs[$visit->operating_system] ?? 0) + 1;
+                    }
+                    $refererHost = $visit->referer_host ?: 'Direct';
+                    $visitsByReferer[$refererHost] = ($visitsByReferer[$refererHost] ?? 0) + 1;
+
+                    if ($visit->utm_source) {
+                        $utmSources[$visit->utm_source] = ($utmSources[$visit->utm_source] ?? 0) + 1;
+                    }
+                    if ($visit->utm_medium) {
+                        $utmMediums[$visit->utm_medium] = ($utmMediums[$visit->utm_medium] ?? 0) + 1;
+                    }
+                    if ($visit->utm_campaign) {
+                        $utmCampaigns[$visit->utm_campaign] = ($utmCampaigns[$visit->utm_campaign] ?? 0) + 1;
+                    }
                 }
             }
 
-            // Top countries
-            $visitsByCountry = (clone $visits)
-                ->whereNotNull('country')
-                ->selectRaw('country, country_code, COUNT(*) as count')
-                ->groupBy('country', 'country_code')
-                ->orderByDesc('count')
-                ->limit(10)
-                ->get()
-                ->mapWithKeys(fn ($row) => [$row->country => $row->count])
-                ->toArray();
+            // Build visitsByDay timeline
+            $chartFrom = $dateFromClean ? Carbon::parse($dateFromClean) : now()->subDays(29)->startOfDay();
+            $chartTo = $dateToClean ? Carbon::parse($dateToClean) : now()->endOfDay();
+            $daysDiff = (int) $chartFrom->diffInDays($chartTo);
 
-            // Top cities
-            $visitsByCity = (clone $visits)
-                ->whereNotNull('city')
-                ->selectRaw('city, country_code, COUNT(*) as count')
-                ->groupBy('city', 'country_code')
-                ->orderByDesc('count')
-                ->limit(10)
-                ->get()
-                ->mapWithKeys(fn ($row) => ["{$row->city} ({$row->country_code})" => $row->count])
-                ->toArray();
+            $visitsByDay = [];
+            if ($daysDiff > 90) {
+                // Group by month
+                foreach ($dailyStatsRows as $row) {
+                    $m = $row->date->format('Y-m');
+                    $visitsByDay[$m] = ($visitsByDay[$m] ?? 0) + $row->visits_count;
+                }
+                if ($includeToday) {
+                    $mToday = Carbon::parse($today)->format('Y-m');
+                    $visitsByDay[$mToday] = ($visitsByDay[$mToday] ?? 0) + count($rawVisits);
+                }
+            } else {
+                // Initialize timeline with zeros
+                for ($i = $daysDiff; $i >= 0; $i--) {
+                    $d = (clone $chartTo)->subDays($i)->format('Y-m-d');
+                    $visitsByDay[$d] = 0;
+                }
+                // Fill daily stats
+                foreach ($dailyStatsRows as $row) {
+                    $d = $row->date->format('Y-m-d');
+                    if (isset($visitsByDay[$d])) {
+                        $visitsByDay[$d] = $row->visits_count;
+                    }
+                }
+                // Fill today
+                if ($includeToday && isset($visitsByDay[$today])) {
+                    $visitsByDay[$today] = count($rawVisits);
+                }
+            }
 
-            // Device types
-            $visitsByDevice = (clone $visits)
-                ->whereNotNull('device_type')
-                ->selectRaw('device_type, COUNT(*) as count')
-                ->groupBy('device_type')
-                ->orderByDesc('count')
-                ->pluck('count', 'device_type')
-                ->toArray();
-
-            // Browsers
-            $visitsByBrowser = (clone $visits)
-                ->whereNotNull('browser')
-                ->selectRaw('browser, COUNT(*) as count')
-                ->groupBy('browser')
-                ->orderByDesc('count')
-                ->limit(8)
-                ->pluck('count', 'browser')
-                ->toArray();
-
-            // Operating systems
-            $visitsByOs = (clone $visits)
-                ->whereNotNull('operating_system')
-                ->selectRaw('operating_system, COUNT(*) as count')
-                ->groupBy('operating_system')
-                ->orderByDesc('count')
-                ->limit(8)
-                ->pluck('count', 'operating_system')
-                ->toArray();
-
-            // Top referrer hosts
-            $visitsByReferer = (clone $visits)
-                ->whereNotNull('referer_host')
-                ->selectRaw('referer_host, COUNT(*) as count')
-                ->groupBy('referer_host')
-                ->orderByDesc('count')
-                ->limit(10)
-                ->pluck('count', 'referer_host')
-                ->toArray();
-
-            // UTM Breakdowns
-            $utmSources = (clone $visits)
-                ->whereNotNull('utm_source')
-                ->selectRaw('utm_source, COUNT(*) as count')
-                ->groupBy('utm_source')
-                ->orderByDesc('count')
-                ->limit(8)
-                ->pluck('count', 'utm_source')
-                ->toArray();
-
-            $utmMediums = (clone $visits)
-                ->whereNotNull('utm_medium')
-                ->selectRaw('utm_medium, COUNT(*) as count')
-                ->groupBy('utm_medium')
-                ->orderByDesc('count')
-                ->limit(8)
-                ->pluck('count', 'utm_medium')
-                ->toArray();
-
-            $utmCampaigns = (clone $visits)
-                ->whereNotNull('utm_campaign')
-                ->selectRaw('utm_campaign, COUNT(*) as count')
-                ->groupBy('utm_campaign')
-                ->orderByDesc('count')
-                ->limit(8)
-                ->pluck('count', 'utm_campaign')
-                ->toArray();
+            // Sort distributions descending
+            arsort($visitsByCountry);
+            arsort($visitsByCity);
+            arsort($visitsByDevice);
+            arsort($visitsByBrowser);
+            arsort($visitsByOs);
+            arsort($visitsByReferer);
+            arsort($utmSources);
+            arsort($utmMediums);
+            arsort($utmCampaigns);
 
             return [
                 'totalVisits' => $totalVisits,
-                'uniqueVisits' => $uniqueVisits,
+                'uniqueVisits' => $uniqueVisitsCount,
                 'visitsToday' => $visitsToday,
                 'visitsThisWeek' => $visitsThisWeek,
                 'visitsThisMonth' => $visitsThisMonth,
                 'visitsByDay' => $visitsByDay,
-                'visitsByCountry' => $visitsByCountry,
-                'visitsByCity' => $visitsByCity,
+                'visitsByCountry' => array_slice($visitsByCountry, 0, 10, true),
+                'visitsByCity' => array_slice($visitsByCity, 0, 10, true),
                 'visitsByDevice' => $visitsByDevice,
-                'visitsByBrowser' => $visitsByBrowser,
-                'visitsByOs' => $visitsByOs,
-                'visitsByReferer' => $visitsByReferer,
-                'utmSources' => $utmSources,
-                'utmMediums' => $utmMediums,
-                'utmCampaigns' => $utmCampaigns,
+                'visitsByBrowser' => array_slice($visitsByBrowser, 0, 8, true),
+                'visitsByOs' => array_slice($visitsByOs, 0, 8, true),
+                'visitsByReferer' => array_slice($visitsByReferer, 0, 10, true),
+                'utmSources' => array_slice($utmSources, 0, 8, true),
+                'utmMediums' => array_slice($utmMediums, 0, 8, true),
+                'utmCampaigns' => array_slice($utmCampaigns, 0, 8, true),
             ];
         });
     }

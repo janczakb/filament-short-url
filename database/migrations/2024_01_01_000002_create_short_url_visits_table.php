@@ -27,8 +27,8 @@ return new class extends Migration
             $table->string('operating_system', 100)->nullable();
             $table->string('operating_system_version', 50)->nullable();
 
-            // Device classification
-            $table->enum('device_type', ['desktop', 'mobile', 'tablet', 'robot'])->nullable()->index();
+            // Device classification ('desktop', 'mobile', 'tablet', 'robot') — validated at PHP level
+            $table->string('device_type', 20)->nullable()->index();
 
             // Traffic source
             $table->text('referer_url')->nullable();

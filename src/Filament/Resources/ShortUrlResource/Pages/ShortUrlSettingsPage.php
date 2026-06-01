@@ -47,6 +47,11 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'ga4_firebase_app_id' => $mgr->get('ga4_firebase_app_id'),
             'counter_buffering_enabled' => $mgr->get('counter_buffering_enabled', false),
             'trust_cdn_headers' => $mgr->get('trust_cdn_headers', false),
+            'pruning_enabled' => $mgr->get('pruning_enabled', true),
+            'pruning_retention_days' => $mgr->get('pruning_retention_days', 90),
+            'rate_limiting_enabled' => $mgr->get('rate_limiting_enabled', false),
+            'rate_limiting_max_attempts' => $mgr->get('rate_limiting_max_attempts', 60),
+            'rate_limiting_decay_seconds' => $mgr->get('rate_limiting_decay_seconds', 60),
         ]);
     }
 
@@ -208,6 +213,58 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->helperText(__('filament-short-url::default.settings_ga4_firebase_app_id_helper'))
                                             ->placeholder('1:1234567890:android:abcdef123456')
                                             ->visible(fn (Get $get): bool => filled($get('ga4_api_secret'))),
+                                    ]),
+                            ]),
+
+                        // ── Advanced & Security ──────────────────────────────
+                        Tab::make(__('filament-short-url::default.settings_tab_advanced'))
+                            ->icon('heroicon-o-adjustments-horizontal')
+                            ->schema([
+                                Section::make(__('filament-short-url::default.settings_section_aggregation'))
+                                    ->columns(2)
+                                    ->schema([
+                                        Toggle::make('pruning_enabled')
+                                            ->label(__('filament-short-url::default.settings_aggregation_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_aggregation_enabled_helper'))
+                                            ->default(true)
+                                            ->live()
+                                            ->inline(false),
+
+                                        TextInput::make('pruning_retention_days')
+                                            ->label(__('filament-short-url::default.settings_retention_days'))
+                                            ->helperText(__('filament-short-url::default.settings_retention_days_helper'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => (bool) $get('pruning_enabled')),
+                                    ]),
+
+                                Section::make(__('filament-short-url::default.settings_section_rate_limiting'))
+                                    ->columns(3)
+                                    ->schema([
+                                        Toggle::make('rate_limiting_enabled')
+                                            ->label(__('filament-short-url::default.settings_rate_limiting_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_rate_limiting_enabled_helper'))
+                                            ->default(false)
+                                            ->live()
+                                            ->inline(false),
+
+                                        TextInput::make('rate_limiting_max_attempts')
+                                            ->label(__('filament-short-url::default.settings_rate_limiting_max_attempts'))
+                                            ->helperText(__('filament-short-url::default.settings_rate_limiting_max_attempts_helper'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => (bool) $get('rate_limiting_enabled')),
+
+                                        TextInput::make('rate_limiting_decay_seconds')
+                                            ->label(__('filament-short-url::default.settings_rate_limiting_decay_seconds'))
+                                            ->helperText(__('filament-short-url::default.settings_rate_limiting_decay_seconds_helper'))
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->suffix('s')
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => (bool) $get('rate_limiting_enabled')),
                                     ]),
                             ]),
                     ]),

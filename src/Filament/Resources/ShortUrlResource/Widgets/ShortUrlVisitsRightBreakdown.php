@@ -32,7 +32,6 @@ class ShortUrlVisitsRightBreakdown extends Widget
         if (! $this->record) {
             return [
                 'visitsByCountry' => [],
-                'visitsByCity' => [],
                 'totalVisits' => 0,
             ];
         }
@@ -41,7 +40,6 @@ class ShortUrlVisitsRightBreakdown extends Widget
 
         return [
             'visitsByCountry' => $stats['visitsByCountry'] ?? [],
-            'visitsByCity' => $stats['visitsByCity'] ?? [],
             'totalVisits' => $stats['totalVisits'] ?? 0,
         ];
     }

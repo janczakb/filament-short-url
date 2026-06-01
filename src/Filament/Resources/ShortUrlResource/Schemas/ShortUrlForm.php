@@ -5,6 +5,7 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,6 +25,7 @@ class ShortUrlForm
         return $schema->components([
             Tabs::make()->tabs([
                 static::linkTab(),
+                static::targetingTab(),
                 static::trackingTab(),
                 static::qrDesignTab(),
             ])->columnSpanFull(),
@@ -311,6 +313,132 @@ class ShortUrlForm
                     ->view('filament-short-url::qr-designer')
                     ->columnSpanFull()
                     ->dehydrated(false),
+            ]);
+    }
+
+    private static function targetingTab(): Tab
+    {
+        return Tab::make(__('filament-short-url::default.tab_targeting'))
+            ->icon('heroicon-o-shield-check')
+            ->schema([
+                Section::make(__('filament-short-url::default.security_section_title'))
+                    ->schema([
+                        TextInput::make('password')
+                            ->label(__('filament-short-url::default.password'))
+                            ->helperText(__('filament-short-url::default.password_helper'))
+                            ->password()
+                            ->revealable()
+                            ->nullable()
+                            ->maxLength(255),
+
+                        Toggle::make('show_warning_page')
+                            ->label(__('filament-short-url::default.show_warning_page'))
+                            ->helperText(__('filament-short-url::default.show_warning_page_helper'))
+                            ->default(false)
+                            ->inline(false),
+                    ])->columns(2),
+
+                Section::make(__('filament-short-url::default.targeting_type'))
+                    ->schema([
+                        Select::make('targeting_rules.type')
+                            ->label(__('filament-short-url::default.targeting_type'))
+                            ->options([
+                                'none' => __('filament-short-url::default.targeting_type_none'),
+                                'device' => __('filament-short-url::default.targeting_type_device'),
+                                'geo' => __('filament-short-url::default.targeting_type_country'),
+                                'rotation' => __('filament-short-url::default.targeting_type_rotation'),
+                            ])
+                            ->default('none')
+                            ->live()
+                            ->required(),
+
+                        Section::make(__('filament-short-url::default.device_targeting_rules'))
+                            ->schema([
+                                TextInput::make('targeting_rules.device.ios')
+                                    ->label(__('filament-short-url::default.device_mobile'))
+                                    ->url()
+                                    ->nullable()
+                                    ->maxLength(2048),
+                                TextInput::make('targeting_rules.device.android')
+                                    ->label(__('filament-short-url::default.device_tablet'))
+                                    ->url()
+                                    ->nullable()
+                                    ->maxLength(2048),
+                                TextInput::make('targeting_rules.device.desktop')
+                                    ->label(__('filament-short-url::default.device_desktop'))
+                                    ->url()
+                                    ->nullable()
+                                    ->maxLength(2048),
+                            ])
+                            ->columns(1)
+                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'device'),
+
+                        Repeater::make('targeting_rules.geo')
+                            ->label(__('filament-short-url::default.country_targeting_rules'))
+                            ->schema([
+                                Select::make('country_code')
+                                    ->label(__('filament-short-url::default.country_code'))
+                                    ->options([
+                                        'PL' => 'Poland',
+                                        'US' => 'United States',
+                                        'GB' => 'United Kingdom',
+                                        'DE' => 'Germany',
+                                        'FR' => 'France',
+                                        'ES' => 'Spain',
+                                        'IT' => 'Italy',
+                                        'CA' => 'Canada',
+                                        'AU' => 'Australia',
+                                        'NL' => 'Netherlands',
+                                        'UA' => 'Ukraine',
+                                        'IE' => 'Ireland',
+                                        'BE' => 'Belgium',
+                                        'AT' => 'Austria',
+                                        'CH' => 'Switzerland',
+                                        'SE' => 'Sweden',
+                                        'NO' => 'Norway',
+                                        'DK' => 'Denmark',
+                                        'FI' => 'Finland',
+                                        'CZ' => 'Czech Republic',
+                                        'SK' => 'Slovakia',
+                                        'HU' => 'Hungary',
+                                        'RO' => 'Romania',
+                                        'GR' => 'Greece',
+                                        'PT' => 'Portugal',
+                                        'BR' => 'Brazil',
+                                        'MX' => 'Mexico',
+                                        'CN' => 'China',
+                                        'JP' => 'Japan',
+                                        'IN' => 'India',
+                                    ])
+                                    ->searchable()
+                                    ->required(),
+                                TextInput::make('url')
+                                    ->label(__('filament-short-url::default.destination_url'))
+                                    ->url()
+                                    ->required()
+                                    ->maxLength(2048),
+                            ])
+                            ->columns(2)
+                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'geo'),
+
+                        Repeater::make('targeting_rules.rotation')
+                            ->label(__('filament-short-url::default.rotation_targeting_rules'))
+                            ->schema([
+                                TextInput::make('url')
+                                    ->label(__('filament-short-url::default.rotation_url'))
+                                    ->url()
+                                    ->required()
+                                    ->maxLength(2048),
+                                TextInput::make('weight')
+                                    ->label(__('filament-short-url::default.rotation_weight'))
+                                    ->helperText(__('filament-short-url::default.rotation_weight_helper'))
+                                    ->numeric()
+                                    ->required()
+                                    ->default(50),
+                            ])
+                            ->columns(2)
+                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'rotation'),
+                    ])
             ]);
     }
 }

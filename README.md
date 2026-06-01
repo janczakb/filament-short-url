@@ -13,7 +13,7 @@
     <a href="https://github.com/janczakb/filament-short-url/actions"><img src="https://img.shields.io/badge/tests-passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
-A professional, high-performance **Short URL Manager** plugin for [Filament v5](https://filamentphp.com). Built from scratch with cutting-edge practices, proxy resistance, offline Geo-IP engines, and zero external shortening API dependencies.
+A professional, high-performance **Short URL Manager** plugin for [Filament v5](https://filamentphp.com). Built from scratch with cutting-edge practices, proxy resistance, offline Geo-IP engines, enterprise-grade smart targeting, and zero external shortening API dependencies.
 
 ---
 
@@ -28,8 +28,13 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 - ⚙️ **Dual-way UTM Campaign Builder** — Built-in form builder synchronizes UTM parameters with your destination URLs in real-time (two-way binding).
 - 🔒 **Link Rules & Expiry** — Disable links manually, set expiration dates, or activate single-use links that deactivate automatically after the first click.
 - ➡️ **Query Parameter Forwarding** — Dynamically forward client query parameters (e.g. ad tokens, discount codes) to the destination URL.
-- 🛠️ **Dedicated Settings GUI** — Manage global configuration (routing, Geo-IP, GA4, cache) directly inside the Filament panel without modifying files or `.env` files.
+- 🛠️ **Dedicated Settings GUI** — Manage global configuration (routing, Geo-IP, GA4, cache, rate limiting, aggregation) directly inside the Filament panel without modifying files or `.env` files.
 - 💻 **Fluent Developer Builder** — Native model query builder pattern and robust programmatic generation APIs.
+- 🔑 **Password-Protected Links** — Require a password before redirecting visitors, with session-based unlock.
+- ⚠️ **Redirect Warning Pages** — Show an interstitial security page before redirecting to external URLs (phishing/NSFW protection).
+- 🎯 **Smart Link Targeting** — Route visitors to different destination URLs based on their device type, country, or via weighted A/B split rotation.
+- 🛡️ **Rate Limiting / Bot Protection** — Configurable per-IP rate limits on redirects with automatic `429 Too Many Requests` responses.
+- 📊 **Daily Stats Aggregation & Pruning** — Automatic daily summarization of raw visit logs into compact daily stats tables. Configurable retention window prevents unbounded database growth at scale.
 
 ---
 
@@ -121,7 +126,7 @@ All fluent methods on the plugin are optional. If not called, the plugin falls b
 
 ## Global Settings GUI
 
-The package comes with a built-in admin settings dashboard. You can access it by clicking the **Settings** action button on the top-right header of the Short URLs resource. 
+The package comes with a built-in admin settings dashboard. You can access it by clicking the **Settings** action button on the top-right header of the Short URLs resource.
 
 Settings are stored dynamically in `storage/app/filament-short-url-settings.json` and immediately override config defaults.
 
@@ -129,7 +134,7 @@ The settings panel allows you to configure:
 
 ### 1. General Routing & Queueing
 *   **Route Prefix**: The slug prepended to short URLs (e.g. `s` for `/s/{key}`).
-*   **Default Redirect Status**: Choose `302 (Found / Temporary)` or `301 (Moved Permanently)`. 
+*   **Default Redirect Status**: Choose `302 (Found / Temporary)` or `301 (Moved Permanently)`.
     *   *Note: `302` is highly recommended for analytics accuracy because browsers cache `301` redirects, skipping subsequent logs.*
 *   **Key Length**: Default character count (base62) for auto-generated keys (default: `6`).
 *   **Queue Connection**: Define the Laravel queue connection (e.g. `redis`, `database`, `sync`) used for processing visit analytics asynchronously.
@@ -157,6 +162,153 @@ For extremely high-traffic applications, direct database writes for click counts
     $schedule->command('short-url:sync-counters')->everyMinute();
     ```
 
+### 5. Performance & Security Tab (new in v1.2.0)
+
+#### High-Traffic Log Management (Aggregation & Pruning)
+At scale, the `short_url_visits` table can grow to tens of gigabytes. The aggregation system solves this:
+*   **Enable Daily Aggregation**: When enabled, the nightly `short-url:aggregate-and-prune` command summarizes the previous day's raw visit records into the compact `short_url_daily_stats` table.
+*   **Prune Raw Logs After (days)**: Raw visit records older than this threshold are permanently deleted after aggregation. Set to `0` to disable pruning. Default: `90` days.
+
+Schedule the command in your scheduler:
+```php
+$schedule->command('short-url:aggregate-and-prune')->dailyAt('02:00');
+```
+
+#### Rate Limiting / Bot Protection
+Prevent redirect abuse and bot traffic flooding:
+*   **Enable Rate Limiting**: Activates per-IP rate limiting on all redirect routes.
+*   **Max Redirects Allowed**: Maximum number of redirect requests per IP within the decay window. Default: `60`.
+*   **Decay Window (seconds)**: The rolling time window for the rate limiter. Default: `60` seconds.
+
+When a client exceeds the limit, a `429 Too Many Requests` response is returned with a `Retry-After` header.
+
+---
+
+## Password-Protected Links (new in v1.2.0)
+
+You can require visitors to enter a password before being redirected. Enable this in the **Targeting & Security** tab of the short URL form:
+
+- Set a plain-text password in the **Access Password** field.
+- Visitors will see a styled password prompt page before gaining access.
+- The unlock state is stored in the PHP session — visitors only need to enter the password once per session.
+
+```php
+// Programmatically — set via fillable attributes
+$shortUrl = ShortUrl::destination('https://secret.example.com')
+    ->create();
+
+$shortUrl->update(['password' => 'my-secret-pass']);
+```
+
+> **Note**: Passwords are currently stored as plain text. For sensitive use-cases, hash the password and compare with `Hash::check()` by overriding the redirect controller.
+
+---
+
+## Redirect Warning Pages (new in v1.2.0)
+
+Enable the **Show Redirect Warning Page** toggle in the **Targeting & Security** tab to display a safety interstitial before redirecting.
+
+The warning page:
+- Shows the destination URL clearly so visitors can verify they trust it.
+- Provides **Continue** and **Go Back** buttons.
+- Is confirmed via a `?confirmed=1` query parameter — no additional session storage required.
+- Is styled to match the password prompt page (glassmorphism, dark mode compatible).
+
+This feature is useful for NSFW links, external partner links, or any URL that leaves a trusted domain.
+
+---
+
+## Smart Link Targeting (new in v1.2.0)
+
+The **Targeting & Security** tab exposes a powerful rule engine that lets you route different visitors to different destinations — all from a single short URL.
+
+### Available Strategies
+
+#### 1. Device-Based Redirects
+Route visitors to different URLs based on their device type (detected from User-Agent):
+
+| Device | Detected by User-Agent containing |
+|--------|-----------------------------------|
+| iOS (Mobile) | `iphone`, `ipad`, `ipod` |
+| Android | `android` |
+| Desktop | Everything else |
+
+```php
+// Programmatic example
+$shortUrl->update([
+    'targeting_rules' => [
+        'type' => 'device',
+        'device' => [
+            'ios'     => 'https://apps.apple.com/your-app',
+            'android' => 'https://play.google.com/your-app',
+            'desktop' => 'https://example.com/download',
+        ],
+    ],
+]);
+```
+
+#### 2. Country-Based (Geo-IP) Redirects
+Route visitors to country-specific URLs. Requires Geo-IP to be enabled in settings. Falls back to the default `destination_url` for unlisted countries.
+
+```php
+$shortUrl->update([
+    'targeting_rules' => [
+        'type' => 'geo',
+        'geo' => [
+            ['country_code' => 'PL', 'url' => 'https://pl.example.com'],
+            ['country_code' => 'US', 'url' => 'https://us.example.com'],
+            ['country_code' => 'DE', 'url' => 'https://de.example.com'],
+        ],
+    ],
+]);
+```
+
+#### 3. A/B Split Rotation
+Distribute traffic across multiple URLs using weighted random selection. Weights are proportional — they do not need to sum to 100.
+
+```php
+$shortUrl->update([
+    'targeting_rules' => [
+        'type' => 'rotation',
+        'rotation' => [
+            ['url' => 'https://variant-a.example.com', 'weight' => 70],
+            ['url' => 'https://variant-b.example.com', 'weight' => 30],
+        ],
+    ],
+]);
+```
+
+> All targeting strategies fall back gracefully to the link's primary `destination_url` if no rule matches.
+
+---
+
+## High-Traffic Optimizations (new in v1.2.0)
+
+### Daily Stats Aggregation
+
+The `short_url_daily_stats` table stores pre-aggregated daily summaries per short URL. Each row contains:
+
+| Column | Description |
+|--------|-------------|
+| `date` | The calendar day |
+| `visits_count` | Total visits |
+| `unique_visits_count` | Unique visitors (by hashed IP) |
+| `device_stats` | JSON — visit counts by device type |
+| `browser_stats` | JSON — visit counts by browser |
+| `os_stats` | JSON — visit counts by operating system |
+| `country_stats` | JSON — visit counts by country |
+| `city_stats` | JSON — visit counts by city |
+| `referer_stats` | JSON — visit counts by referer domain |
+| `utm_source_stats` | JSON — visit counts by UTM source |
+| `utm_medium_stats` | JSON — visit counts by UTM medium |
+| `utm_campaign_stats` | JSON — visit counts by UTM campaign |
+
+The `getCachedStats()` model method **automatically merges** data from both tables: historical days come from `short_url_daily_stats`, while today's data comes directly from `short_url_visits` — completely transparent to the dashboard.
+
+### Queue-Based Counter Fallback
+
+When Redis is not available and counter buffering is enabled, the `IncrementVisitJob` is dispatched to the configured queue connection. This guarantees visit counts are not lost during cache evictions or restarts.
+
 ---
 
 ## Configuration Reference (.env)
@@ -175,6 +327,34 @@ You can also pre-configure all parameters via your `.env` file:
 | `GA4_API_SECRET` | `ga4.api_secret` | `null` | Google Analytics 4 Measurement Protocol API Secret. |
 | `FIREBASE_APP_ID` | `ga4.firebase_app_id` | `null` | Google Analytics 4 Firebase App ID (or uses Measurement ID). |
 | `SHORT_URL_COUNTER_BUFFERING` | `counter_buffering.enabled` | `false` | Buffer click counts in cache (flushed via console command). |
+| `SHORT_URL_PRUNING_ENABLED` | `pruning.enabled` | `true` | Enable daily aggregation and log pruning. |
+| `SHORT_URL_PRUNING_DAYS` | `pruning.retention_days` | `90` | Number of days to retain raw visit logs. |
+| `SHORT_URL_RATE_LIMITING` | `rate_limiting.enabled` | `false` | Enable per-IP redirect rate limiting. |
+| `SHORT_URL_RATE_LIMIT_MAX` | `rate_limiting.max_attempts` | `60` | Max redirect requests within the decay window. |
+| `SHORT_URL_RATE_LIMIT_DECAY` | `rate_limiting.decay_seconds` | `60` | Rate limiter rolling window in seconds. |
+
+---
+
+## Artisan Commands
+
+| Command | Description |
+|---------|-------------|
+| `short-url:sync-counters` | Flushes buffered visit counts from cache to the database. Schedule every minute when counter buffering is enabled. |
+| `short-url:aggregate-and-prune` | Aggregates previous days' raw visits into `short_url_daily_stats` and prunes raw records older than the configured retention period. Schedule daily (e.g. at `02:00`). |
+
+### Recommended Scheduler Configuration
+
+```php
+// routes/console.php
+
+use Illuminate\Support\Facades\Schedule;
+
+// Flush buffered click counts every minute (only if counter buffering is enabled)
+Schedule::command('short-url:sync-counters')->everyMinute();
+
+// Aggregate stats and prune old raw visits nightly
+Schedule::command('short-url:aggregate-and-prune')->dailyAt('02:00');
+```
 
 ---
 
@@ -225,8 +405,9 @@ echo $shortUrl->getShortUrl(); // https://yourdomain.com/s/promo2026
 *   `isActive(): bool` — Checks if the short URL is enabled and within its activation/expiration timestamps.
 *   `isExpired(): bool` — Checks if the URL has passed its expiration date.
 *   `getShortUrl(): string` — Resolves the complete URL string.
-*   `incrementVisits(bool $isUnique = false): void` — Atomically increments visit counts.
-*   `getCachedStats(): array` — Returns cached key metrics for dashboard charts.
+*   `incrementVisits(bool $isUnique = false): void` — Atomically increments visit counts (with Redis buffering or queue fallback).
+*   `getCachedStats(): array` — Returns cached key metrics for dashboard charts. Automatically merges daily aggregated stats with today's raw visits.
+*   `resolveDestinationUrl(Request $request): string` — Evaluates active targeting rules (device, geo, rotation) and returns the correct destination URL for the current visitor.
 
 ### Injecting the Service
 For standard creations, you can inject `ShortUrlService`:
@@ -261,6 +442,31 @@ Event::listen(ShortUrlVisited::class, function (ShortUrlVisited $event) {
 
 ## Visitor Filtering (Bot Detection)
 Visits from scrapers, search bots, and web crawlers are automatically ignored to keep stats clean. The system matches user agents against a custom list (including Googlebot, Bingbot, Applebot, Facebook, Twitter, and generic curl/http request clients).
+
+---
+
+## Database Compatibility
+
+All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
+
+- No MySQL-specific `ENUM` types — `device_type` uses `VARCHAR(20)` validated at PHP level.
+- No `->after()` column ordering hints — fully cross-database.
+- JSON columns work natively on MySQL 5.7.8+ and are stored as TEXT on SQLite.
+
+---
+
+## Changelog
+
+### v1.2.0
+- **Password-protected links** — Session-based unlock flow with a styled prompt page.
+- **Redirect warning pages** — Interstitial security screen before external redirects.
+- **Smart targeting** — Device-based, Country/Geo-based, and A/B weighted rotation rules per link.
+- **Rate limiting** — Configurable per-IP redirect throttling with 429 responses.
+- **Daily stats aggregation** — Nightly `short-url:aggregate-and-prune` command for scalable log management.
+- **Counter buffering fallback** — `IncrementVisitJob` as queue-based fallback when Redis is unavailable.
+- **Database compatibility** — Replaced `ENUM` with `VARCHAR`, removed MySQL-only `->after()` calls.
+- **Extended Settings GUI** — New "Performance & Security" tab for aggregation and rate limiting configuration.
+- **Polish translations** — Full `pl` locale support for all new features.
 
 ---
 
