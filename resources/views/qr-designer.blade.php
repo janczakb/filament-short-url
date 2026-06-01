@@ -108,6 +108,15 @@
     background-color:#f3f4f6;
 }
 @keyframes qr-spin { to { transform: rotate(360deg); } }
+.qr-margin-top {
+    margin-top: 12px !important;
+}
+.qr-space-y > div {
+    margin-top: 12px !important;
+}
+.qr-space-y > div:first-child {
+    margin-top: 0 !important;
+}
 </style>
 
 {{-- Preload QR library as soon as the tab renders --}}
@@ -297,7 +306,7 @@
             </div>
 
             {{-- Single color picker --}}
-            <div x-show="colorMode === 'solid'" x-transition style="display:block" class="mt-3">
+            <div x-show="colorMode === 'solid'" x-transition style="display:block" class="mt-3 qr-margin-top">
                 <span class="qr-label">{{ __('filament-short-url::default.qr_label_color') }}</span>
                 <div class="flex items-center gap-2">
                     <div class="qr-color-swatch qr-color-picker" :style="'background:'+fgColor">
@@ -311,7 +320,7 @@
             </div>
 
             {{-- Gradient pickers --}}
-            <div x-show="colorMode === 'gradient'" x-transition style="display:none" class="mt-3 space-y-3">
+            <div x-show="colorMode === 'gradient'" x-transition style="display:none" class="mt-3 space-y-3 qr-space-y qr-margin-top">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <span class="qr-label">{{ __('filament-short-url::default.qr_label_from') }}</span>
@@ -390,7 +399,7 @@
                     <span class="qr-toggle-thumb"></span>
                 </button>
             </div>
-            <div x-show="eyeConfigEnabled" x-transition style="display:none" class="mt-3 space-y-3">
+            <div x-show="eyeConfigEnabled" x-transition style="display:none" class="mt-3 space-y-3 qr-space-y qr-margin-top">
                 <div>
                     <span class="qr-label">{{ __('filament-short-url::default.qr_label_eye_square_style') }}</span>
                     <select x-model="eyeSquareStyle" class="qr-select">
