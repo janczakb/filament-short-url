@@ -180,4 +180,35 @@ return [
     'settings_ga4_api_secret_helper' => 'Generate this in GA4 → Admin → Data Streams → your stream → Measurement Protocol API secrets.',
     'settings_ga4_firebase_app_id' => 'Firebase App ID (optional)',
     'settings_ga4_firebase_app_id_helper' => 'Required only if tracking a Firebase / app stream. Leave empty for standard web GA4 streams.',
+
+    'settings_section_buffering' => 'Visit Counters Buffering',
+    'settings_buffering_enabled' => 'Buffer Visit Counts in Cache',
+    'settings_buffering_helper' => 'When enabled, visit count increments are temporarily buffered in the application cache and must be flushed periodically to the database via "php artisan short-url:sync-counters". This prevents row-locking issues and performance degradation under high-traffic spikes.',
+
+    // CDN Trust Settings
+    'settings_trust_cdn_headers' => 'Trust CDN & Proxy Headers',
+    'settings_trust_cdn_headers_helper' => 'Enable this if your app sits behind a CDN (like Cloudflare, AWS CloudFront) or a reverse proxy. This allows extracting the real client IP and country code from CDN headers. Warning: only enable this if you are actually behind a proxy, otherwise client IP addresses can be spoofed!',
+
+    // Stats View & Export Localization
+    'stats_filter_visited_from' => 'Visited From',
+    'stats_filter_visited_until' => 'Visited Until',
+    'stats_action_export' => 'Export CSV',
+    'stats_csv_time' => 'Time',
+    'stats_csv_ip' => 'IP Address',
+    'stats_csv_country' => 'Country',
+    'stats_csv_device' => 'Device',
+    'stats_csv_browser' => 'Browser',
+    'stats_csv_os' => 'OS',
+    'stats_csv_referer' => 'Referer',
+
+    // Bulk Actions Localization
+    'action_enable_selected' => 'Enable selected',
+    'action_disable_selected' => 'Disable selected',
+
+    // Form Sections Localization
+    'form_section_options' => 'Options',
+    'form_section_notes' => 'Internal Notes',
+    'form_section_tracking' => 'Visit Tracking',
+    'form_section_tracked_fields' => 'Tracked Fields',
+    'form_section_analytics' => 'Third-Party Analytics',
 ];

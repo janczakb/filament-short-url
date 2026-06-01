@@ -101,21 +101,7 @@ class ShortUrlsTable
                     ->icon('heroicon-o-chart-bar')
                     ->color('gray')
                     ->size('sm')
-                    ->url(fn (ShortUrl $record): string => route(
-                        'filament.admin.resources.short-urls.stats',
-                        ['record' => $record->id]
-                    )),
-
-                Action::make('copy')
-                    ->label(__('filament-short-url::default.action_copy'))
-                    ->icon('heroicon-o-clipboard')
-                    ->color('gray')
-                    ->size('sm')
-                    ->action(fn () => null) // Copy happens client-side
-                    ->extraAttributes(fn (ShortUrl $record): array => [
-                        'x-on:click' => 'navigator.clipboard.writeText("'.$record->getShortUrl().'")',
-                        'title' => 'Copy short URL',
-                    ]),
+                    ->url(fn (ShortUrl $record): string => ShortUrlResource::getUrl('stats', ['record' => $record])),
 
                 EditAction::make()
                     ->icon('heroicon-o-pencil-square')
@@ -125,13 +111,13 @@ class ShortUrlsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('enable')
-                        ->label('Enable selected')
+                        ->label(__('filament-short-url::default.action_enable_selected'))
                         ->icon('heroicon-o-check-circle')
                         ->action(fn ($records) => $records->each->update(['is_enabled' => true]))
                         ->deselectRecordsAfterCompletion(),
 
                     BulkAction::make('disable')
-                        ->label('Disable selected')
+                        ->label(__('filament-short-url::default.action_disable_selected'))
                         ->icon('heroicon-o-x-circle')
                         ->action(fn ($records) => $records->each->update(['is_enabled' => false]))
                         ->deselectRecordsAfterCompletion(),

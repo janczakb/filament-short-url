@@ -132,4 +132,42 @@ return [
         'gradient_type' => 'linear',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Counter Buffering (Write-back Caching)
+    |--------------------------------------------------------------------------
+    | For high-traffic applications, direct database writes on every visit
+    | can cause locks. Enable this to buffer total/unique visit counts in
+    | cache, then sync them to the database periodically via a scheduled task.
+    */
+    'counter_buffering' => [
+        'enabled' => (bool) env('SHORT_URL_COUNTER_BUFFERING', false),
+        'cache_key_prefix' => 'filament-short-url:buffer:',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trust CDN/Proxy Headers
+    |--------------------------------------------------------------------------
+    | If your application sits behind a CDN (like Cloudflare, AWS CloudFront)
+    | or a reverse proxy, set this to true to parse real visitor IP addresses
+    | and country codes from proxy headers. Only enable this if you are
+    | actually behind a proxy to prevent client IP spoofing!
+    |
+    */
+    'trust_cdn_headers' => (bool) env('SHORT_URL_TRUST_CDN_HEADERS', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Redirect Route Middleware
+    |--------------------------------------------------------------------------
+    | The middleware list applied to the short URL redirect route.
+    | By default, standard web middleware and rate limiting are applied.
+    |
+    */
+    'middleware' => [
+        'web',
+        'throttle:120,1',
+    ],
+
 ];

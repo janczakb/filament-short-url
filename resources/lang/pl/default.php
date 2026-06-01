@@ -181,4 +181,35 @@ return [
     'settings_ga4_api_secret_helper' => 'Wygeneruj w GA4 → Admin → Strumienie danych → twój strumień → Klucze API Measurement Protocol.',
     'settings_ga4_firebase_app_id' => 'Firebase App ID (opcjonalne)',
     'settings_ga4_firebase_app_id_helper' => 'Wymagane tylko przy śledzeniu strumienia Firebase/aplikacji. Zostaw puste dla standardowych strumieni GA4.',
+
+    'settings_section_buffering' => 'Buforowanie liczników wizyt',
+    'settings_buffering_enabled' => 'Buforuj kliknięcia w pamięci podręcznej (Cache)',
+    'settings_buffering_helper' => 'Po włączeniu, zliczenia kliknięć będą buforowane w pamięci podręcznej aplikacji i muszą być okresowo synchronizowane z bazą danych za pomocą komendy "php artisan short-url:sync-counters". Zapobiega to blokowaniu wierszy bazy danych i spadkom wydajności przy masowym ruchu.',
+
+    // CDN Trust Settings
+    'settings_trust_cdn_headers' => 'Ufaj nagłówkom CDN i proxy',
+    'settings_trust_cdn_headers_helper' => 'Włącz tę opcję, jeśli Twoja aplikacja działa za CDN (np. Cloudflare, AWS CloudFront) lub reverse proxy. Pozwala to na pobieranie prawdziwego adresu IP klienta i kodu kraju z nagłówków CDN. Uwaga: włączaj tylko wtedy, gdy faktycznie korzystasz z proxy, w przeciwnym razie adresy IP mogą być sfałszowane!',
+
+    // Stats View & Export Localization
+    'stats_filter_visited_from' => 'Odwiedzono od',
+    'stats_filter_visited_until' => 'Odwiedzono do',
+    'stats_action_export' => 'Eksportuj CSV',
+    'stats_csv_time' => 'Czas',
+    'stats_csv_ip' => 'Adres IP',
+    'stats_csv_country' => 'Kraj',
+    'stats_csv_device' => 'Urządzenie',
+    'stats_csv_browser' => 'Przeglądarka',
+    'stats_csv_os' => 'System operacyjny',
+    'stats_csv_referer' => 'Źródło (Referer)',
+
+    // Bulk Actions Localization
+    'action_enable_selected' => 'Włącz zaznaczone',
+    'action_disable_selected' => 'Wyłącz zaznaczone',
+
+    // Form Sections Localization
+    'form_section_options' => 'Opcje',
+    'form_section_notes' => 'Wewnętrzne notatki',
+    'form_section_tracking' => 'Śledzenie wizyt',
+    'form_section_tracked_fields' => 'Śledzone pola',
+    'form_section_analytics' => 'Zewnętrzne systemy analityczne',
 ];

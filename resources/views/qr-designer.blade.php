@@ -254,7 +254,7 @@
 
         {{-- Size & Margin --}}
         <div class="qr-section">
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-3" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:12px">
                 <div>
                     <span class="qr-label">{{ __('filament-short-url::default.qr_label_size') }}</span>
                     <input type="number" x-model.number="size" min="100" max="1000" step="10" class="qr-input-num" />
@@ -288,7 +288,7 @@
             <span class="qr-label">{{ __('filament-short-url::default.qr_label_foreground_color') }}</span>
 
             {{-- Mode radio --}}
-            <div class="flex gap-2">
+            <div class="flex gap-2" style="display:flex;gap:8px">
                 <button type="button"
                     :class="colorMode === 'solid' ? 'active' : ''"
                     class="qr-radio-option flex-1 justify-center text-center"
@@ -308,7 +308,7 @@
             {{-- Single color picker --}}
             <div x-show="colorMode === 'solid'" x-transition style="display:block" class="mt-3 qr-margin-top">
                 <span class="qr-label">{{ __('filament-short-url::default.qr_label_color') }}</span>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2" style="display:flex;align-items:center;gap:8px">
                     <div class="qr-color-swatch qr-color-picker" :style="'background:'+fgColor">
                         <input type="color" x-model="fgColor" />
                     </div>
@@ -321,10 +321,10 @@
 
             {{-- Gradient pickers --}}
             <div x-show="colorMode === 'gradient'" x-transition style="display:none" class="mt-3 space-y-3 qr-space-y qr-margin-top">
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-2" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px">
                     <div>
                         <span class="qr-label">{{ __('filament-short-url::default.qr_label_from') }}</span>
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5" style="display:flex;align-items:center;gap:6px">
                             <div class="qr-color-swatch qr-color-picker" :style="'background:'+gradientFrom">
                                 <input type="color" x-model="gradientFrom" />
                             </div>
@@ -336,7 +336,7 @@
                     </div>
                     <div>
                         <span class="qr-label">{{ __('filament-short-url::default.qr_label_to') }}</span>
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5" style="display:flex;align-items:center;gap:6px">
                             <div class="qr-color-swatch qr-color-picker" :style="'background:'+gradientTo">
                                 <input type="color" x-model="gradientTo" />
                             </div>
@@ -360,7 +360,7 @@
         {{-- Background --}}
         <div class="qr-section">
             <span class="qr-label">{{ __('filament-short-url::default.qr_label_background') }}</span>
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between" style="display:flex;align-items:center;justify-content:space-between">
                 <span style="font-size:13px;font-weight:500;color:#374151" class="dark:text-gray-300">{{ __('filament-short-url::default.qr_label_transparent') }}</span>
                 <button type="button"
                     :class="bgTransparent ? 'on' : 'off'"
@@ -369,9 +369,9 @@
                     <span class="qr-toggle-thumb"></span>
                 </button>
             </div>
-            <div x-show="!bgTransparent" x-transition style="display:block" class="mt-3">
+            <div x-show="!bgTransparent" x-transition style="display:block;margin-top:12px" class="mt-3 qr-margin-top">
                 <span class="qr-label">{{ __('filament-short-url::default.qr_label_color') }}</span>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2" style="display:flex;align-items:center;gap:8px">
                     <div class="qr-color-swatch qr-color-picker" :style="'background:'+bgColor">
                         <input type="color" x-model="bgColor" />
                     </div>
@@ -381,8 +381,8 @@
                         maxlength="7" placeholder="#ffffff" />
                 </div>
             </div>
-            <div x-show="bgTransparent" x-transition style="display:none" class="mt-3">
-                <div class="qr-checker flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-gray-300" style="font-size:11px;color:#9ca3af;font-weight:600">
+            <div x-show="bgTransparent" x-transition style="display:none;margin-top:12px" class="mt-3 qr-margin-top">
+                <div class="qr-checker flex h-9 w-full items-center justify-center rounded-lg border border-dashed border-gray-300" style="display:flex;align-items:center;justify-content:center;font-size:11px;color:#9ca3af;font-weight:600">
                     TRANSPARENT
                 </div>
             </div>
@@ -390,7 +390,7 @@
 
         {{-- Eye Config --}}
         <div class="qr-section">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between" style="display:flex;align-items:center;justify-content:space-between">
                 <span class="qr-label" style="margin-bottom:0">{{ __('filament-short-url::default.qr_label_eye_config') }}</span>
                 <button type="button"
                     :class="eyeConfigEnabled ? 'on' : 'off'"
@@ -417,7 +417,7 @@
                 </div>
                 <div>
                     <span class="qr-label">{{ __('filament-short-url::default.qr_label_eye_color') }}</span>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2" style="display:flex;align-items:center;gap:8px">
                         <div class="qr-color-swatch qr-color-picker" :style="'background:'+eyeColor">
                             <input type="color" x-model="eyeColor" />
                         </div>
@@ -436,9 +436,9 @@
     <div style="display:flex;flex-direction:column;min-width:0;height:100%">
 
         {{-- Top bar --}}
-        <div class="mb-4 flex items-center justify-between">
+        <div class="mb-4 flex items-center justify-between" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <span style="font-size:13px;font-weight:600;color:#9ca3af">{{ __('filament-short-url::default.qr_label_preview') }}</span>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2" style="display:flex;align-items:center;gap:8px">
                 <button type="button" x-on:click="download('png')" class="qr-dl-btn">
                     <svg style="width:13px;height:13px" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>

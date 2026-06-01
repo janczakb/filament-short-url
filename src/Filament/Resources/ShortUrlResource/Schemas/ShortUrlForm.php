@@ -105,7 +105,7 @@ class ShortUrlForm
                         ->required(),
                 ])->columns(2),
 
-                Section::make('Options')->schema([
+                Section::make(__('filament-short-url::default.form_section_options'))->schema([
                     Toggle::make('is_enabled')
                         ->label(__('filament-short-url::default.status'))
                         ->default(true)
@@ -129,7 +129,7 @@ class ShortUrlForm
                         ->native(false),
                 ])->columns(2),
 
-                Section::make('Internal Notes')->schema([
+                Section::make(__('filament-short-url::default.form_section_notes'))->schema([
                     Textarea::make('notes')
                         ->label(__('filament-short-url::default.notes'))
                         ->rows(3)
@@ -177,7 +177,7 @@ class ShortUrlForm
         return Tab::make(__('filament-short-url::default.tab_tracking'))
             ->icon('heroicon-o-chart-bar')
             ->schema([
-                Section::make('Visit Tracking')
+                Section::make(__('filament-short-url::default.form_section_tracking'))
                     ->schema([
                         Toggle::make('track_visits')
                             ->label(__('filament-short-url::default.track_visits'))
@@ -187,7 +187,7 @@ class ShortUrlForm
                             ->columnSpanFull(),
                     ])->columns(1),
 
-                Section::make('Tracked Fields')
+                Section::make(__('filament-short-url::default.form_section_tracked_fields'))
                     ->schema([
                         Toggle::make('track_ip_address')
                             ->label(__('filament-short-url::default.track_ip'))
@@ -277,7 +277,7 @@ class ShortUrlForm
                     ])
                     ->columns(2),
 
-                Section::make('Third-Party Analytics')
+                Section::make(__('filament-short-url::default.form_section_analytics'))
                     ->schema([
                         TextInput::make('ga_tracking_id')
                             ->label(__('filament-short-url::default.ga_tracking_id'))

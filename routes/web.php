@@ -9,4 +9,4 @@ Route::get(
 )
     ->name('short-url.redirect')
     ->where('key', '[a-zA-Z0-9_-]+')
-    ->middleware('throttle:120,1');
+    ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));

@@ -238,10 +238,40 @@ class ShortUrl extends Model
 
     /**
      * Atomically increment visit counters — single query when unique,
-     * to avoid race conditions and two round-trips.
+     * to avoid race conditions and two round-trips. Supports write-back caching.
      */
     public function incrementVisits(bool $isUnique = false): void
     {
+        if (config('filament-short-url.counter_buffering.enabled', false)) {
+            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+            try {
+                // Safely increment total visits in cache
+                cache()->increment("{$prefix}total:{$this->id}");
+
+                if ($isUnique) {
+                    cache()->increment("{$prefix}unique:{$this->id}");
+                }
+
+                $dirtyKey = "{$prefix}dirty_ids";
+
+                // Check if Redis is being used for the cache to prevent set race conditions
+                if (cache()->getDefaultDriver() === 'redis' && class_exists(\Illuminate\Support\Facades\Redis::class)) {
+                    \Illuminate\Support\Facades\Redis::sadd($dirtyKey, $this->id);
+                } else {
+                    // Fallback to array for standard cache drivers
+                    $dirtyIds = cache()->get($dirtyKey, []);
+                    if (! in_array($this->id, $dirtyIds)) {
+                        $dirtyIds[] = $this->id;
+                        cache()->put($dirtyKey, $dirtyIds, now()->addDays(7));
+                    }
+                }
+
+                return;
+            } catch (\Throwable) {
+                // Fallback to database below if cache fails or doesn't support increments
+            }
+        }
+
         $this->newQuery()
             ->where('id', $this->id)
             ->increment('total_visits', 1, $isUnique ? ['unique_visits' => DB::raw('unique_visits + 1')] : []);

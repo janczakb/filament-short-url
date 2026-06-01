@@ -31,7 +31,7 @@ class ShortUrlRedirectController extends Controller
         }
 
         if ($shortUrl->track_visits) {
-            $connection = config('filament-short-url.queue_connection');
+            $connection = config('filament-short-url.queue_connection', 'sync');
             $ipAddress = ClientIpExtractor::getIp($request);
             $countryCode = ClientIpExtractor::getCountryCode($request);
 
@@ -43,10 +43,10 @@ class ShortUrlRedirectController extends Controller
                 countryCode: $countryCode,
             );
 
-            if ($connection && $connection !== 'default') {
+            if ($connection) {
                 dispatch($job->onConnection($connection));
             } else {
-                dispatch($job);
+                dispatch($job->onConnection('sync'));
             }
         }
 
@@ -60,6 +60,9 @@ class ShortUrlRedirectController extends Controller
             if ($affected === 0) {
                 abort(410);
             }
+
+            // Manually forget cache since DB-level update does not trigger Eloquent events
+            cache()->forget("filament-short-url:{$shortUrl->url_key}");
         }
 
         $redirectUrl = $this->service->resolveRedirectUrl($shortUrl, $request);

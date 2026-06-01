@@ -49,6 +49,8 @@ class ShortUrlSettingsManager
             'ga4_firebase_app_id' => config('filament-short-url.ga4.firebase_app_id'),
             'queue_connection' => config('filament-short-url.queue_connection', 'sync'),
             'cache_ttl' => config('filament-short-url.cache_ttl', 3600),
+            'counter_buffering_enabled' => config('filament-short-url.counter_buffering.enabled', false),
+            'trust_cdn_headers' => config('filament-short-url.trust_cdn_headers', false),
         ], $stored);
 
         return $this->cache;
@@ -87,6 +89,8 @@ class ShortUrlSettingsManager
             'ga4_firebase_app_id',
             'queue_connection',
             'cache_ttl',
+            'counter_buffering_enabled',
+            'trust_cdn_headers',
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
@@ -109,6 +113,12 @@ class ShortUrlSettingsManager
         }
         if (isset($filtered['cache_ttl'])) {
             $filtered['cache_ttl'] = (int) $filtered['cache_ttl'];
+        }
+        if (isset($filtered['counter_buffering_enabled'])) {
+            $filtered['counter_buffering_enabled'] = (bool) $filtered['counter_buffering_enabled'];
+        }
+        if (isset($filtered['trust_cdn_headers'])) {
+            $filtered['trust_cdn_headers'] = (bool) $filtered['trust_cdn_headers'];
         }
 
         File::put($path, json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
@@ -138,6 +148,8 @@ class ShortUrlSettingsManager
             'filament-short-url.ga4.firebase_app_id' => $settings['ga4_firebase_app_id'],
             'filament-short-url.queue_connection' => $settings['queue_connection'],
             'filament-short-url.cache_ttl' => $settings['cache_ttl'],
+            'filament-short-url.counter_buffering.enabled' => $settings['counter_buffering_enabled'],
+            'filament-short-url.trust_cdn_headers' => $settings['trust_cdn_headers'],
         ]);
     }
 }

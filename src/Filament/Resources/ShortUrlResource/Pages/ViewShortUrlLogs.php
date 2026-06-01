@@ -112,9 +112,9 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
                 Tables\Filters\Filter::make('visited_at')
                     ->form([
                         DatePicker::make('visited_from')
-                            ->label('Visited From'),
+                            ->label(__('filament-short-url::default.stats_filter_visited_from')),
                         DatePicker::make('visited_until')
-                            ->label('Visited Until'),
+                            ->label(__('filament-short-url::default.stats_filter_visited_until')),
                     ])
                     ->query(function ($query, array $data) {
                         return $query
@@ -124,19 +124,26 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
             ])
             ->headerActions([
                 Action::make('export_csv')
-                    ->label('Export CSV')
+                    ->label(__('filament-short-url::default.stats_action_export'))
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->action(function () {
-                        return response()->streamDownload(function () {
+                    ->action(function (Tables\Contracts\HasTable $livewire) {
+                        return response()->streamDownload(function () use ($livewire) {
                             $handle = fopen('php://output', 'w');
                             // Add UTF-8 BOM for Microsoft Excel
                             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
-                            fputcsv($handle, ['Time', 'IP Address', 'Country', 'Device', 'Browser', 'OS', 'Referer']);
+                            fputcsv($handle, [
+                                __('filament-short-url::default.stats_csv_time'),
+                                __('filament-short-url::default.stats_csv_ip'),
+                                __('filament-short-url::default.stats_csv_country'),
+                                __('filament-short-url::default.stats_csv_device'),
+                                __('filament-short-url::default.stats_csv_browser'),
+                                __('filament-short-url::default.stats_csv_os'),
+                                __('filament-short-url::default.stats_csv_referer'),
+                            ]);
 
-                            ShortUrlVisit::query()
-                                ->where('short_url_id', $this->record->id)
+                            $livewire->getFilteredTableQuery()
                                 ->orderBy('visited_at', 'desc')
                                 ->chunk(200, function ($visits) use ($handle) {
                                     foreach ($visits as $visit) {

@@ -45,6 +45,8 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'queue_connection' => $mgr->get('queue_connection', 'sync'),
             'ga4_api_secret' => $mgr->get('ga4_api_secret'),
             'ga4_firebase_app_id' => $mgr->get('ga4_firebase_app_id'),
+            'counter_buffering_enabled' => $mgr->get('counter_buffering_enabled', false),
+            'trust_cdn_headers' => $mgr->get('trust_cdn_headers', false),
         ]);
     }
 
@@ -93,6 +95,12 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->minValue(0)
                                             ->suffix('s')
                                             ->required(),
+
+                                        Toggle::make('trust_cdn_headers')
+                                            ->label(__('filament-short-url::default.settings_trust_cdn_headers'))
+                                            ->helperText(__('filament-short-url::default.settings_trust_cdn_headers_helper'))
+                                            ->columnSpanFull()
+                                            ->inline(false),
                                     ]),
 
                                 Section::make(__('filament-short-url::default.settings_section_queue'))
@@ -110,6 +118,14 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                 ];
                                             })
                                             ->required(),
+                                    ]),
+
+                                Section::make(__('filament-short-url::default.settings_section_buffering'))
+                                    ->schema([
+                                        Toggle::make('counter_buffering_enabled')
+                                            ->label(__('filament-short-url::default.settings_buffering_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_buffering_helper'))
+                                            ->inline(false),
                                     ]),
                             ]),
 

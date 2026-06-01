@@ -145,6 +145,18 @@ Sends server-side `short_url_visit` hits using the **GA4 Measurement Protocol AP
 *   **GA4 API Secret**: Create this secret in Google Analytics under `Admin -> Data Streams -> Measurement Protocol API secrets`.
 *   **Firebase App ID / Measurement ID**: The target analytics stream identifier.
 
+### 4. Counter Buffering (Write-back Caching)
+For extremely high-traffic applications, direct database writes for click counts can cause row-locking bottlenecks.
+*   **Buffer Click Counts**: Toggling this option buffers total and unique visit count increments in the application cache.
+*   **Cron Synchronization**: When enabled, you must schedule the synchronization command to run periodically (e.g., every minute) to flush counts to the database:
+    ```bash
+    php artisan short-url:sync-counters
+    ```
+    In your scheduler (`routes/console.php` or `app/Console/Kernel.php`):
+    ```php
+    $schedule->command('short-url:sync-counters')->everyMinute();
+    ```
+
 ---
 
 ## Configuration Reference (.env)
@@ -162,6 +174,7 @@ You can also pre-configure all parameters via your `.env` file:
 | `SHORT_URL_CACHE_TTL` | `cache_ttl` | `3600` | Redirection model caching TTL (set to `0` to disable). |
 | `GA4_API_SECRET` | `ga4.api_secret` | `null` | Google Analytics 4 Measurement Protocol API Secret. |
 | `FIREBASE_APP_ID` | `ga4.firebase_app_id` | `null` | Google Analytics 4 Firebase App ID (or uses Measurement ID). |
+| `SHORT_URL_COUNTER_BUFFERING` | `counter_buffering.enabled` | `false` | Buffer click counts in cache (flushed via console command). |
 
 ---
 

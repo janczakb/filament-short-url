@@ -2,6 +2,7 @@
 
 namespace Bjanczak\FilamentShortUrl;
 
+use Bjanczak\FilamentShortUrl\Console\Commands\SyncBufferedCountersCommand;
 use Bjanczak\FilamentShortUrl\Services\GeoIpService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
@@ -25,6 +26,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2024_01_01_000001_create_short_urls_table',
                 '2024_01_01_000002_create_short_url_visits_table',
             ])
+            ->hasCommand(SyncBufferedCountersCommand::class)
             ->hasRoutes(['web']);
     }
 
