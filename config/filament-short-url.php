@@ -46,7 +46,7 @@ return [
         'driver' => env('SHORT_URL_GEO_IP_DRIVER', 'headers'), // 'headers', 'maxmind', 'ip-api'
         'timeout' => 3, // seconds to wait for geo-ip response
         'maxmind' => [
-            'database_path' => env('SHORT_URL_MAXMIND_DB', database_path('geoip/GeoLite2-Country.mmdb')),
+            'database_path' => env('SHORT_URL_MAXMIND_DB', storage_path('geoip/GeoLite2-Country.mmdb')),
         ],
         'stats_cache_ttl' => env('SHORT_URL_STATS_CACHE_TTL', 300), // 5 minutes caching for stats page calculations
     ],

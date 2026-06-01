@@ -44,7 +44,7 @@ class ShortUrlSettingsManager
             'geo_ip_driver' => config('filament-short-url.geo_ip.driver', 'headers'),
             'geo_ip_cache_ttl' => config('filament-short-url.geo_ip.cache_ttl', 86400),
             'geo_ip_timeout' => config('filament-short-url.geo_ip.timeout', 3),
-            'maxmind_database_path' => config('filament-short-url.geo_ip.maxmind.database_path', database_path('geoip/GeoLite2-Country.mmdb')),
+            'maxmind_database_path' => config('filament-short-url.geo_ip.maxmind.database_path', storage_path('geoip/GeoLite2-Country.mmdb')),
             'ga4_api_secret' => config('filament-short-url.ga4.api_secret'),
             'ga4_firebase_app_id' => config('filament-short-url.ga4.firebase_app_id'),
             'queue_connection' => config('filament-short-url.queue_connection', 'sync'),

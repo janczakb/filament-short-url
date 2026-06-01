@@ -85,10 +85,46 @@ Copies the dashboard components, charts, and QR designer templates to `resources
 php artisan vendor:publish --tag=filament-short-url-views
 ```
 
-### 4. Publish All Assets
+### 4. Publish CSS Assets
+
+The plugin ships with a pre-compiled stylesheet. Copy it to your application's public directory so the browser can load it:
+
 ```bash
-php artisan vendor:publish --provider="Bjanczak\FilamentShortUrl\FilamentShortUrlServiceProvider"
+php artisan filament:assets
 ```
+
+That's all. The plugin's CSS will be served from `public/css/janczakb/filament-short-url/filament-short-url.css` and Filament registers it automatically.
+
+> **You do not need to run Tailwind, Vite, or npm for the plugin styles.** The compiled file is included in the package.
+
+**Tip — automate on every `composer install` / `composer update`:**
+
+Add `filament:assets` to the `post-autoload-dump` scripts in your application's `composer.json` so the assets are always up to date without manual steps:
+
+```json
+"scripts": {
+    "post-autoload-dump": [
+        "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+        "@php artisan package:discover --ansi",
+        "@php artisan filament:assets"
+    ]
+}
+```
+
+---
+
+> #### 🛠 For Plugin Developers Only
+>
+> If you are modifying the plugin source and need to recompile its stylesheet after changing Blade/PHP files:
+>
+> ```bash
+> # 1. Recompile the plugin CSS with Tailwind v4
+> npx @tailwindcss/cli -i ./packages/filament-short-url/resources/css/plugin.css \
+>     -o ./packages/filament-short-url/resources/dist/filament-short-url.css --minify
+>
+> # 2. Re-publish the compiled asset to public/
+> php artisan filament:assets
+> ```
 
 ---
 
@@ -342,7 +378,14 @@ You can also pre-configure all parameters via your `.env` file:
 | `short-url:sync-counters` | Flushes buffered visit counts from cache to the database. Schedule every minute when counter buffering is enabled. |
 | `short-url:aggregate-and-prune` | Aggregates previous days' raw visits into `short_url_daily_stats` and prunes raw records older than the configured retention period. Schedule daily (e.g. at `02:00`). |
 
-### Recommended Scheduler Configuration
+### Automatic Scheduler Registration (v1.3.0)
+
+As of version `1.3.0`, **you no longer need to manually copy scheduled commands into your host application code!** The plugin automatically registers the required tasks inside its ServiceProvider booted phase, dynamically respecting your Settings GUI toggles:
+
+- **`short-url:aggregate-and-prune`** is scheduled **daily at 02:00** (runs automatically only if **Enable Daily Aggregation** is ON).
+- **`short-url:sync-counters`** is scheduled **every minute** (runs automatically only if **Buffer Visit Counts in Cache** is ON).
+
+If you prefer to configure the schedule manually, you can still define them in `routes/console.php` (ensure the corresponding toggles are turned OFF in your Settings panel to avoid redundant executions):
 
 ```php
 // routes/console.php
@@ -456,6 +499,13 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v1.3.0 (Latest)
+- **Automatic Scheduler Registration** — Zero-configuration task registration within the ServiceProvider booted phase (dynamically honors Settings toggles).
+- **Interactive Settings Validators** — Adds real-time "Test connection" verify action for GA4 Measurement Protocol and "Verify file" action for MaxMind database paths.
+- **Robust Table Row Copy Action** — High-reliability, conflict-free click-to-copy in table rows with built-in fallback helper for non-HTTPS (secure context) browser environments.
+- **Filament v5 Notification API** — Seamless integration of the new `FilamentNotification` class API inside client-side JS.
+- **Asset Compilation Guide** — Explains Tailwind CLI CSS compilation and Filament asset publishing workflows for package extensions.
 
 ### v1.2.0
 - **Password-protected links** — Session-based unlock flow with a styled prompt page.

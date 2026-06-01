@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'navigation_label' => 'Short URLs',
+    'navigation_label' => 'Short Links',
     'navigation_group' => 'Tools',
     'resource_title' => 'Short URL',
 
@@ -106,6 +106,13 @@ return [
     'action_stats' => 'Statistics',
     'action_copy' => 'Copy URL',
     'action_qr' => 'QR Code',
+    'action_edit' => 'Edit URL',
+    'action_delete' => 'Delete URL',
+    'action_share' => 'Share Link',
+    'share_title' => 'Share Link',
+    'share_description' => 'Share this short link via:',
+    'share_copy' => 'Copy',
+    'share_copied' => 'Short link copied to clipboard!',
 
     // Stats Page
     'stats_title' => 'Statistics',
@@ -175,11 +182,20 @@ return [
     'settings_geoip_timeout_helper' => 'Maximum seconds to wait for an external Geo-IP API response before giving up.',
     'settings_maxmind_path' => 'MaxMind Database Path',
     'settings_maxmind_path_helper' => 'Absolute path to your GeoLite2-Country.mmdb or GeoIP2-Country.mmdb file. Required when driver is set to MaxMind.',
+    'settings_maxmind_verify' => 'Verify file',
+    'settings_maxmind_verify_ok' => '✅ File found & readable',
+    'settings_maxmind_verify_fail' => '❌ File not found or not readable',
+    'settings_maxmind_verify_empty' => 'Please enter a path first.',
 
     'settings_ga4_api_secret' => 'Measurement Protocol API Secret',
     'settings_ga4_api_secret_helper' => 'Generate this in GA4 → Admin → Data Streams → your stream → Measurement Protocol API secrets.',
     'settings_ga4_firebase_app_id' => 'Firebase App ID (optional)',
     'settings_ga4_firebase_app_id_helper' => 'Required only if tracking a Firebase / app stream. Leave empty for standard web GA4 streams.',
+    'settings_ga4_verify' => 'Test connection',
+    'settings_ga4_verify_ok' => '✅ API Secret is valid — GA4 connection successful',
+    'settings_ga4_verify_fail' => '❌ Invalid API Secret — GA4 rejected the request',
+    'settings_ga4_verify_empty' => 'Please enter an API Secret first.',
+    'settings_ga4_verify_error' => '⚠️ Connection error — could not reach GA4',
 
     'settings_section_buffering' => 'Visit Counters Buffering',
     'settings_buffering_enabled' => 'Buffer Visit Counts in Cache',
@@ -254,10 +270,16 @@ return [
     // New Settings Page Fields
     'settings_tab_advanced' => 'Performance & Security',
     'settings_section_aggregation' => 'High-Traffic Log Management',
-    'settings_retention_days' => 'Prune Raw Visit Logs After (Days)',
-    'settings_retention_days_helper' => 'Raw visit records will be aggregated daily. Older raw logs will be purged after this duration. Use 0 to disable pruning.',
-    'settings_aggregation_enabled' => 'Enable Daily Aggregation',
-    'settings_aggregation_enabled_helper' => 'Summarize previous days\' raw visits into daily count tables to keep the database fast.',
+    'settings_retention_days' => 'Raw Log Retention Period',
+    'settings_retention_days_helper' => 'Select the duration for which you want to keep detailed raw click logs before they are deleted.',
+    'settings_aggregation_enabled' => 'Enable Automatic Daily Pruning & Aggregation',
+    'settings_aggregation_enabled_helper' => 'When enabled, the plugin automatically registers a daily task in the scheduler (at 02:00) to aggregate visits into daily statistics and delete raw logs older than the chosen retention period.',
+    'retention_30_days' => '30 Days',
+    'retention_60_days' => '60 Days',
+    'retention_90_days' => '90 Days',
+    'retention_180_days' => '180 Days (Half Year)',
+    'retention_365_days' => '365 Days (1 Year)',
+    'retention_730_days' => '2 Years',
     'settings_section_rate_limiting' => 'Rate Limiting / Bot Protection',
     'settings_rate_limiting_enabled' => 'Enable Limit Protection',
     'settings_rate_limiting_enabled_helper' => 'Limit the rate of redirects per client IP address.',

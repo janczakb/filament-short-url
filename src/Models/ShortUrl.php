@@ -2,6 +2,10 @@
 
 namespace Bjanczak\FilamentShortUrl\Models;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlGlobalOverview;
+use Bjanczak\FilamentShortUrl\Jobs\IncrementVisitJob;
+use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
+use Bjanczak\FilamentShortUrl\Services\GeoIpService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlBuilder;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,6 +13,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -151,12 +156,18 @@ class ShortUrl extends Model
     }
 
     /**
-     * Bust the cache when the model is saved or deleted.
+     * Bust the redirect cache when the model is saved or deleted.
+     * Also invalidate the global overview link-count cache (forever cache)
+     * on creation or deletion — the count changes only in those cases.
      */
     protected static function booted(): void
     {
         static::saved(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
         static::deleted(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
+
+        // Bust the forever-cached link counts displayed in the global overview widget.
+        static::created(fn () => cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY));
+        static::deleted(fn () => cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY));
     }
 
     /** @return Collection<int, static> */
@@ -250,7 +261,7 @@ class ShortUrl extends Model
     /**
      * Resolve the targeted destination URL based on request headers/context.
      */
-    public function resolveDestinationUrl(\Illuminate\Http\Request $request): string
+    public function resolveDestinationUrl(Request $request): string
     {
         $rules = $this->targeting_rules;
 
@@ -268,15 +279,16 @@ class ShortUrl extends Model
             if (str_contains($ua, 'android')) {
                 return $rules['device']['android'] ?? $this->destination_url;
             }
+
             return $rules['device']['desktop'] ?? $this->destination_url;
         }
 
         if ($type === 'geo') {
-            $countryCode = \Bjanczak\FilamentShortUrl\Services\ClientIpExtractor::getCountryCode($request);
+            $countryCode = ClientIpExtractor::getCountryCode($request);
             if (! $countryCode) {
                 // Try resolving via GeoIpService
-                $ip = \Bjanczak\FilamentShortUrl\Services\ClientIpExtractor::getIp($request);
-                $geo = app(\Bjanczak\FilamentShortUrl\Services\GeoIpService::class)->resolve($ip);
+                $ip = ClientIpExtractor::getIp($request);
+                $geo = app(GeoIpService::class)->resolve($ip);
                 $countryCode = $geo['country_code'] ?? null;
             }
 
@@ -336,7 +348,7 @@ class ShortUrl extends Model
 
             // Safe fallback: Dispatch async job so clicks are queued and not lost on cache clear
             $connection = config('filament-short-url.queue_connection', 'sync');
-            dispatch(new \Bjanczak\FilamentShortUrl\Jobs\IncrementVisitJob($this->id, $isUnique)->onConnection($connection ?: 'sync'));
+            dispatch(new IncrementVisitJob($this->id, $isUnique)->onConnection($connection ?: 'sync'));
 
             return;
         }
@@ -391,6 +403,7 @@ class ShortUrl extends Model
                 foreach ($additional as $key => $val) {
                     $base[$key] = ($base[$key] ?? 0) + $val;
                 }
+
                 return $base;
             };
 
@@ -542,5 +555,112 @@ class ShortUrl extends Model
                 'utmCampaigns' => array_slice($utmCampaigns, 0, 8, true),
             ];
         });
+    }
+
+    /**
+     * Cache properties to hold preloaded buffered visits for the current request.
+     */
+    protected static ?array $bufferedTotalVisits = null;
+
+    protected static ?array $bufferedUniqueVisits = null;
+
+    /**
+     * Preload all buffered clicks in a single batch query for the entire request.
+     * Prevents N+1 database queries even if database cache driver is used.
+     */
+    protected static function loadAllBufferedVisits(): void
+    {
+        if (static::$bufferedTotalVisits !== null) {
+            return;
+        }
+
+        static::$bufferedTotalVisits = [];
+        static::$bufferedUniqueVisits = [];
+
+        if (! config('filament-short-url.counter_buffering.enabled', false)) {
+            return;
+        }
+
+        $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+        $dirtyKey = "{$prefix}dirty_ids";
+
+        // 1. Fetch the list of dirty IDs (URLs with pending buffered clicks) in one query
+        $dirtyIds = [];
+        try {
+            if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
+                $dirtyIds = Redis::smembers($dirtyKey);
+            } else {
+                $dirtyIds = cache()->get($dirtyKey, []);
+            }
+        } catch (\Throwable) {
+            // Fallback
+        }
+
+        if (empty($dirtyIds)) {
+            return;
+        }
+
+        $dirtyIds = array_unique(array_filter((array) $dirtyIds));
+
+        // 2. Build array of keys to fetch in a single cache store read
+        $totalKeys = [];
+        $uniqueKeys = [];
+        foreach ($dirtyIds as $id) {
+            $totalKeys[$id] = "{$prefix}total:{$id}";
+            $uniqueKeys[$id] = "{$prefix}unique:{$id}";
+        }
+
+        try {
+            // Cache::many() is highly optimized (e.g. 1 database query for database store, or 1 MGET for Redis)
+            $totals = cache()->many(array_values($totalKeys));
+            $uniques = cache()->many(array_values($uniqueKeys));
+
+            foreach ($totalKeys as $id => $key) {
+                static::$bufferedTotalVisits[$id] = (int) ($totals[$key] ?? 0);
+            }
+            foreach ($uniqueKeys as $id => $key) {
+                static::$bufferedUniqueVisits[$id] = (int) ($uniques[$key] ?? 0);
+            }
+        } catch (\Throwable) {
+            // Fallback
+        }
+    }
+
+    /**
+     * Get the total visits count, merging the database value with any buffered clicks in cache.
+     * Prevents database N+1 queries.
+     */
+    public function getTotalVisitsAttribute(): int
+    {
+        $dbValue = $this->attributes['total_visits'] ?? 0;
+
+        if (! config('filament-short-url.counter_buffering.enabled', false)) {
+            return $dbValue;
+        }
+
+        static::loadAllBufferedVisits();
+
+        $buffered = static::$bufferedTotalVisits[$this->id] ?? 0;
+
+        return $dbValue + $buffered;
+    }
+
+    /**
+     * Get the unique visits count, merging the database value with any buffered clicks in cache.
+     * Prevents database N+1 queries.
+     */
+    public function getUniqueVisitsAttribute(): int
+    {
+        $dbValue = $this->attributes['unique_visits'] ?? 0;
+
+        if (! config('filament-short-url.counter_buffering.enabled', false)) {
+            return $dbValue;
+        }
+
+        static::loadAllBufferedVisits();
+
+        $buffered = static::$bufferedUniqueVisits[$this->id] ?? 0;
+
+        return $dbValue + $buffered;
     }
 }

@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@source "../../src/**/*.php";
+@source "../../resources/views/**/*.blade.php";
+
+.short-url-card {
+    position: relative !important;
+}
+
+.short-url-card .fi-ta-actions {
+    position: absolute !important;
+    top: 1.25rem !important;
+    right: 1.25rem !important;
+    z-index: 10 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}

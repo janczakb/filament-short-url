@@ -3,6 +3,7 @@
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlGlobalOverview;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -40,6 +41,8 @@ class ListShortUrls extends ManageRecords
 
     protected function getHeaderWidgets(): array
     {
-        return [];
+        return [
+            ShortUrlGlobalOverview::class,
+        ];
     }
 }

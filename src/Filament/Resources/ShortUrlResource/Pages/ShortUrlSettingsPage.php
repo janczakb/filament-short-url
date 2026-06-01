@@ -12,11 +12,13 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Http;
 
 class ShortUrlSettingsPage extends Page implements HasForms
 {
@@ -187,7 +189,39 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_maxmind_path'))
                                             ->helperText(__('filament-short-url::default.settings_maxmind_path_helper'))
                                             ->columnSpanFull()
-                                            ->placeholder(database_path('geoip/GeoLite2-Country.mmdb'))
+                                            ->placeholder('/var/www/html/database/geoip/GeoLite2-Country.mmdb')
+                                            ->suffixAction(
+                                                Action::make('verifyMaxmindPath')
+                                                    ->label(__('filament-short-url::default.settings_maxmind_verify'))
+                                                    ->icon('heroicon-o-server')
+                                                    ->action(function (?string $state): void {
+                                                        $path = trim($state ?? '');
+
+                                                        if (empty($path)) {
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_maxmind_verify_empty'))
+                                                                ->warning()
+                                                                ->send();
+
+                                                            return;
+                                                        }
+
+                                                        if (file_exists($path) && is_readable($path) && str_ends_with($path, '.mmdb')) {
+                                                            $sizeKb = round(filesize($path) / 1024);
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_maxmind_verify_ok'))
+                                                                ->body("{$path} ({$sizeKb} KB)")
+                                                                ->success()
+                                                                ->send();
+                                                        } else {
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_maxmind_verify_fail'))
+                                                                ->body($path)
+                                                                ->danger()
+                                                                ->send();
+                                                        }
+                                                    })
+                                            )
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind'),
                                     ]),
                             ]),
@@ -204,15 +238,76 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->helperText(__('filament-short-url::default.settings_ga4_api_secret_helper'))
                                             ->password()
                                             ->revealable()
-                                            ->live()
                                             ->placeholder('••••••••••••••••••••'),
 
-                                        // Firebase App ID only when API Secret is set
+                                        // Firebase App ID — always visible
                                         TextInput::make('ga4_firebase_app_id')
                                             ->label(__('filament-short-url::default.settings_ga4_firebase_app_id'))
                                             ->helperText(__('filament-short-url::default.settings_ga4_firebase_app_id_helper'))
-                                            ->placeholder('1:1234567890:android:abcdef123456')
-                                            ->visible(fn (Get $get): bool => filled($get('ga4_api_secret'))),
+                                            ->placeholder('1:1234567890:android:abcdef123456'),
+
+                                        // GA4 connection verify button
+                                        Actions::make([
+                                            Action::make('verifyGa4ApiSecret')
+                                                ->label(__('filament-short-url::default.settings_ga4_verify'))
+                                                ->icon('heroicon-o-signal')
+                                                ->color('gray')
+                                                ->action(function (Get $get): void {
+                                                    $secret = trim($get('ga4_api_secret') ?? '');
+
+                                                    if (empty($secret)) {
+                                                        Notification::make()
+                                                            ->title(__('filament-short-url::default.settings_ga4_verify_empty'))
+                                                            ->warning()
+                                                            ->send();
+
+                                                        return;
+                                                    }
+
+                                                    try {
+                                                        // GA4 debug endpoint — a valid api_secret returns event-level
+                                                        // validation messages; an invalid one returns auth errors.
+                                                        $response = Http::timeout(5)
+                                                            ->withHeaders(['Content-Type' => 'application/json'])
+                                                            ->post(
+                                                                'https://www.google-analytics.com/debug/mp/collect?measurement_id=G-XXXXXXXXXX&api_secret='.urlencode($secret),
+                                                                [
+                                                                    'client_id' => 'short-url-plugin-verify',
+                                                                    'events' => [
+                                                                        ['name' => 'page_view', 'params' => []],
+                                                                    ],
+                                                                ]
+                                                            );
+
+                                                        $body = $response->json();
+                                                        $messages = $body['validationMessages'] ?? [];
+
+                                                        // A valid secret returns event-level messages, not auth errors
+                                                        $hasAuthError = collect($messages)->contains(fn ($m) => str_contains(
+                                                            strtolower($m['description'] ?? ''),
+                                                            'api_secret'
+                                                        ));
+
+                                                        if ($hasAuthError || $response->status() === 401) {
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_ga4_verify_fail'))
+                                                                ->danger()
+                                                                ->send();
+                                                        } else {
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_ga4_verify_ok'))
+                                                                ->success()
+                                                                ->send();
+                                                        }
+                                                    } catch (\Throwable $e) {
+                                                        Notification::make()
+                                                            ->title(__('filament-short-url::default.settings_ga4_verify_error'))
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+                                        ]),
                                     ]),
                             ]),
 
@@ -230,11 +325,17 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->live()
                                             ->inline(false),
 
-                                        TextInput::make('pruning_retention_days')
+                                        Select::make('pruning_retention_days')
                                             ->label(__('filament-short-url::default.settings_retention_days'))
                                             ->helperText(__('filament-short-url::default.settings_retention_days_helper'))
-                                            ->numeric()
-                                            ->minValue(0)
+                                            ->options([
+                                                30 => __('filament-short-url::default.retention_30_days'),
+                                                60 => __('filament-short-url::default.retention_60_days'),
+                                                90 => __('filament-short-url::default.retention_90_days'),
+                                                180 => __('filament-short-url::default.retention_180_days'),
+                                                365 => __('filament-short-url::default.retention_365_days'),
+                                                730 => __('filament-short-url::default.retention_730_days'),
+                                            ])
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('pruning_enabled')),
                                     ]),
