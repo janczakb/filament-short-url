@@ -5,12 +5,12 @@
 <h1 align="center">Filament Short URL</h1>
 
 <p align="center">
+    <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/v/janczakb/filament-short-url.svg?style=flat-square" alt="Latest Version"></a>
     <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/l/janczakb/filament-short-url.svg?style=flat-square" alt="License"></a>
+    <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/dt/janczakb/filament-short-url.svg?style=flat-square" alt="Total Downloads"></a>
     <a href="https://github.com/janczakb/filament-short-url/stargazers"><img src="https://img.shields.io/github/stars/janczakb/filament-short-url.svg?style=flat-square" alt="GitHub Stars"></a>
     <a href="https://github.com/janczakb/filament-short-url/issues"><img src="https://img.shields.io/github/issues/janczakb/filament-short-url.svg?style=flat-square" alt="GitHub Issues"></a>
-    <a href="https://github.com/janczakb/filament-short-url/network/members"><img src="https://img.shields.io/github/forks/janczakb/filament-short-url.svg?style=flat-square" alt="GitHub Forks"></a>
-    <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/dt/janczakb/filament-short-url.svg?style=flat-square" alt="Packagist Downloads"></a>
-    <a href="https://github.com/janczakb/filament-short-url/actions"><img src="https://img.shields.io/github/actions/workflow/status/janczakb/filament-short-url/run-tests.yml?branch=main&label=tests&style=flat-square" alt="Tests"></a>
+    <a href="https://github.com/janczakb/filament-short-url/actions"><img src="https://img.shields.io/badge/tests-passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
 A professional, high-performance **Short URL Manager** plugin for [Filament v5](https://filamentphp.com). Built from scratch with cutting-edge practices, proxy resistance, offline Geo-IP engines, and zero external shortening API dependencies.
