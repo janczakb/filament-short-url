@@ -18,6 +18,8 @@ class FilamentShortUrlPlugin implements Plugin
 
     protected ?string $routePrefix = null;
 
+    protected ?\Closure $authorizeSettingsUsing = null;
+
     // ─── Factory ─────────────────────────────────────────────────────────────
 
     public static function make(): static
@@ -118,5 +120,22 @@ class FilamentShortUrlPlugin implements Plugin
     public function getNavigationIcon(): ?string
     {
         return $this->navigationIcon;
+    }
+
+    /**
+     * Set a custom callback to authorize access to the Short URL settings page.
+     *
+     * @example FilamentShortUrlPlugin::make()->authorizeSettingsUsing(fn () => auth()->user()->hasRole('admin'))
+     */
+    public function authorizeSettingsUsing(\Closure $callback): static
+    {
+        $this->authorizeSettingsUsing = $callback;
+
+        return $this;
+    }
+
+    public function getAuthorizeSettingsUsing(): ?\Closure
+    {
+        return $this->authorizeSettingsUsing;
     }
 }

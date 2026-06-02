@@ -33,6 +33,28 @@ class ShortUrlSettingsPage extends Page implements HasForms
 
     protected string $view = 'filament-short-url::settings';
 
+    public static function canAccess(): bool
+    {
+        try {
+            $plugin = \Bjanczak\FilamentShortUrl\FilamentShortUrlPlugin::get();
+
+            if ($callback = $plugin->getAuthorizeSettingsUsing()) {
+                return (bool) app()->call($callback);
+            }
+        } catch (\Throwable) {
+            // Ignore if plugin is not registered yet in some contexts
+        }
+
+        // Fallback: Check if there's a Model Policy with `manageSettings` method
+        if (\Illuminate\Support\Facades\Gate::getPolicyFor(\Bjanczak\FilamentShortUrl\Models\ShortUrl::class) &&
+            method_exists(\Illuminate\Support\Facades\Gate::getPolicyFor(\Bjanczak\FilamentShortUrl\Models\ShortUrl::class), 'manageSettings')) {
+            return \Illuminate\Support\Facades\Gate::allows('manageSettings', \Bjanczak\FilamentShortUrl\Models\ShortUrl::class);
+        }
+
+        // Default fallback: Check if the user is authorized to view the resource in general
+        return static::getResource()::canViewAny();
+    }
+
     public ?array $data = [];
 
     public function mount(): void

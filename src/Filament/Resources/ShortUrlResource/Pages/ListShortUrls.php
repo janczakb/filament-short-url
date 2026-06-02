@@ -21,7 +21,8 @@ class ListShortUrls extends ManageRecords
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->color('gray')
                 ->size('sm')
-                ->url(static::getResource()::getUrl('settings')),
+                ->url(static::getResource()::getUrl('settings'))
+                ->visible(fn () => ShortUrlSettingsPage::canAccess()),
 
             CreateAction::make()
                 ->icon('heroicon-o-plus')
