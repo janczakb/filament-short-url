@@ -188,7 +188,16 @@ class ShortUrl extends Model
             }
         });
 
-        static::saved(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
+        static::saved(function (self $m) {
+            cache()->forget("filament-short-url:{$m->url_key}");
+
+            if ($m->wasChanged('url_key')) {
+                $oldKey = $m->getOriginal('url_key');
+                if ($oldKey) {
+                    cache()->forget("filament-short-url:{$oldKey}");
+                }
+            }
+        });
         static::deleted(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
 
         // Bust the forever-cached link counts displayed in the global overview widget.
@@ -212,7 +221,17 @@ class ShortUrl extends Model
         return app(ShortUrlService::class)->destination($url);
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    public function getRealTimeTotalVisits(): int
+    {
+        $total = $this->total_visits;
+
+        if (config('filament-short-url.counter_buffering.enabled', false)) {
+            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+            $total += (int) cache()->get("{$prefix}total:{$this->id}", 0);
+        }
+
+        return $total;
+    }
 
     public function isActive(): bool
     {
@@ -236,7 +255,7 @@ class ShortUrl extends Model
         }
 
         // Visit limit reached
-        if (! $this->single_use && $this->max_visits !== null && $this->total_visits >= $this->max_visits) {
+        if (! $this->single_use && $this->max_visits !== null && $this->getRealTimeTotalVisits() >= $this->max_visits) {
             return false;
         }
 
@@ -249,7 +268,7 @@ class ShortUrl extends Model
             return true;
         }
 
-        if (! $this->single_use && $this->max_visits !== null && $this->total_visits >= $this->max_visits) {
+        if (! $this->single_use && $this->max_visits !== null && $this->getRealTimeTotalVisits() >= $this->max_visits) {
             return true;
         }
 

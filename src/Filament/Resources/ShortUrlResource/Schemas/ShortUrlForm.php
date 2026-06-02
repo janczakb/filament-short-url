@@ -466,6 +466,9 @@ class ShortUrlForm
                                     ->label(__('filament-short-url::default.rotation_weight'))
                                     ->helperText(__('filament-short-url::default.rotation_weight_helper'))
                                     ->numeric()
+                                    ->integer()
+                                    ->minValue(1)
+                                    ->maxValue(1000)
                                     ->required()
                                     ->default(50),
                             ])
