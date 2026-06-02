@@ -562,7 +562,31 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->helperText(__('filament-short-url::default.settings_api_enabled_helper'))
                                             ->default(false)
                                             ->inline(false)
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->live(),
+                                    ]),
+
+                                Section::make(__('filament-short-url::default.settings_section_api_keys'))
+                                    ->description(__('filament-short-url::default.settings_api_keys_description'))
+                                    ->visible(fn (Get $get): bool => (bool) $get('api_enabled'))
+                                    ->schema([
+                                        Repeater::make('api_keys')
+                                            ->label(__('filament-short-url::default.settings_api_keys'))
+                                            ->schema([
+                                                TextInput::make('name')
+                                                    ->label(__('filament-short-url::default.api_key_name'))
+                                                    ->required(),
+                                                TextInput::make('key')
+                                                    ->label(__('filament-short-url::default.api_key'))
+                                                    ->disabled()
+                                                    ->dehydrated()
+                                                    ->default(fn () => 'sh_key_'.bin2hex(random_bytes(16))),
+                                                Toggle::make('is_active')
+                                                    ->label(__('filament-short-url::default.active'))
+                                                    ->default(true),
+                                            ])
+                                            ->columns(3)
+                                            ->default([]),
                                     ]),
 
                                 Section::make(__('filament-short-url::default.settings_section_global_webhook'))
@@ -586,28 +610,6 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ])
                                             ->default(['visited'])
                                             ->columnSpanFull(),
-                                    ]),
-
-                                Section::make(__('filament-short-url::default.settings_section_api_keys'))
-                                    ->description(__('filament-short-url::default.settings_api_keys_description'))
-                                    ->schema([
-                                        Repeater::make('api_keys')
-                                            ->label(__('filament-short-url::default.settings_api_keys'))
-                                            ->schema([
-                                                TextInput::make('name')
-                                                    ->label(__('filament-short-url::default.api_key_name'))
-                                                    ->required(),
-                                                TextInput::make('key')
-                                                    ->label(__('filament-short-url::default.api_key'))
-                                                    ->disabled()
-                                                    ->dehydrated()
-                                                    ->default(fn () => 'sh_key_'.bin2hex(random_bytes(16))),
-                                                Toggle::make('is_active')
-                                                    ->label(__('filament-short-url::default.active'))
-                                                    ->default(true),
-                                            ])
-                                            ->columns(3)
-                                            ->default([]),
                                     ]),
                             ]),
                     ]),
