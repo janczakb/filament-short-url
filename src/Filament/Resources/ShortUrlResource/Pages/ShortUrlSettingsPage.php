@@ -5,6 +5,7 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Filament\Actions\Action;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -44,7 +45,9 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'geo_ip_cache_ttl' => $mgr->get('geo_ip_cache_ttl', 86400),
             'geo_ip_timeout' => $mgr->get('geo_ip_timeout', 3),
             'maxmind_database_path' => $mgr->get('maxmind_database_path', storage_path('geoip/GeoLite2-Country.mmdb')),
+            'geo_ip_stats_cache_ttl' => $mgr->get('geo_ip_stats_cache_ttl', 300),
             'queue_connection' => $mgr->get('queue_connection', 'sync'),
+            'queue_name' => $mgr->get('queue_name', 'default'),
             'ga4_api_secret' => $mgr->get('ga4_api_secret'),
             'ga4_firebase_app_id' => $mgr->get('ga4_firebase_app_id'),
             'counter_buffering_enabled' => $mgr->get('counter_buffering_enabled', false),
@@ -54,6 +57,23 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'rate_limiting_enabled' => $mgr->get('rate_limiting_enabled', false),
             'rate_limiting_max_attempts' => $mgr->get('rate_limiting_max_attempts', 60),
             'rate_limiting_decay_seconds' => $mgr->get('rate_limiting_decay_seconds', 60),
+            'tracking_enabled' => $mgr->get('tracking_enabled', true),
+            'tracking_fields_ip_address' => $mgr->get('tracking_fields_ip_address', true),
+            'tracking_fields_browser' => $mgr->get('tracking_fields_browser', true),
+            'tracking_fields_browser_version' => $mgr->get('tracking_fields_browser_version', true),
+            'tracking_fields_operating_system' => $mgr->get('tracking_fields_operating_system', true),
+            'tracking_fields_operating_system_version' => $mgr->get('tracking_fields_operating_system_version', true),
+            'tracking_fields_referer_url' => $mgr->get('tracking_fields_referer_url', true),
+            'tracking_fields_device_type' => $mgr->get('tracking_fields_device_type', true),
+            'qr_size' => $mgr->get('qr_size', 300),
+            'qr_margin' => $mgr->get('qr_margin', 1),
+            'qr_dot_style' => $mgr->get('qr_dot_style', 'square'),
+            'qr_foreground_color' => $mgr->get('qr_foreground_color', '#000000'),
+            'qr_background_color' => $mgr->get('qr_background_color', '#ffffff'),
+            'qr_gradient_enabled' => $mgr->get('qr_gradient_enabled', false),
+            'qr_gradient_from' => $mgr->get('qr_gradient_from', '#4f46e5'),
+            'qr_gradient_to' => $mgr->get('qr_gradient_to', '#06b6d4'),
+            'qr_gradient_type' => $mgr->get('qr_gradient_type', 'linear'),
         ]);
     }
 
@@ -91,6 +111,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_key_length'))
                                             ->helperText(__('filament-short-url::default.settings_key_length_helper'))
                                             ->numeric()
+                                            ->integer()
                                             ->minValue(4)
                                             ->maxValue(20)
                                             ->required(),
@@ -99,6 +120,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_cache_ttl'))
                                             ->helperText(__('filament-short-url::default.settings_cache_ttl_helper'))
                                             ->numeric()
+                                            ->integer()
                                             ->minValue(0)
                                             ->suffix('s')
                                             ->required(),
@@ -111,6 +133,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                     ]),
 
                                 Section::make(__('filament-short-url::default.settings_section_queue'))
+                                    ->columns(2)
                                     ->schema([
                                         Select::make('queue_connection')
                                             ->label(__('filament-short-url::default.settings_queue_connection'))
@@ -124,6 +147,11 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                     'redis' => 'redis',
                                                 ];
                                             })
+                                            ->required(),
+
+                                        TextInput::make('queue_name')
+                                            ->label(__('filament-short-url::default.settings_queue_name'))
+                                            ->helperText(__('filament-short-url::default.settings_queue_name_helper'))
                                             ->required(),
                                     ]),
 
@@ -168,6 +196,18 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_geoip_cache_ttl'))
                                             ->helperText(__('filament-short-url::default.settings_geoip_cache_ttl_helper'))
                                             ->numeric()
+                                            ->integer()
+                                            ->minValue(0)
+                                            ->suffix('s')
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled')),
+
+                                        // ── Stats Cache TTL (only when geo-ip is on) ──
+                                        TextInput::make('geo_ip_stats_cache_ttl')
+                                            ->label(__('filament-short-url::default.settings_geoip_stats_cache_ttl'))
+                                            ->helperText(__('filament-short-url::default.settings_geoip_stats_cache_ttl_helper'))
+                                            ->numeric()
+                                            ->integer()
                                             ->minValue(0)
                                             ->suffix('s')
                                             ->required()
@@ -178,6 +218,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_geoip_timeout'))
                                             ->helperText(__('filament-short-url::default.settings_geoip_timeout_helper'))
                                             ->numeric()
+                                            ->integer()
                                             ->minValue(1)
                                             ->maxValue(30)
                                             ->suffix('s')
@@ -354,6 +395,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_rate_limiting_max_attempts'))
                                             ->helperText(__('filament-short-url::default.settings_rate_limiting_max_attempts_helper'))
                                             ->numeric()
+                                            ->integer()
                                             ->minValue(1)
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('rate_limiting_enabled')),
@@ -362,10 +404,137 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_rate_limiting_decay_seconds'))
                                             ->helperText(__('filament-short-url::default.settings_rate_limiting_decay_seconds_helper'))
                                             ->numeric()
+                                            ->integer()
                                             ->minValue(1)
                                             ->suffix('s')
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('rate_limiting_enabled')),
+                                    ]),
+                            ]),
+
+                        // ── Tracking Defaults ─────────────────────────────────
+                        Tab::make(__('filament-short-url::default.settings_tab_tracking_defaults'))
+                            ->icon('heroicon-o-chart-bar')
+                            ->schema([
+                                Section::make(__('filament-short-url::default.settings_section_tracking_defaults'))
+                                    ->description(__('filament-short-url::default.settings_section_tracking_defaults_helper'))
+                                    ->schema([
+                                        Toggle::make('tracking_enabled')
+                                            ->label(__('filament-short-url::default.settings_track_visits_default'))
+                                            ->live()
+                                            ->inline(false)
+                                            ->columnSpanFull(),
+
+                                        Toggle::make('tracking_fields_ip_address')
+                                            ->label(__('filament-short-url::default.settings_track_ip_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_browser')
+                                            ->label(__('filament-short-url::default.settings_track_browser_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_browser_version')
+                                            ->label(__('filament-short-url::default.settings_track_browser_version_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_operating_system')
+                                            ->label(__('filament-short-url::default.settings_track_os_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_operating_system_version')
+                                            ->label(__('filament-short-url::default.settings_track_os_version_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_referer_url')
+                                            ->label(__('filament-short-url::default.settings_track_referer_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_device_type')
+                                            ->label(__('filament-short-url::default.settings_track_device_type_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+                                    ])
+                                    ->columns(4),
+                            ]),
+
+                        // ── QR Defaults ──────────────────────────────────────
+                        Tab::make(__('filament-short-url::default.settings_tab_qr'))
+                            ->icon('heroicon-o-qr-code')
+                            ->schema([
+                                Section::make(__('filament-short-url::default.settings_section_qr_defaults'))
+                                    ->description(__('filament-short-url::default.settings_section_qr_defaults_helper'))
+                                    ->columns(2)
+                                    ->schema([
+                                        TextInput::make('qr_size')
+                                            ->label(__('filament-short-url::default.settings_qr_size'))
+                                            ->numeric()
+                                            ->integer()
+                                            ->minValue(100)
+                                            ->maxValue(2000)
+                                            ->required(),
+
+                                        Select::make('qr_margin')
+                                            ->label(__('filament-short-url::default.settings_qr_margin'))
+                                            ->options(array_combine(range(0, 10), range(0, 10)))
+                                            ->required(),
+
+                                        Select::make('qr_dot_style')
+                                            ->label(__('filament-short-url::default.settings_qr_dot_style'))
+                                            ->options([
+                                                'square' => __('filament-short-url::default.qr_option_square'),
+                                                'dots' => __('filament-short-url::default.qr_option_dots'),
+                                                'rounded' => __('filament-short-url::default.qr_option_rounded'),
+                                                'classy' => __('filament-short-url::default.qr_option_classy'),
+                                                'classy-rounded' => __('filament-short-url::default.qr_option_classy_rounded'),
+                                                'extra-rounded' => __('filament-short-url::default.qr_option_extra_rounded'),
+                                            ])
+                                            ->required(),
+
+                                        ColorPicker::make('qr_foreground_color')
+                                            ->label(__('filament-short-url::default.settings_qr_foreground_color'))
+                                            ->regex('/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})\b$/')
+                                            ->placeholder('#000000')
+                                            ->required(),
+
+                                        ColorPicker::make('qr_background_color')
+                                            ->label(__('filament-short-url::default.settings_qr_background_color'))
+                                            ->regex('/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})\b$/')
+                                            ->placeholder('#ffffff')
+                                            ->required(),
+
+                                        Toggle::make('qr_gradient_enabled')
+                                            ->label(__('filament-short-url::default.settings_qr_gradient_enabled'))
+                                            ->live()
+                                            ->inline(false),
+
+                                        ColorPicker::make('qr_gradient_from')
+                                            ->label(__('filament-short-url::default.settings_qr_gradient_from'))
+                                            ->regex('/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})\b$/')
+                                            ->placeholder('#4f46e5')
+                                            ->required(fn (Get $get): bool => (bool) $get('qr_gradient_enabled'))
+                                            ->visible(fn (Get $get): bool => (bool) $get('qr_gradient_enabled')),
+
+                                        ColorPicker::make('qr_gradient_to')
+                                            ->label(__('filament-short-url::default.settings_qr_gradient_to'))
+                                            ->regex('/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})\b$/')
+                                            ->placeholder('#06b6d4')
+                                            ->required(fn (Get $get): bool => (bool) $get('qr_gradient_enabled'))
+                                            ->visible(fn (Get $get): bool => (bool) $get('qr_gradient_enabled')),
+
+                                        Select::make('qr_gradient_type')
+                                            ->label(__('filament-short-url::default.settings_qr_gradient_type'))
+                                            ->options([
+                                                'linear' => __('filament-short-url::default.qr_gradient_linear'),
+                                                'radial' => __('filament-short-url::default.qr_gradient_radial'),
+                                            ])
+                                            ->required(fn (Get $get): bool => (bool) $get('qr_gradient_enabled'))
+                                            ->visible(fn (Get $get): bool => (bool) $get('qr_gradient_enabled')),
                                     ]),
                             ]),
                     ]),

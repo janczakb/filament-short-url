@@ -24,6 +24,13 @@ return [
     'forward_query_params' => 'Forward Query Parameters',
     'forward_query_params_helper' => 'Append incoming query parameters (like UTM tags) to the destination URL.',
     'expires_at' => 'Expires At',
+    'activated_at' => 'Active From',
+    'max_visits' => 'Max Visits Limit',
+    'max_visits_helper' => 'Optional limit of total visits allowed before this link is deactivated.',
+    'expiration_redirect_url' => 'Expiration Redirect URL',
+    'expiration_redirect_url_helper' => 'Fallback URL to redirect to when the link is expired or inactive (leaves blank for 410 Gone error page).',
+    'form_section_validity' => 'Validity & Limits',
+    'use_date_validity' => 'Set Date Range Limits',
     'notes' => 'Internal Notes',
     'ga_tracking_id' => 'Google Analytics 4 Measurement ID',
     'ga_tracking_id_helper' => 'Optional G-XXXXXXXXXX ID to track redirects server-side.',
@@ -287,6 +294,39 @@ return [
     'settings_rate_limiting_max_attempts_helper' => 'Maximum allowed redirection requests within the decay window.',
     'settings_rate_limiting_decay_seconds' => 'Decay Window (Seconds)',
     'settings_rate_limiting_decay_seconds_helper' => 'Time period for the rate limiter.',
+
+    // Queue Settings Additions
+    'settings_queue_name' => 'Queue Name',
+    'settings_queue_name_helper' => 'The target queue to which tracking and buffering sync jobs are dispatched. Default: "default".',
+    'settings_geoip_stats_cache_ttl' => 'Stats Dashboard Cache TTL',
+    'settings_geoip_stats_cache_ttl_helper' => 'Number of seconds to cache query metrics on the dashboard statistics page (prevents database load). Default: 300 (5 minutes).',
+
+    // Default Tracking Tab
+    'settings_tab_tracking_defaults' => 'Default Tracking',
+    'settings_section_tracking_defaults' => 'Default Visitor Tracking Settings',
+    'settings_section_tracking_defaults_helper' => 'These settings govern the default tracking status for newly created short URLs.',
+    'settings_track_visits_default' => 'Enable Tracking by Default',
+    'settings_track_ip_default' => 'Default IP Address Tracking',
+    'settings_track_browser_default' => 'Default Browser Tracking',
+    'settings_track_browser_version_default' => 'Default Browser Version Tracking',
+    'settings_track_os_default' => 'Default OS Tracking',
+    'settings_track_os_version_default' => 'Default OS Version Tracking',
+    'settings_track_referer_default' => 'Default Referer URL Tracking',
+    'settings_track_device_type_default' => 'Default Device Type Tracking',
+
+    // QR Defaults Tab
+    'settings_tab_qr' => 'QR Defaults',
+    'settings_section_qr_defaults' => 'Default QR Code Design Options',
+    'settings_section_qr_defaults_helper' => 'Configure standard design styling automatically loaded for newly generated QR codes.',
+    'settings_qr_size' => 'Default Size (px)',
+    'settings_qr_margin' => 'Default Margin',
+    'settings_qr_dot_style' => 'Default Dot Style',
+    'settings_qr_foreground_color' => 'Default Foreground Color',
+    'settings_qr_background_color' => 'Default Background Color',
+    'settings_qr_gradient_enabled' => 'Enable Gradient by Default',
+    'settings_qr_gradient_from' => 'Gradient Color From',
+    'settings_qr_gradient_to' => 'Gradient Color To',
+    'settings_qr_gradient_type' => 'Default Gradient Type',
 
     // Views
     'password_title' => 'Password Required',

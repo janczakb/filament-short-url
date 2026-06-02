@@ -78,6 +78,8 @@ class ShortUrl extends Model
         'targeting_rules',
         'total_visits',
         'unique_visits',
+        'max_visits',
+        'expiration_redirect_url',
     ];
 
     /** @var array<string, string> */
@@ -96,6 +98,7 @@ class ShortUrl extends Model
         'qr_options' => 'array',
         'show_warning_page' => 'boolean',
         'targeting_rules' => 'array',
+        'max_visits' => 'integer',
         'activated_at' => 'datetime',
         'deactivated_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -125,8 +128,20 @@ class ShortUrl extends Model
         return $query
             ->enabled()
             ->where(fn (Builder $q) => $q
+                ->whereNull('activated_at')
+                ->orWhere('activated_at', '<=', now())
+            )
+            ->where(fn (Builder $q) => $q
+                ->whereNull('deactivated_at')
+                ->orWhere('deactivated_at', '>', now())
+            )
+            ->where(fn (Builder $q) => $q
                 ->whereNull('expires_at')
                 ->orWhere('expires_at', '>', now())
+            )
+            ->where(fn (Builder $q) => $q
+                ->whereNull('max_visits')
+                ->orWhereRaw('total_visits < max_visits')
             );
     }
 
@@ -163,6 +178,16 @@ class ShortUrl extends Model
      */
     protected static function booted(): void
     {
+        static::saving(function (self $m) {
+            if ($m->single_use) {
+                $m->max_visits = null;
+            }
+
+            if ($m->activated_at === null && $m->expires_at === null) {
+                $m->expiration_redirect_url = null;
+            }
+        });
+
         static::saved(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
         static::deleted(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
 
@@ -210,12 +235,25 @@ class ShortUrl extends Model
             return false;
         }
 
+        // Visit limit reached
+        if (! $this->single_use && $this->max_visits !== null && $this->total_visits >= $this->max_visits) {
+            return false;
+        }
+
         return true;
     }
 
     public function isExpired(): bool
     {
-        return $this->expires_at !== null && $this->expires_at->isPast();
+        if ($this->expires_at !== null && $this->expires_at->isPast()) {
+            return true;
+        }
+
+        if (! $this->single_use && $this->max_visits !== null && $this->total_visits >= $this->max_visits) {
+            return true;
+        }
+
+        return false;
     }
 
     public function trackingEnabled(): bool

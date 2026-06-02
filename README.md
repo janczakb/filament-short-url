@@ -15,6 +15,21 @@
 
 A professional, high-performance **Short URL Manager** plugin for [Filament v5](https://filamentphp.com). Built from scratch with cutting-edge practices, proxy resistance, offline Geo-IP engines, enterprise-grade smart targeting, and zero external shortening API dependencies.
 
+## Screenshots
+
+<p align="center">
+  <table align="center" style="border-collapse: collapse; border: none;">
+    <tr style="border: none;">
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/1.png" alt="Dashboard Stats" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/2.png" alt="Short URL Creation Form" style="border-radius: 8px;"></td>
+    </tr>
+    <tr style="border: none;">
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/3.png" alt="Targeting and Rules" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/4.png" alt="Interactive Settings Panel" style="border-radius: 8px;"></td>
+    </tr>
+  </table>
+</p>
+
 ---
 
 ## Features
@@ -26,7 +41,7 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 - ⚡ **Ultra-Fast Redirects** — Redirections resolve in milliseconds. Analytical tasks, event dispatching, and GA4 payloads are processed asynchronously via Laravel Queue jobs.
 - 🎯 **Google Analytics 4 server-side tracking** — Native integration with the GA4 Measurement Protocol to bypass client-side AdBlockers completely.
 - ⚙️ **Dual-way UTM Campaign Builder** — Built-in form builder synchronizes UTM parameters with your destination URLs in real-time (two-way binding).
-- 🔒 **Link Rules & Expiry** — Disable links manually, set expiration dates, or activate single-use links that deactivate automatically after the first click.
+- 🔒 **Link Validity Ranges & Expiry** — Set activation date ranges (From - To), custom visit limit counters (e.g. active for 3 clicks then expires), single-use restrictions, and custom fallback redirect URLs on expiration instead of static 410 Gone errors.
 - ➡️ **Query Parameter Forwarding** — Dynamically forward client query parameters (e.g. ad tokens, discount codes) to the destination URL.
 - 🛠️ **Dedicated Settings GUI** — Manage global configuration (routing, Geo-IP, GA4, cache, rate limiting, aggregation) directly inside the Filament panel without modifying files or `.env` files.
 - 💻 **Fluent Developer Builder** — Native model query builder pattern and robust programmatic generation APIs.
@@ -436,10 +451,14 @@ echo $shortUrl->getShortUrl(); // https://yourdomain.com/s/promo2026
 | `notes()` | `string` | Appends internal notes for administrators. |
 | `singleUse()` | `bool` (default `true`) | Makes the short URL expire immediately after the first successful click. |
 | `forwardQueryParams()` | `bool` (default `true`) | Forwards client-side incoming parameters (e.g. `?gclid=xxx`) to the final target. |
-| `expiresAt()` | `DateTimeInterface\|Carbon\|null` | Automatically sets a timestamp after which the URL returns a `410 Gone` error. |
+| `expiresAt()` | `DateTimeInterface\|Carbon\|null` | Automatically sets an expiration timestamp after which the URL is inactive. |
+| `activatedAt()` | `DateTimeInterface\|Carbon\|null` | Sets the timestamp from which the URL is active. |
+| `deactivatedAt()` | `DateTimeInterface\|Carbon\|null` | Sets the timestamp after which the URL is inactive. |
+| `maxVisits()` | `int\|null` | Sets a custom limit of total visits allowed. |
+| `expirationRedirectUrl()` | `string\|null` | Sets a custom URL to redirect to when expired/inactive. |
 | `trackVisits()` | `bool` (default `true`) | Toggles statistical logging for this link. |
 | `withTracing()` | `array` | Appends non-empty tracking parameters (like UTM codes) directly to the target URL. |
-| `create()` | `void` | Persists the model to the database and returns the `ShortUrl` instance. |
+| `create()` | `ShortUrl` | Persists the model to the database and returns the `ShortUrl` instance. |
 
 ---
 
@@ -501,7 +520,15 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 
 ## Changelog
 
-### v1.3.0 (Latest)
+### v1.4.0 (Latest)
+- **Validity Date Ranges (From-To)** — Set activation dates (`activated_at` and `expires_at`) to control exactly when a short link is active.
+- **Custom Visit Limit Counters** — Define a custom maximum visit limit (`max_visits`) after which a link automatically expires (e.g., active for 3 hits).
+- **Custom Expiration Fallbacks** — Redirect expired/inactive visitors to a custom `expiration_redirect_url` rather than showing a static 410 Gone error page.
+- **Reactive Validity Controls** — Master switch to toggle date limits, including bidirectional datetime picker constraints (Active From cannot exceed Expires At and vice versa) and custom UI field visibility.
+- **Smart Model Observers** — Automatic cleanup of unused parameters (like clearing `max_visits` if `single_use` is enabled, and clearing expiration fallbacks if date limits are off) to guarantee database consistency.
+- **Fluent Builder APIs** — Fluent method additions (`activatedAt()`, `deactivatedAt()`, `maxVisits()`, `expirationRedirectUrl()`) in the developer query builder.
+
+### v1.3.0
 - **Automatic Scheduler Registration** — Zero-configuration task registration within the ServiceProvider booted phase (dynamically honors Settings toggles).
 - **Interactive Settings Validators** — Adds real-time "Test connection" verify action for GA4 Measurement Protocol and "Verify file" action for MaxMind database paths.
 - **Robust Table Row Copy Action** — High-reliability, conflict-free click-to-copy in table rows with built-in fallback helper for non-HTTPS (secure context) browser environments.

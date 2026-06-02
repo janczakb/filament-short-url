@@ -24,6 +24,13 @@ return [
     'forward_query_params' => 'Przekaż parametry URL',
     'forward_query_params_helper' => 'Dołącz parametry wejściowe (np. tagi UTM) do docelowego adresu URL.',
     'expires_at' => 'Wygasa dnia',
+    'activated_at' => 'Aktywny od',
+    'max_visits' => 'Maksymalny limit wejść',
+    'max_visits_helper' => 'Opcjonalny limit liczby wejść, po osiągnięciu którego link zostanie automatycznie wyłączony.',
+    'expiration_redirect_url' => 'URL przekierowania po wygaśnięciu',
+    'expiration_redirect_url_helper' => 'Adres URL, na który nastąpi przekierowanie, gdy link wygaśnie lub będzie nieaktywny (pozostaw puste, aby wyświetlić błąd 410 Gone).',
+    'form_section_validity' => 'Ważność i limity',
+    'use_date_validity' => 'Ustaw limity datowe',
     'notes' => 'Wewnętrzne notatki',
     'ga_tracking_id' => 'Identyfikator śledzenia Google Analytics 4',
     'ga_tracking_id_helper' => 'Opcjonalny identyfikator G-XXXXXXXXXX do śledzenia przekierowań po stronie serwera.',
@@ -288,6 +295,39 @@ return [
     'settings_rate_limiting_max_attempts_helper' => 'Maksymalna liczba żądań w oknie wygasania.',
     'settings_rate_limiting_decay_seconds' => 'Okno wygasania (sekundy)',
     'settings_rate_limiting_decay_seconds_helper' => 'Przedział czasowy dla ograniczenia liczby żądań.',
+
+    // Queue Settings Additions
+    'settings_queue_name' => 'Nazwa kolejki',
+    'settings_queue_name_helper' => 'Docelowa nazwa kolejki, do której wysyłane są zadania śledzenia i synchronizacji liczników. Domyślnie: "default".',
+    'settings_geoip_stats_cache_ttl' => 'TTL cache statystyk panelu',
+    'settings_geoip_stats_cache_ttl_helper' => 'Liczba sekund buforowania wyników zapytań na stronie statystyk (zapobiega obciążeniu bazy danych). Domyślnie: 300 (5 minut).',
+
+    // Default Tracking Tab
+    'settings_tab_tracking_defaults' => 'Domyślne śledzenie',
+    'settings_section_tracking_defaults' => 'Domyślne ustawienia śledzenia wizyt',
+    'settings_section_tracking_defaults_helper' => 'Ustawienia te określają domyślny status śledzenia dla nowo tworzonych krótkich adresów URL.',
+    'settings_track_visits_default' => 'Śledź wizyty domyślnie',
+    'settings_track_ip_default' => 'Domyślne śledzenie adresu IP',
+    'settings_track_browser_default' => 'Domyślne śledzenie przeglądarki',
+    'settings_track_browser_version_default' => 'Domyślne śledzenie wersji przeglądarki',
+    'settings_track_os_default' => 'Domyślne śledzenie systemu operacyjnego',
+    'settings_track_os_version_default' => 'Domyślne śledzenie wersji systemu operacyjnego',
+    'settings_track_referer_default' => 'Domyślne śledzenie adresu referera',
+    'settings_track_device_type_default' => 'Domyślne śledzenie typu urządzenia',
+
+    // QR Defaults Tab
+    'settings_tab_qr' => 'Domyślne QR',
+    'settings_section_qr_defaults' => 'Domyślne opcje wyglądu kodów QR',
+    'settings_section_qr_defaults_helper' => 'Skonfiguruj standardowy styl wyglądu automatycznie ładowany dla nowo generowanych kodów QR.',
+    'settings_qr_size' => 'Domyślny rozmiar (px)',
+    'settings_qr_margin' => 'Domyślny margines',
+    'settings_qr_dot_style' => 'Domyślny styl kropek',
+    'settings_qr_foreground_color' => 'Domyślny kolor pierwszego planu',
+    'settings_qr_background_color' => 'Domyślny kolor tła',
+    'settings_qr_gradient_enabled' => 'Domyślnie włącz gradient',
+    'settings_qr_gradient_from' => 'Kolor gradientu od',
+    'settings_qr_gradient_to' => 'Kolor gradientu do',
+    'settings_qr_gradient_type' => 'Domyślny typ gradientu',
 
     // Views
     'password_title' => 'Wymagane hasło',

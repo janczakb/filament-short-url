@@ -103,20 +103,14 @@ class ShortUrlForm
                             302 => __('filament-short-url::default.redirect_code_302'),
                             301 => __('filament-short-url::default.redirect_code_301'),
                         ])
-                        ->default(302)
+                        ->default(fn () => config('filament-short-url.redirect_status_code', 302))
                         ->required(),
                 ])->columns(2),
 
-                Section::make(__('filament-short-url::default.form_section_options'))->schema([
+                 Section::make(__('filament-short-url::default.form_section_options'))->schema([
                     Toggle::make('is_enabled')
                         ->label(__('filament-short-url::default.status'))
                         ->default(true)
-                        ->inline(false),
-
-                    Toggle::make('single_use')
-                        ->label(__('filament-short-url::default.single_use'))
-                        ->helperText(__('filament-short-url::default.single_use_helper'))
-                        ->default(false)
                         ->inline(false),
 
                     Toggle::make('forward_query_params')
@@ -124,12 +118,73 @@ class ShortUrlForm
                         ->helperText(__('filament-short-url::default.forward_query_params_helper'))
                         ->default(false)
                         ->inline(false),
-
-                    DateTimePicker::make('expires_at')
-                        ->label(__('filament-short-url::default.expires_at'))
-                        ->nullable()
-                        ->native(false),
                 ])->columns(2),
+
+                Section::make(__('filament-short-url::default.form_section_validity'))
+                    ->schema([
+                        Toggle::make('use_date_validity')
+                            ->label(__('filament-short-url::default.use_date_validity'))
+                            ->dehydrated(false)
+                            ->live()
+                            ->afterStateHydrated(function (Toggle $component, $state, Get $get, Set $set) {
+                                $set('use_date_validity', $get('activated_at') !== null || $get('expires_at') !== null);
+                            })
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                if ($state) {
+                                    $set('activated_at', now()->startOfMinute());
+                                } else {
+                                    $set('activated_at', null);
+                                    $set('expires_at', null);
+                                    $set('expiration_redirect_url', null);
+                                }
+                            })
+                            ->columnSpanFull(),
+
+                        DateTimePicker::make('activated_at')
+                            ->label(__('filament-short-url::default.activated_at'))
+                            ->nullable()
+                            ->native(false)
+                            ->withoutSeconds()
+                            ->live(onBlur: true)
+                            ->required(fn (Get $get): bool => (bool) $get('use_date_validity'))
+                            ->visible(fn (Get $get): bool => (bool) $get('use_date_validity'))
+                            ->minDate(now()->startOfDay())
+                            ->maxDate(fn (Get $get) => $get('expires_at')),
+
+                        DateTimePicker::make('expires_at')
+                            ->label(__('filament-short-url::default.expires_at'))
+                            ->nullable()
+                            ->native(false)
+                            ->withoutSeconds()
+                            ->live(onBlur: true)
+                            ->visible(fn (Get $get): bool => (bool) $get('use_date_validity'))
+                            ->minDate(fn (Get $get) => $get('activated_at') ?: now()->startOfDay()),
+
+                        TextInput::make('expiration_redirect_url')
+                            ->label(__('filament-short-url::default.expiration_redirect_url'))
+                            ->helperText(__('filament-short-url::default.expiration_redirect_url_helper'))
+                            ->url()
+                            ->maxLength(2048)
+                            ->nullable()
+                            ->visible(fn (Get $get): bool => (bool) $get('use_date_validity'))
+                            ->columnSpanFull(),
+
+                        Toggle::make('single_use')
+                            ->label(__('filament-short-url::default.single_use'))
+                            ->helperText(__('filament-short-url::default.single_use_helper'))
+                            ->default(false)
+                            ->inline(false)
+                            ->live(),
+
+                        TextInput::make('max_visits')
+                            ->label(__('filament-short-url::default.max_visits'))
+                            ->helperText(__('filament-short-url::default.max_visits_helper'))
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->nullable()
+                            ->hidden(fn (Get $get): bool => (bool) $get('single_use')),
+                    ])->columns(2),
 
                 Section::make(__('filament-short-url::default.form_section_notes'))->schema([
                     Textarea::make('notes')
@@ -183,7 +238,7 @@ class ShortUrlForm
                     ->schema([
                         Toggle::make('track_visits')
                             ->label(__('filament-short-url::default.track_visits'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.enabled', true))
                             ->live()
                             ->inline(false)
                             ->columnSpanFull(),
@@ -193,43 +248,43 @@ class ShortUrlForm
                     ->schema([
                         Toggle::make('track_ip_address')
                             ->label(__('filament-short-url::default.track_ip'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.ip_address', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
 
                         Toggle::make('track_browser')
                             ->label(__('filament-short-url::default.track_browser'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.browser', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
 
                         Toggle::make('track_browser_version')
                             ->label(__('filament-short-url::default.track_browser_version'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.browser_version', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
 
                         Toggle::make('track_operating_system')
                             ->label(__('filament-short-url::default.track_os'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.operating_system', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
 
                         Toggle::make('track_operating_system_version')
                             ->label(__('filament-short-url::default.track_os_version'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.operating_system_version', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
 
                         Toggle::make('track_device_type')
                             ->label(__('filament-short-url::default.track_device_type'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.device_type', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
 
                         Toggle::make('track_referer_url')
                             ->label(__('filament-short-url::default.track_referer'))
-                            ->default(true)
+                            ->default(fn () => config('filament-short-url.tracking.fields.referer_url', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
                     ])
@@ -378,39 +433,17 @@ class ShortUrlForm
                             ->schema([
                                 Select::make('country_code')
                                     ->label(__('filament-short-url::default.country_code'))
-                                    ->options([
-                                        'PL' => 'Poland',
-                                        'US' => 'United States',
-                                        'GB' => 'United Kingdom',
-                                        'DE' => 'Germany',
-                                        'FR' => 'France',
-                                        'ES' => 'Spain',
-                                        'IT' => 'Italy',
-                                        'CA' => 'Canada',
-                                        'AU' => 'Australia',
-                                        'NL' => 'Netherlands',
-                                        'UA' => 'Ukraine',
-                                        'IE' => 'Ireland',
-                                        'BE' => 'Belgium',
-                                        'AT' => 'Austria',
-                                        'CH' => 'Switzerland',
-                                        'SE' => 'Sweden',
-                                        'NO' => 'Norway',
-                                        'DK' => 'Denmark',
-                                        'FI' => 'Finland',
-                                        'CZ' => 'Czech Republic',
-                                        'SK' => 'Slovakia',
-                                        'HU' => 'Hungary',
-                                        'RO' => 'Romania',
-                                        'GR' => 'Greece',
-                                        'PT' => 'Portugal',
-                                        'BR' => 'Brazil',
-                                        'MX' => 'Mexico',
-                                        'CN' => 'China',
-                                        'JP' => 'Japan',
-                                        'IN' => 'India',
-                                    ])
+                                    ->options(function (): array {
+                                        $countries = __('filament-short-url::countries');
+                                        if (is_array($countries)) {
+                                            asort($countries, SORT_LOCALE_STRING);
+                                            return $countries;
+                                        }
+                                        return [];
+                                    })
                                     ->searchable()
+                                    ->optionsLimit(300)
+                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->required(),
                                 TextInput::make('url')
                                     ->label(__('filament-short-url::default.destination_url'))

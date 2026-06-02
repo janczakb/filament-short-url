@@ -51,6 +51,34 @@ class ShortUrlBuilder
         return $this;
     }
 
+    public function activatedAt(\DateTimeInterface|Carbon|null $date): static
+    {
+        $this->data['activated_at'] = $date ? Carbon::instance($date) : null;
+
+        return $this;
+    }
+
+    public function deactivatedAt(\DateTimeInterface|Carbon|null $date): static
+    {
+        $this->data['deactivated_at'] = $date ? Carbon::instance($date) : null;
+
+        return $this;
+    }
+
+    public function maxVisits(?int $maxVisits): static
+    {
+        $this->data['max_visits'] = $maxVisits;
+
+        return $this;
+    }
+
+    public function expirationRedirectUrl(?string $url): static
+    {
+        $this->data['expiration_redirect_url'] = $url;
+
+        return $this;
+    }
+
     public function trackVisits(bool $track = true): static
     {
         $this->data['track_visits'] = $track;

@@ -95,6 +95,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Queue Name
+    |--------------------------------------------------------------------------
+    | The queue name to which visit tracking and counter jobs are dispatched.
+    |
+    */
+    'queue_name' => env('SHORT_URL_QUEUE_NAME', 'default'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Redirect Cache TTL
     |--------------------------------------------------------------------------
     | Short URL records are cached so redirects never hit the database on hot
@@ -127,8 +136,8 @@ return [
         'foreground_color' => '#000000',
         'background_color' => '#ffffff',
         'gradient_enabled' => false,
-        'gradient_from' => '#000000',
-        'gradient_to' => '#ffffff',
+        'gradient_from' => '#4f46e5',
+        'gradient_to' => '#06b6d4',
         'gradient_type' => 'linear',
     ],
 

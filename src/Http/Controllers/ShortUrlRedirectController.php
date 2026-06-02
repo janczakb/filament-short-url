@@ -27,8 +27,12 @@ class ShortUrlRedirectController extends Controller
             abort(404);
         }
 
-        // 410 Gone if disabled or expired
+        // Redirect to custom expiration URL if defined, otherwise 410 Gone if disabled or expired
         if (! $shortUrl->isActive()) {
+            if ($shortUrl->expiration_redirect_url) {
+                return redirect()->away($shortUrl->expiration_redirect_url, 302);
+            }
+
             abort(410);
         }
 
