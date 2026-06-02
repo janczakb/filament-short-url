@@ -74,6 +74,9 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'qr_gradient_from' => $mgr->get('qr_gradient_from', '#4f46e5'),
             'qr_gradient_to' => $mgr->get('qr_gradient_to', '#06b6d4'),
             'qr_gradient_type' => $mgr->get('qr_gradient_type', 'linear'),
+            'global_webhook_url' => $mgr->get('global_webhook_url'),
+            'webhook_events' => $mgr->get('webhook_events', ['visited']),
+            'api_keys' => $mgr->get('api_keys', []),
         ]);
     }
 
@@ -535,6 +538,56 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ])
                                             ->required(fn (Get $get): bool => (bool) $get('qr_gradient_enabled'))
                                             ->visible(fn (Get $get): bool => (bool) $get('qr_gradient_enabled')),
+                                    ]),
+                            ]),
+
+                        // ── Developer API & Webhooks ────────────────────────
+                        Tab::make(__('filament-short-url::default.settings_tab_developer'))
+                            ->icon('heroicon-o-cpu-chip')
+                            ->schema([
+                                Section::make(__('filament-short-url::default.settings_section_global_webhook'))
+                                    ->schema([
+                                        TextInput::make('global_webhook_url')
+                                            ->label(__('filament-short-url::default.settings_global_webhook_url'))
+                                            ->helperText(__('filament-short-url::default.settings_global_webhook_url_helper'))
+                                            ->url()
+                                            ->nullable()
+                                            ->columnSpanFull(),
+
+                                        Select::make('webhook_events')
+                                            ->label(__('filament-short-url::default.settings_webhook_events'))
+                                            ->helperText(__('filament-short-url::default.settings_webhook_events_helper'))
+                                            ->multiple()
+                                            ->options([
+                                                'visited' => __('filament-short-url::default.webhook_event_visited'),
+                                                'created' => __('filament-short-url::default.webhook_event_created'),
+                                                'expired' => __('filament-short-url::default.webhook_event_expired'),
+                                                'limit_reached' => __('filament-short-url::default.webhook_event_limit_reached'),
+                                            ])
+                                            ->default(['visited'])
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Section::make(__('filament-short-url::default.settings_section_api_keys'))
+                                    ->description(__('filament-short-url::default.settings_api_keys_description'))
+                                    ->schema([
+                                        \Filament\Forms\Components\Repeater::make('api_keys')
+                                            ->label(__('filament-short-url::default.settings_api_keys'))
+                                            ->schema([
+                                                TextInput::make('name')
+                                                    ->label(__('filament-short-url::default.api_key_name'))
+                                                    ->required(),
+                                                TextInput::make('key')
+                                                    ->label(__('filament-short-url::default.api_key'))
+                                                    ->disabled()
+                                                    ->dehydrated()
+                                                    ->default(fn () => 'sh_key_'.bin2hex(random_bytes(16))),
+                                                Toggle::make('is_active')
+                                                    ->label(__('filament-short-url::default.active'))
+                                                    ->default(true),
+                                            ])
+                                            ->columns(3)
+                                            ->default([]),
                                     ]),
                             ]),
                     ]),

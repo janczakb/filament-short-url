@@ -11,3 +11,11 @@ Route::match(
     ->name('short-url.redirect')
     ->where('key', '[a-zA-Z0-9_-]+')
     ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
+
+Route::prefix('api/short-url')
+    ->middleware([\Bjanczak\FilamentShortUrl\Http\Middleware\AuthenticateShortUrlApi::class])
+    ->group(function () {
+        Route::get('links', [\Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlApiController::class, 'index']);
+        Route::post('links', [\Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlApiController::class, 'store']);
+        Route::delete('links/{id}', [\Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlApiController::class, 'destroy']);
+    });

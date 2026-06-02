@@ -80,6 +80,10 @@ class ShortUrl extends Model
         'unique_visits',
         'max_visits',
         'expiration_redirect_url',
+        'pixel_meta_id',
+        'pixel_google_id',
+        'pixel_linkedin_id',
+        'webhook_url',
     ];
 
     /** @var array<string, string> */
@@ -185,6 +189,19 @@ class ShortUrl extends Model
 
             if ($m->activated_at === null && $m->expires_at === null) {
                 $m->expiration_redirect_url = null;
+            }
+
+            if (empty($m->pixel_meta_id)) {
+                $m->pixel_meta_id = null;
+            }
+            if (empty($m->pixel_google_id)) {
+                $m->pixel_google_id = null;
+            }
+            if (empty($m->pixel_linkedin_id)) {
+                $m->pixel_linkedin_id = null;
+            }
+            if (empty($m->webhook_url)) {
+                $m->webhook_url = null;
             }
         });
 

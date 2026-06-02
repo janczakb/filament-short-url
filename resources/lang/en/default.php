@@ -338,4 +338,33 @@ return [
     'warning_description' => 'You are leaving this secure portal and being redirected to an external target link. Please ensure you trust the address below:',
     'warning_btn_continue' => 'Continue to Destination',
     'warning_btn_back' => 'Go Back',
+
+    // Marketing & API Tab
+    'tab_marketing' => 'Marketing & API',
+    'marketing_pixels_title' => 'Retargeting Pixels (Client-Side)',
+    'marketing_pixels_desc' => 'Add ad tracking scripts to capture visitor cookies and build remarketing lists.',
+    'pixel_meta' => 'Meta Pixel ID',
+    'pixel_google' => 'Google Tag / GA4 ID',
+    'pixel_linkedin' => 'LinkedIn Partner ID',
+    'marketing_webhooks_title' => 'Link Webhook Integration',
+    'marketing_webhooks_desc' => 'Configure a custom destination URL to send a real-time HTTP POST notification on each click.',
+    'webhook_url' => 'Dedicated Webhook URL',
+
+    // Settings tab additions
+    'settings_tab_developer' => 'API & Webhooks',
+    'settings_section_global_webhook' => 'Global Webhook Configuration',
+    'settings_global_webhook_url' => 'Global Webhook URL',
+    'settings_global_webhook_url_helper' => 'Destination URL to dispatch event payloads asynchronously in the background for all links.',
+    'settings_webhook_events' => 'Monitored Webhook Events',
+    'settings_webhook_events_helper' => 'Select which events should trigger a POST notification.',
+    'webhook_event_visited' => 'Link Visited (Click)',
+    'webhook_event_created' => 'Link Created',
+    'webhook_event_expired' => 'Link Expired (Date)',
+    'webhook_event_limit_reached' => 'Link Click Limit Reached',
+    'settings_section_api_keys' => 'Developer API Keys',
+    'settings_api_keys_description' => 'Manage API keys to integrate with external systems (e.g. CRM, Zapier, Make). Authenticate requests using the X-Api-Key header.',
+    'settings_api_keys' => 'Active API Keys',
+    'api_key_name' => 'Key Name (Description)',
+    'api_key' => 'API Key',
+    'active' => 'Active',
 ];

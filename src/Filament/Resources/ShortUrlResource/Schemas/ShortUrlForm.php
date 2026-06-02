@@ -27,6 +27,7 @@ class ShortUrlForm
                 static::linkTab(),
                 static::targetingTab(),
                 static::trackingTab(),
+                static::marketingTab(),
                 static::qrDesignTab(),
             ])->columnSpanFull(),
         ]);
@@ -474,6 +475,45 @@ class ShortUrlForm
                             ])
                             ->columns(2)
                             ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'rotation'),
+                    ]),
+            ]);
+    }
+
+    private static function marketingTab(): Tab
+    {
+        return Tab::make(__('filament-short-url::default.tab_marketing'))
+            ->icon('heroicon-o-megaphone')
+            ->schema([
+                Section::make(__('filament-short-url::default.marketing_pixels_title'))
+                    ->description(__('filament-short-url::default.marketing_pixels_desc'))
+                    ->schema([
+                        TextInput::make('pixel_meta_id')
+                            ->label(__('filament-short-url::default.pixel_meta'))
+                            ->placeholder('e.g., 1234567890')
+                            ->maxLength(100)
+                            ->nullable(),
+                        TextInput::make('pixel_google_id')
+                            ->label(__('filament-short-url::default.pixel_google'))
+                            ->placeholder('e.g., G-XXXXXXXXXX or AW-XXXXXXXXXX')
+                            ->maxLength(100)
+                            ->nullable(),
+                        TextInput::make('pixel_linkedin_id')
+                            ->label(__('filament-short-url::default.pixel_linkedin'))
+                            ->placeholder('e.g., 1234567')
+                            ->maxLength(100)
+                            ->nullable(),
+                    ])->columns(3),
+
+                Section::make(__('filament-short-url::default.marketing_webhooks_title'))
+                    ->description(__('filament-short-url::default.marketing_webhooks_desc'))
+                    ->schema([
+                        TextInput::make('webhook_url')
+                            ->label(__('filament-short-url::default.webhook_url'))
+                            ->placeholder('https://api.yourcrm.com/webhooks/clicks')
+                            ->url()
+                            ->maxLength(2048)
+                            ->nullable()
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

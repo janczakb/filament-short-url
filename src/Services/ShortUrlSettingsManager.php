@@ -76,6 +76,9 @@ class ShortUrlSettingsManager
             'qr_gradient_from' => config('filament-short-url.qr_defaults.gradient_from', '#4f46e5'),
             'qr_gradient_to' => config('filament-short-url.qr_defaults.gradient_to', '#06b6d4'),
             'qr_gradient_type' => config('filament-short-url.qr_defaults.gradient_type', 'linear'),
+            'global_webhook_url' => null,
+            'webhook_events' => ['visited'],
+            'api_keys' => [],
         ], $stored);
 
         return $this->cache;
@@ -142,6 +145,9 @@ class ShortUrlSettingsManager
             'qr_gradient_from',
             'qr_gradient_to',
             'qr_gradient_type',
+            'global_webhook_url',
+            'webhook_events',
+            'api_keys',
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
@@ -292,6 +298,8 @@ class ShortUrlSettingsManager
             'filament-short-url.qr_defaults.gradient_from' => $settings['qr_gradient_from'],
             'filament-short-url.qr_defaults.gradient_to' => $settings['qr_gradient_to'],
             'filament-short-url.qr_defaults.gradient_type' => $settings['qr_gradient_type'],
+            'filament-short-url.global_webhook_url' => $settings['global_webhook_url'] ?? null,
+            'filament-short-url.webhook_events' => $settings['webhook_events'] ?? ['visited'],
         ]);
     }
 }

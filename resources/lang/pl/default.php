@@ -339,4 +339,33 @@ return [
     'warning_description' => 'Opuszczasz ten bezpieczny portal i zostajesz przekierowany na zewnętrzny link docelowy. Upewnij się, że ufasz poniższemu adresowi:',
     'warning_btn_continue' => 'Kontynuuj do celu',
     'warning_btn_back' => 'Wróć',
+
+    // Marketing & API Tab
+    'tab_marketing' => 'Marketing i API',
+    'marketing_pixels_title' => 'Piksele retargetingowe (Client-Side)',
+    'marketing_pixels_desc' => 'Dodaj skrypty śledzące, aby dołączać ciasteczka odwiedzających i budować grupy remarketingowe reklam.',
+    'pixel_meta' => 'Meta Pixel ID',
+    'pixel_google' => 'Google Tag / GA4 ID',
+    'pixel_linkedin' => 'LinkedIn Partner ID',
+    'marketing_webhooks_title' => 'Integracja Webhook linku',
+    'marketing_webhooks_desc' => 'Skonfiguruj niestandardowy adres URL, pod który wysłane zostanie natychmiastowe powiadomienie HTTP POST po kliknięciu.',
+    'webhook_url' => 'Dedykowany Webhook URL',
+
+    // Settings tab additions
+    'settings_tab_developer' => 'API i Webhooki',
+    'settings_section_global_webhook' => 'Konfiguracja globalnego Webhooka',
+    'settings_global_webhook_url' => 'Globalny Webhook URL',
+    'settings_global_webhook_url_helper' => 'Adres URL, pod który wysyłane będą w tle powiadomienia o zdarzeniach ze wszystkich linków.',
+    'settings_webhook_events' => 'Monitorowane zdarzenia Webhooka',
+    'settings_webhook_events_helper' => 'Wybierz zdarzenia, które powinny wyzwalać wysłanie powiadomienia POST.',
+    'webhook_event_visited' => 'Odwiedziny linku (Wizyta)',
+    'webhook_event_created' => 'Utworzenie linku',
+    'webhook_event_expired' => 'Wygaśnięcie linku (Data)',
+    'webhook_event_limit_reached' => 'Osiągnięcie limitu kliknięć',
+    'settings_section_api_keys' => 'Klucze API Dewelopera',
+    'settings_api_keys_description' => 'Zarządzaj kluczami API do integracji z zewnętrznymi systemami (np. CRM, Zapier, Make). Autoryzacja odbywa się za pomocą nagłówka X-Api-Key.',
+    'settings_api_keys' => 'Aktywne klucze API',
+    'api_key_name' => 'Nazwa klucza (Opis)',
+    'api_key' => 'Klucz API',
+    'active' => 'Aktywny',
 ];
