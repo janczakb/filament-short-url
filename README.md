@@ -50,6 +50,9 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 - 🎯 **Smart Link Targeting** — Route visitors to different destination URLs based on their device type, country, or via weighted A/B split rotation.
 - 🛡️ **Rate Limiting / Bot Protection** — Configurable per-IP rate limits on redirects with automatic `429 Too Many Requests` responses.
 - 📊 **Daily Stats Aggregation & Pruning** — Automatic daily summarization of raw visit logs into compact daily stats tables. Configurable retention window prevents unbounded database growth at scale.
+- 🎯 **Social Retargeting Pixels** *(new in v1.5)* — Inject Meta Pixel, Google Tag, and LinkedIn Insight tracking scripts client-side via a premium glassmorphic interstitial page. Build remarketing audiences even when redirecting to external domains.
+- 🔌 **Developer REST API** *(new in v1.5)* — Full REST API (`GET`, `POST`, `DELETE`) for external integrations. Secured with API Key authentication managed via the Settings panel.
+- 📡 **Webhooks** *(new in v1.5)* — Real-time HTTP POST event notifications on every click, link creation, or expiration. Configure per-link or globally, dispatched asynchronously via the queue.
 
 ---
 
@@ -362,6 +365,246 @@ When Redis is not available and counter buffering is enabled, the `IncrementVisi
 
 ---
 
+## Social Retargeting Pixels (new in v1.5.0)
+
+The **Marketing & API** tab in the short URL form lets you attach client-side tracking pixels to any link. When a visitor clicks a link that has pixels configured, instead of an instant 302 redirect the plugin serves a lightweight HTML interstitial page (styled with glassmorphism) for ~250 ms. During that time the browser executes the pixel scripts — capturing cookies and building ad audiences — then the visitor is forwarded to the destination URL.
+
+This unlocks remarketing to people who clicked your links **even when redirecting to external domains** (e.g. booking.com, amazon.com) where you cannot install your own tracking code.
+
+### Supported Pixel Providers
+
+| Field | Provider | Script loaded |
+|---|---|---|
+| **Meta Pixel ID** | Meta / Facebook Ads | `fbevents.js` via `fbq('init', ...)` |
+| **Google Tag / GA4 ID** | Google Ads, GA4 | `gtag.js` via Google Tag Manager |
+| **LinkedIn Partner ID** | LinkedIn Insight Tag | `insight.min.js` via LinkedIn |
+
+> **Note:** These pixels fire **client-side** in the visitor's browser — completely separate from the server-side GA4 Measurement Protocol integration. Both systems work in parallel and do not interfere with each other.
+
+### How to use
+
+1. Open any short URL for editing.
+2. Navigate to the **Marketing & API** tab.
+3. Enter your pixel IDs in the **Retargeting Pixels** section.
+4. Save. Done — every click will now trigger the configured tracking scripts.
+
+```php
+// Programmatically via model attributes
+$shortUrl->update([
+    'pixel_meta_id'     => '1234567890',
+    'pixel_google_id'   => 'G-XXXXXXXXXX',
+    'pixel_linkedin_id' => '1234567',
+]);
+```
+
+> **Privacy/GDPR Note:** You are responsible for ensuring that firing these pixels complies with applicable privacy regulations and your cookie consent mechanism.
+
+---
+
+## Developer REST API (new in v1.5.0)
+
+The plugin exposes a REST API that allows external systems (CRMs, Zapier, Make, custom integrations) to manage short URLs programmatically.
+
+### Enabling the API
+
+The API is **disabled by default**. Enable it in **Settings → API & Webhooks → REST API Access → Enable Developer REST API**.
+
+### Authentication
+
+All API endpoints are protected. Include your API key in every request using one of these headers:
+
+```
+X-Api-Key: sh_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+or
+```
+Authorization: Bearer sh_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Managing API Keys:** Go to **Settings → API & Webhooks → Developer API Keys** and add named keys. Each key can be individually activated or deactivated without deleting it.
+
+> If the API is disabled globally, all endpoints return `503 Service Unavailable` regardless of the key provided.
+
+### Endpoints
+
+#### `GET /api/short-url/links`
+List all short URLs (paginated, 30 per page).
+
+```bash
+curl https://yourdomain.com/api/short-url/links \
+  -H "X-Api-Key: sh_key_your_key_here"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "destination_url": "https://example.com",
+      "url_key": "abc123",
+      "short_url": "https://yourdomain.com/s/abc123",
+      "is_enabled": true,
+      "redirect_status_code": 302,
+      "total_visits": 47,
+      "unique_visits": 31,
+      "max_visits": null,
+      "activated_at": null,
+      "expires_at": null,
+      "pixel_meta_id": null,
+      "pixel_google_id": null,
+      "pixel_linkedin_id": null,
+      "webhook_url": null,
+      "notes": null,
+      "created_at": "2026-06-01T12:00:00+00:00"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "last_page": 3,
+    "per_page": 30,
+    "total": 72
+  }
+}
+```
+
+#### `POST /api/short-url/links`
+Create a new short URL.
+
+```bash
+curl -X POST https://yourdomain.com/api/short-url/links \
+  -H "X-Api-Key: sh_key_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destination_url": "https://example.com/product",
+    "url_key": "promo26",
+    "notes": "Summer campaign",
+    "single_use": false,
+    "max_visits": 1000,
+    "pixel_meta_id": "1234567890",
+    "webhook_url": "https://api.mycrm.com/clicks"
+  }'
+```
+
+**Accepted fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `destination_url` | string (URL) | ✅ | Target URL |
+| `url_key` | string | ❌ | Custom slug (auto-generated if omitted) |
+| `notes` | string | ❌ | Internal notes |
+| `is_enabled` | boolean | ❌ | Active status (default: `true`) |
+| `redirect_status_code` | integer (301/302) | ❌ | HTTP redirect code |
+| `single_use` | boolean | ❌ | Expire after first click |
+| `forward_query_params` | boolean | ❌ | Forward query string to destination |
+| `max_visits` | integer | ❌ | Click limit before expiry |
+| `expiration_redirect_url` | string (URL) | ❌ | Fallback URL on expiry |
+| `activated_at` | datetime | ❌ | Activation timestamp |
+| `expires_at` | datetime | ❌ | Expiration timestamp |
+| `pixel_meta_id` | string | ❌ | Meta Pixel ID |
+| `pixel_google_id` | string | ❌ | Google Tag / GA4 ID |
+| `pixel_linkedin_id` | string | ❌ | LinkedIn Partner ID |
+| `webhook_url` | string (URL) | ❌ | Per-link webhook endpoint |
+
+**Response:** `201 Created` with the created link object.
+
+#### `DELETE /api/short-url/links/{id}`
+Permanently delete a short URL by its ID.
+
+```bash
+curl -X DELETE https://yourdomain.com/api/short-url/links/42 \
+  -H "X-Api-Key: sh_key_your_key_here"
+```
+
+**Response:** `200 OK`
+```json
+{ "message": "Short URL deleted successfully." }
+```
+
+### Error Responses
+
+| HTTP Code | Reason |
+|---|---|
+| `401 Unauthorized` | Missing or invalid API key |
+| `422 Unprocessable Entity` | Validation error (see `errors` field in response) |
+| `503 Service Unavailable` | REST API is disabled in Settings |
+
+---
+
+## Webhooks (new in v1.5.0)
+
+Webhooks allow external systems to receive real-time HTTP POST notifications when events occur on your short URLs. Payloads are dispatched **asynchronously** via the Laravel Queue — redirects are never blocked.
+
+### Configuration
+
+Webhooks can be configured at two levels:
+
+**1. Per-link webhook** — Set a `Dedicated Webhook URL` in the **Marketing & API** tab of a specific short URL. Fires for every click on that link.
+
+**2. Global webhook** — Set a **Global Webhook URL** in **Settings → API & Webhooks → Global Webhook Configuration**. Fires for all links that don't have their own webhook URL, for the event types you select.
+
+### Monitored Events
+
+| Event key | When fired |
+|---|---|
+| `visited` | A visitor clicks the short URL |
+| `created` | A new short URL is created via the REST API |
+| `expired` | A link reaches its expiration date |
+| `limit_reached` | A link reaches its `max_visits` click limit |
+
+Select which events to monitor in **Settings → API & Webhooks → Monitored Webhook Events**.
+
+### Payload Format
+
+All webhook requests are HTTP POST with `Content-Type: application/json` and the following payload structure:
+
+```json
+{
+  "event": "visited",
+  "timestamp": "2026-06-02T10:00:00+00:00",
+  "short_url": {
+    "id": 1,
+    "destination_url": "https://example.com",
+    "url_key": "abc123",
+    "short_url": "https://yourdomain.com/s/abc123",
+    "total_visits": 48,
+    "unique_visits": 32
+  },
+  "visit": {
+    "id": 101,
+    "visited_at": "2026-06-02T10:00:00+00:00",
+    "device_type": "desktop",
+    "browser": "Chrome",
+    "browser_version": "124.0",
+    "operating_system": "Windows",
+    "operating_system_version": "10",
+    "country": "Poland",
+    "country_code": "PL",
+    "city": "Warsaw",
+    "referer_url": "https://linkedin.com",
+    "referer_host": "linkedin.com",
+    "utm_source": "linkedin",
+    "utm_medium": "social",
+    "utm_campaign": "spring_sale",
+    "utm_term": null,
+    "utm_content": null
+  }
+}
+```
+
+### Retry Policy
+
+If the webhook endpoint returns a non-2xx response or is unreachable, the `SendWebhookJob` will automatically retry up to **3 times** with a **10-second backoff** between attempts. Failed jobs land in your queue's failed jobs table after exhausting retries.
+
+### Webhook Priority (per-link vs global)
+
+The resolution order is:
+1. If the short URL has its own `webhook_url` → use it (always fires, regardless of global event selection).
+2. If no per-link URL is set, and a **Global Webhook URL** is configured, and the event type is in the selected **Monitored Events** list → use the global URL.
+3. Otherwise no webhook is fired.
+
+---
+
 ## Configuration Reference (.env)
 
 You can also pre-configure all parameters via your `.env` file:
@@ -520,7 +763,16 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 
 ## Changelog
 
-### v1.4.0 (Latest)
+### v1.5.1
+- **REST API On/Off Toggle** — Enable or disable the entire developer REST API from Settings → API & Webhooks without touching code. Returns `503 Service Unavailable` when disabled. Toggle takes effect immediately without route cache clearing.
+
+### v1.5.0
+- **Social Retargeting Pixels** — Attach Meta Pixel, Google Tag (GA4/Ads), and LinkedIn Insight Tag to any short URL. A premium glassmorphic interstitial page executes pixel scripts in the visitor's browser before forwarding them to the destination. Enables building remarketing audiences even on external domains.
+- **Developer REST API** — Full `GET /api/short-url/links`, `POST /api/short-url/links`, and `DELETE /api/short-url/links/{id}` endpoints with API Key authentication (managed via Settings UI). Supports creating links with all available attributes including pixels and webhooks.
+- **Webhook System** — Real-time HTTP POST notifications on `visited`, `created`, `expired`, and `limit_reached` events. Configurable per-link or globally. Dispatched asynchronously via `SendWebhookJob` with 3-attempt retry policy and 10-second backoff.
+- **Settings: API & Webhooks Tab** — New settings tab to manage global webhook URL, monitored event types, and developer API key management with name labels and per-key activation toggles.
+
+### v1.4.0
 - **Validity Date Ranges (From-To)** — Set activation dates (`activated_at` and `expires_at`) to control exactly when a short link is active.
 - **Custom Visit Limit Counters** — Define a custom maximum visit limit (`max_visits`) after which a link automatically expires (e.g., active for 3 hits).
 - **Custom Expiration Fallbacks** — Redirect expired/inactive visitors to a custom `expiration_redirect_url` rather than showing a static 410 Gone error page.

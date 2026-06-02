@@ -77,6 +77,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'global_webhook_url' => $mgr->get('global_webhook_url'),
             'webhook_events' => $mgr->get('webhook_events', ['visited']),
             'api_keys' => $mgr->get('api_keys', []),
+            'api_enabled' => $mgr->get('api_enabled', false),
         ]);
     }
 
@@ -545,6 +546,16 @@ class ShortUrlSettingsPage extends Page implements HasForms
                         Tab::make(__('filament-short-url::default.settings_tab_developer'))
                             ->icon('heroicon-o-cpu-chip')
                             ->schema([
+                                Section::make(__('filament-short-url::default.settings_section_rest_api'))
+                                    ->schema([
+                                        Toggle::make('api_enabled')
+                                            ->label(__('filament-short-url::default.settings_api_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_api_enabled_helper'))
+                                            ->default(false)
+                                            ->inline(false)
+                                            ->columnSpanFull(),
+                                    ]),
+
                                 Section::make(__('filament-short-url::default.settings_section_global_webhook'))
                                     ->schema([
                                         TextInput::make('global_webhook_url')

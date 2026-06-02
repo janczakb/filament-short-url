@@ -352,6 +352,9 @@ return [
 
     // Settings tab additions
     'settings_tab_developer' => 'API & Webhooks',
+    'settings_section_rest_api' => 'REST API Access',
+    'settings_api_enabled' => 'Enable Developer REST API',
+    'settings_api_enabled_helper' => 'Allow external systems to create, list, and delete short URLs via the REST API. Disable to block all /api/short-url/* endpoints with a 503 response.',
     'settings_section_global_webhook' => 'Global Webhook Configuration',
     'settings_global_webhook_url' => 'Global Webhook URL',
     'settings_global_webhook_url_helper' => 'Destination URL to dispatch event payloads asynchronously in the background for all links.',

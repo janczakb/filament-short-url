@@ -14,6 +14,12 @@ class AuthenticateShortUrlApi
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (! config('filament-short-url.api_enabled', false)) {
+            return response()->json([
+                'error' => 'The Developer API is currently disabled. Enable it in Short URL Settings → API & Webhooks.',
+            ], 503);
+        }
+
         $apiKey = $request->header('X-Api-Key');
 
         if (!$apiKey && $auth = $request->header('Authorization')) {

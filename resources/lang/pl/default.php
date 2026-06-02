@@ -353,6 +353,9 @@ return [
 
     // Settings tab additions
     'settings_tab_developer' => 'API i Webhooki',
+    'settings_section_rest_api' => 'Dostęp do REST API',
+    'settings_api_enabled' => 'Włącz Developer REST API',
+    'settings_api_enabled_helper' => 'Zezwól zewnętrznym systemom na tworzenie, listowanie i usuwanie krótkich linków przez REST API. Wyłącz, aby zablokować wszystkie endpointy /api/short-url/* odpowiedzią 503.',
     'settings_section_global_webhook' => 'Konfiguracja globalnego Webhooka',
     'settings_global_webhook_url' => 'Globalny Webhook URL',
     'settings_global_webhook_url_helper' => 'Adres URL, pod który wysyłane będą w tle powiadomienia o zdarzeniach ze wszystkich linków.',
