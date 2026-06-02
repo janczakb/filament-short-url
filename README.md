@@ -27,6 +27,9 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
       <td width="50%" style="border: none; padding: 5px;"><img src="art/3.png" alt="Targeting and Rules" style="border-radius: 8px;"></td>
       <td width="50%" style="border: none; padding: 5px;"><img src="art/4.png" alt="Interactive Settings Panel" style="border-radius: 8px;"></td>
     </tr>
+    <tr style="border: none;">
+      <td colspan="2" style="border: none; padding: 5px;"><img src="art/5.png" alt="Visit Logs Table" style="border-radius: 8px; width: 100%;"></td>
+    </tr>
   </table>
 </p>
 
