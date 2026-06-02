@@ -8,6 +8,7 @@ use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
 use Bjanczak\FilamentShortUrl\Services\GeoIpService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlBuilder;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
+use Bjanczak\FilamentShortUrl\Services\UserAgentParser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -272,12 +273,14 @@ class ShortUrl extends Model
         $type = $rules['type'] ?? 'none';
 
         if ($type === 'device') {
-            $ua = strtolower($request->userAgent() ?? '');
-            if (str_contains($ua, 'iphone') || str_contains($ua, 'ipad') || str_contains($ua, 'ipod')) {
-                return $rules['device']['ios'] ?? $this->destination_url;
+            $parser = app(UserAgentParser::class);
+            $deviceType = $parser->parse($request->userAgent() ?? '')['device_type'];
+
+            if ($deviceType === 'mobile') {
+                return $rules['device']['mobile'] ?? $rules['device']['ios'] ?? $this->destination_url;
             }
-            if (str_contains($ua, 'android')) {
-                return $rules['device']['android'] ?? $this->destination_url;
+            if ($deviceType === 'tablet') {
+                return $rules['device']['tablet'] ?? $rules['device']['android'] ?? $this->destination_url;
             }
 
             return $rules['device']['desktop'] ?? $this->destination_url;
@@ -392,7 +395,7 @@ class ShortUrl extends Model
 
             $rawVisits = [];
             if ($includeToday) {
-                $rawVisits = $this->visits()->whereDate('visited_at', '=', $today)->get();
+                $rawVisits = $this->visits()->where('visited_at', '>=', $today.' 00:00:00')->get();
             }
 
             // Helper to merge associative stats arrays

@@ -43,7 +43,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'geo_ip_driver' => $mgr->get('geo_ip_driver', 'headers'),
             'geo_ip_cache_ttl' => $mgr->get('geo_ip_cache_ttl', 86400),
             'geo_ip_timeout' => $mgr->get('geo_ip_timeout', 3),
-            'maxmind_database_path' => $mgr->get('maxmind_database_path', database_path('geoip/GeoLite2-Country.mmdb')),
+            'maxmind_database_path' => $mgr->get('maxmind_database_path', storage_path('geoip/GeoLite2-Country.mmdb')),
             'queue_connection' => $mgr->get('queue_connection', 'sync'),
             'ga4_api_secret' => $mgr->get('ga4_api_secret'),
             'ga4_firebase_app_id' => $mgr->get('ga4_firebase_app_id'),

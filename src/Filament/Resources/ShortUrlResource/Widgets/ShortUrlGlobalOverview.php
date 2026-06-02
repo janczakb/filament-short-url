@@ -105,12 +105,12 @@ class ShortUrlGlobalOverview extends BaseWidget
                 ->count();
 
             $last7Uniques = ShortUrlVisit::where('visited_at', '>=', now()->subDays(7))
-                ->distinct('ip_address')
-                ->count('ip_address');
+                ->distinct('ip_hash')
+                ->count('ip_hash');
 
             $prev7Uniques = ShortUrlVisit::whereBetween('visited_at', [now()->subDays(14), now()->subDays(7)])
-                ->distinct('ip_address')
-                ->count('ip_address');
+                ->distinct('ip_hash')
+                ->count('ip_hash');
 
             return [
                 'totalVisits' => (int) ($agg->total_visits ?? 0),

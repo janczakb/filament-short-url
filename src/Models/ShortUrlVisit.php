@@ -37,8 +37,15 @@ class ShortUrlVisit extends Model
         'operating_system_version',
         'device_type',
         'referer_url',
+        'referer_host',
         'country',
         'country_code',
+        'city',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
         'visited_at',
     ];
 

@@ -9,6 +9,7 @@ use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\MessageBag;
 use Symfony\Component\HttpFoundation\Response;
 
 class ShortUrlRedirectController extends Controller
@@ -35,11 +36,12 @@ class ShortUrlRedirectController extends Controller
         if (config('filament-short-url.rate_limiting.enabled', false)) {
             $maxAttempts = (int) config('filament-short-url.rate_limiting.max_attempts', 60);
             $decaySeconds = (int) config('filament-short-url.rate_limiting.decay_seconds', 60);
-            $limiterKey = "short_url_limit:{$key}:" . $request->ip();
+            $ipAddress = ClientIpExtractor::getIp($request);
+            $limiterKey = "short_url_limit:{$key}:".$ipAddress;
 
             if (RateLimiter::tooManyAttempts($limiterKey, $maxAttempts)) {
                 $retryAfter = RateLimiter::availableIn($limiterKey);
-                abort(429, 'Too many requests. Please try again in ' . $retryAfter . ' seconds.', [
+                abort(429, 'Too many requests. Please try again in '.$retryAfter.' seconds.', [
                     'Retry-After' => $retryAfter,
                 ]);
             }
@@ -54,12 +56,14 @@ class ShortUrlRedirectController extends Controller
                     $submitted = $request->input('password');
                     if ($submitted === $shortUrl->password) {
                         session()->put($sessionKey, true);
+
                         return redirect()->to($request->fullUrl());
                     }
 
-                    $errors = new \Illuminate\Support\MessageBag([
+                    $errors = new MessageBag([
                         'password' => __('filament-short-url::default.password_error') ?? 'Incorrect password.',
                     ]);
+
                     return response(view('filament-short-url::password-prompt', ['errors' => $errors]))
                         ->header('Content-Type', 'text/html');
                 }
@@ -80,7 +84,7 @@ class ShortUrlRedirectController extends Controller
 
             if (! empty($queryParams)) {
                 $separator = str_contains($destination, '?') ? '&' : '?';
-                $destination .= $separator . http_build_query($queryParams);
+                $destination .= $separator.http_build_query($queryParams);
             }
         }
 

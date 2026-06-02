@@ -266,7 +266,7 @@ return [
     'rotation_url' => 'Destination URL',
     'rotation_weight' => 'Traffic Weight',
     'rotation_weight_helper' => 'Percentage of traffic to route to this URL (e.g. 50 for 50%). Weights are balanced proportionally.',
-    
+
     // New Settings Page Fields
     'settings_tab_advanced' => 'Performance & Security',
     'settings_section_aggregation' => 'High-Traffic Log Management',

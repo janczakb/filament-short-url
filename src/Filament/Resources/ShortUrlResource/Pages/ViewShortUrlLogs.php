@@ -118,8 +118,8 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
                     ])
                     ->query(function ($query, array $data) {
                         return $query
-                            ->when($data['visited_from'], fn ($q, $date) => $q->whereDate('visited_at', '>=', $date))
-                            ->when($data['visited_until'], fn ($q, $date) => $q->whereDate('visited_at', '<=', $date));
+                            ->when($data['visited_from'], fn ($q, $date) => $q->where('visited_at', '>=', $date.' 00:00:00'))
+                            ->when($data['visited_until'], fn ($q, $date) => $q->where('visited_at', '<=', $date.' 23:59:59'));
                     }),
             ])
             ->headerActions([

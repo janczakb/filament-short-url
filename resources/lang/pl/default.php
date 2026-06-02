@@ -192,6 +192,11 @@ return [
     'settings_ga4_api_secret_helper' => 'Wygeneruj w GA4 → Admin → Strumienie danych → twój strumień → Klucze API Measurement Protocol.',
     'settings_ga4_firebase_app_id' => 'Firebase App ID (opcjonalne)',
     'settings_ga4_firebase_app_id_helper' => 'Wymagane tylko przy śledzeniu strumienia Firebase/aplikacji. Zostaw puste dla standardowych strumieni GA4.',
+    'settings_ga4_verify' => 'Testuj połączenie',
+    'settings_ga4_verify_ok' => '✅ Klucz API jest prawidłowy — połączenie z GA4 udane',
+    'settings_ga4_verify_fail' => '❌ Nieprawidłowy klucz API — GA4 odrzuciło żądanie',
+    'settings_ga4_verify_empty' => 'Najpierw wprowadź klucz API.',
+    'settings_ga4_verify_error' => '⚠️ Błąd połączenia — nie można nawiązać kontaktu z GA4',
 
     'settings_section_buffering' => 'Buforowanie liczników wizyt',
     'settings_buffering_enabled' => 'Buforuj kliknięcia w pamięci podręcznej (Cache)',
@@ -262,7 +267,7 @@ return [
     'rotation_url' => 'Docelowy URL',
     'rotation_weight' => 'Waga ruchu',
     'rotation_weight_helper' => 'Procent ruchu kierowany na ten URL (np. 50 dla 50%). Wagi są bilansowane proporcjonalnie.',
-    
+
     // New Settings Page Fields
     'settings_tab_advanced' => 'Wydajność i bezpieczeństwo',
     'settings_section_aggregation' => 'Zarządzanie logami o dużym natężeniu ruchu',

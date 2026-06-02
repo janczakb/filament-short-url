@@ -354,12 +354,12 @@ class ShortUrlForm
 
                         Section::make(__('filament-short-url::default.device_targeting_rules'))
                             ->schema([
-                                TextInput::make('targeting_rules.device.ios')
+                                TextInput::make('targeting_rules.device.mobile')
                                     ->label(__('filament-short-url::default.device_mobile'))
                                     ->url()
                                     ->nullable()
                                     ->maxLength(2048),
-                                TextInput::make('targeting_rules.device.android')
+                                TextInput::make('targeting_rules.device.tablet')
                                     ->label(__('filament-short-url::default.device_tablet'))
                                     ->url()
                                     ->nullable()
@@ -438,7 +438,7 @@ class ShortUrlForm
                             ])
                             ->columns(2)
                             ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'rotation'),
-                    ])
+                    ]),
             ]);
     }
 }

@@ -159,6 +159,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Data Pruning & Aggregation
+    |--------------------------------------------------------------------------
+    | To keep the database clean and fast, raw visit logs can be aggregated
+    | into daily statistics and pruned after a retention period.
+    |
+    */
+    'pruning' => [
+        'enabled' => env('SHORT_URL_PRUNING_ENABLED', true),
+        'retention_days' => env('SHORT_URL_PRUNING_DAYS', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting
+    |--------------------------------------------------------------------------
+    | Protect redirect routes from bot abuse and brute force by enabling
+    | rate limiting.
+    |
+    */
+    'rate_limiting' => [
+        'enabled' => env('SHORT_URL_RATE_LIMITING', false),
+        'max_attempts' => env('SHORT_URL_RATE_LIMIT_MAX', 60),
+        'decay_seconds' => env('SHORT_URL_RATE_LIMIT_DECAY', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Redirect Route Middleware
     |--------------------------------------------------------------------------
     | The middleware list applied to the short URL redirect route.

@@ -2,11 +2,11 @@
 
 namespace Bjanczak\FilamentShortUrl\Console\Commands;
 
-use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlDailyStats;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AggregateAndPruneVisitsCommand extends Command
 {
@@ -19,10 +19,16 @@ class AggregateAndPruneVisitsCommand extends Command
     public function handle(): int
     {
         $today = Carbon::today()->toDateString();
+        $driver = DB::connection()->getDriverName();
+        $dateExpression = match ($driver) {
+            'pgsql' => 'visited_at::date',
+            'sqlsrv' => 'CAST(visited_at AS DATE)',
+            default => 'DATE(visited_at)',
+        };
 
-        // 1. Find all unique dates before today that have visits
-        $dates = ShortUrlVisit::whereDate('visited_at', '<', $today)
-            ->selectRaw('DATE(visited_at) as visit_date')
+        // 1. Find all unique dates before today that have visits (optimized range and compatible DATE extract)
+        $dates = ShortUrlVisit::where('visited_at', '<', $today)
+            ->selectRaw("{$dateExpression} as visit_date")
             ->distinct()
             ->pluck('visit_date')
             ->toArray();
@@ -30,14 +36,14 @@ class AggregateAndPruneVisitsCommand extends Command
         if (empty($dates)) {
             $this->info('No historical visits to aggregate.');
         } else {
-            $this->info('Found ' . count($dates) . ' days to aggregate.');
+            $this->info('Found '.count($dates).' days to aggregate.');
 
             foreach ($dates as $date) {
                 // Accumulate stats per short_url_id using chunked reads — avoids loading
                 // potentially millions of rows into PHP memory at once.
                 $statsByUrl = [];
 
-                ShortUrlVisit::whereDate('visited_at', '=', $date)
+                ShortUrlVisit::whereBetween('visited_at', [$date.' 00:00:00', $date.' 23:59:59'])
                     ->chunk(1000, function ($chunk) use (&$statsByUrl): void {
                         foreach ($chunk as $visit) {
                             $urlId = $visit->short_url_id;
