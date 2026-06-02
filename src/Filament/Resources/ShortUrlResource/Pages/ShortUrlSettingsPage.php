@@ -168,12 +168,14 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                     'redis' => 'redis',
                                                 ];
                                             })
-                                            ->required(),
+                                            ->required()
+                                            ->live(),
 
                                         TextInput::make('queue_name')
                                             ->label(__('filament-short-url::default.settings_queue_name'))
                                             ->helperText(__('filament-short-url::default.settings_queue_name_helper'))
-                                            ->required(),
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => $get('queue_connection') !== 'sync'),
                                     ]),
 
                                 Section::make(__('filament-short-url::default.settings_section_buffering'))
