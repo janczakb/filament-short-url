@@ -181,6 +181,54 @@ All fluent methods on the plugin are optional. If not called, the plugin falls b
 | `navigationLabel(string)` | `'Short URLs'` | Overrides the menu item display name. |
 | `navigationIcon(string)` | `heroicon-o-link` | Overrides the Heroicon used in the sidebar. |
 | `navigationSort(int)` | `50` | Controls the sort order within the navigation list. |
+| `authorizeSettingsUsing(Closure)` | `null` | Restricts access to the Settings page using a custom callback. See [Restricting Settings Access](#restricting-settings-access). |
+
+---
+
+## Restricting Settings Access
+
+By default, any user who can view Short URLs can also access the Settings page. You can restrict this to specific roles or permissions using the `authorizeSettingsUsing()` method:
+
+```php
+FilamentShortUrlPlugin::make()
+    ->authorizeSettingsUsing(fn () => auth()->user()->hasRole('admin'))
+```
+
+The callback can be any closure that returns a `bool`. When it returns `false`, the Settings page returns a 403 and the **Settings** button in the table header is automatically hidden.
+
+### With `spatie/laravel-permission`
+
+```php
+FilamentShortUrlPlugin::make()
+    ->authorizeSettingsUsing(fn () => auth()->user()->hasRole('admin'))
+    // or permission-based:
+    ->authorizeSettingsUsing(fn () => auth()->user()->can('manage short-url settings'))
+```
+
+### Via a Laravel Policy
+
+Alternatively, define a `manageSettings` method in a Policy for the `ShortUrl` model — the plugin detects it automatically without any plugin configuration:
+
+```php
+// app/Policies/ShortUrlPolicy.php
+public function manageSettings(User $user): bool
+{
+    return $user->is_admin;
+}
+```
+
+Then register it in `AuthServiceProvider`:
+
+```php
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use App\Policies\ShortUrlPolicy;
+
+protected $policies = [
+    ShortUrl::class => ShortUrlPolicy::class,
+];
+```
+
+> **Priority order:** `authorizeSettingsUsing()` callback → `ShortUrlPolicy@manageSettings` → default `canViewAny()` fallback.
 
 ---
 
@@ -804,6 +852,9 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v1.7.0
+- **Role-based Settings Access Control** — New `authorizeSettingsUsing(Closure)` method on the plugin to restrict who can access the Settings page. Supports any callable returning a `bool`. Also auto-detects a `manageSettings` method on a registered `ShortUrl` policy. The Settings button in the table header is hidden automatically when access is denied.
 
 ### v1.6.0
 - **Google Safe Browsing Integration** — Automatic safety checks against Google's API during link creation or modification. Includes bypass settings, asynchronous checking option, and alert badges.
