@@ -16,6 +16,7 @@ class ShortUrlTracker
     public function __construct(
         private readonly UserAgentParser $uaParser,
         private readonly GeoIpService $geoIp,
+        private readonly ProxyDetectionService $proxyDetector,
     ) {}
 
     /**
@@ -39,9 +40,14 @@ class ShortUrlTracker
         $ua = $request->userAgent() ?? '';
         $parsed = $this->uaParser->parse($ua);
 
-        // Don't track bots — they inflate stats and waste API calls
-        if ($parsed['device_type'] === 'robot') {
-            return null;
+        // Run bot & proxy/VPN detection
+        $isBot = $parsed['device_type'] === 'robot';
+        $isProxy = false;
+
+        if (! $isBot) {
+            $detection = $this->proxyDetector->detect($ip);
+            $isBot = (bool) $detection['is_bot'];
+            $isProxy = (bool) $detection['is_proxy'];
         }
 
         $geo = config('filament-short-url.geo_ip.enabled', true)
@@ -68,6 +74,8 @@ class ShortUrlTracker
         $visit->country = $geo['country'];
         $visit->country_code = $geo['country_code'];
         $visit->city = $geo['city'] ?? null;
+        $visit->is_bot = $isBot;
+        $visit->is_proxy = $isProxy;
 
         $visit->utm_source = $utmSource;
         $visit->utm_medium = $utmMedium;
@@ -104,7 +112,10 @@ class ShortUrlTracker
 
         $visit->save();
 
-        $shortUrl->incrementVisits($isUnique);
+        // Increment stats only if it's NOT a bot or proxy/VPN to keep analytics clean
+        if (! $isBot && ! $isProxy) {
+            $shortUrl->incrementVisits($isUnique);
+        }
 
         return $visit;
     }

@@ -3,6 +3,7 @@
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
@@ -80,6 +81,13 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'api_keys' => $mgr->get('api_keys', []),
             'api_enabled' => $mgr->get('api_enabled', false),
             'site_name' => $mgr->get('site_name'),
+            // Security v2.0
+            'vpn_detection_enabled' => $mgr->get('vpn_detection_enabled', false),
+            'vpn_detection_driver' => $mgr->get('vpn_detection_driver', 'ip-api'),
+            'vpnapi_key' => $mgr->get('vpnapi_key'),
+            'vpn_block_action' => $mgr->get('vpn_block_action', 'flag_only'),
+            'safe_browsing_enabled' => $mgr->get('safe_browsing_enabled', false),
+            'google_safe_browsing_api_key' => $mgr->get('google_safe_browsing_api_key'),
         ]);
     }
 
@@ -423,6 +431,98 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('rate_limiting_enabled')),
                                     ]),
+
+                                Section::make(__('filament-short-url::default.settings_section_security_v2'))
+                                    ->description(__('filament-short-url::default.settings_section_security_v2_desc'))
+                                    ->columns(2)
+                                    ->schema([
+                                        Toggle::make('vpn_detection_enabled')
+                                            ->label(__('filament-short-url::default.settings_vpn_detection_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_vpn_detection_enabled_helper'))
+                                            ->default(false)
+                                            ->inline(false)
+                                            ->live()
+                                            ->columnSpanFull(),
+
+                                        Select::make('vpn_detection_driver')
+                                            ->label(__('filament-short-url::default.settings_vpn_driver'))
+                                            ->helperText(__('filament-short-url::default.settings_vpn_driver_helper'))
+                                            ->options([
+                                                'ip-api' => __('filament-short-url::default.settings_vpn_driver_ipapi'),
+                                                'vpnapi' => __('filament-short-url::default.settings_vpn_driver_vpnapi'),
+                                            ])
+                                            ->default('ip-api')
+                                            ->live()
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => (bool) $get('vpn_detection_enabled')),
+
+                                        TextInput::make('vpnapi_key')
+                                            ->label(__('filament-short-url::default.settings_vpnapi_key'))
+                                            ->helperText(__('filament-short-url::default.settings_vpnapi_key_helper'))
+                                            ->password()
+                                            ->revealable()
+                                            ->placeholder('••••••••••••••••••••')
+                                            ->visible(fn (Get $get): bool => (bool) $get('vpn_detection_enabled') && $get('vpn_detection_driver') === 'vpnapi'),
+
+                                        Select::make('vpn_block_action')
+                                            ->label(__('filament-short-url::default.settings_vpn_block_action'))
+                                            ->helperText(__('filament-short-url::default.settings_vpn_block_action_helper'))
+                                            ->options([
+                                                'flag_only' => __('filament-short-url::default.settings_vpn_block_flag_only'),
+                                                'block_with_403' => __('filament-short-url::default.settings_vpn_block_block_403'),
+                                            ])
+                                            ->default('flag_only')
+                                            ->required()
+                                            ->visible(fn (Get $get): bool => (bool) $get('vpn_detection_enabled')),
+
+                                        Toggle::make('safe_browsing_enabled')
+                                            ->label(__('filament-short-url::default.settings_safe_browsing_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_safe_browsing_enabled_helper'))
+                                            ->default(false)
+                                            ->inline(false)
+                                            ->live()
+                                            ->columnSpanFull(),
+
+                                        TextInput::make('google_safe_browsing_api_key')
+                                            ->label(__('filament-short-url::default.settings_safe_browsing_api_key'))
+                                            ->helperText(__('filament-short-url::default.settings_safe_browsing_api_key_helper'))
+                                            ->password()
+                                            ->revealable()
+                                            ->placeholder('AIza••••••••••••••••••')
+                                            ->columnSpanFull()
+                                            ->suffixAction(
+                                                Action::make('testSafeBrowsing')
+                                                    ->label(__('filament-short-url::default.settings_safe_browsing_test'))
+                                                    ->icon('heroicon-o-signal')
+                                                    ->color('gray')
+                                                    ->action(function (Get $get): void {
+                                                        $key = trim($get('google_safe_browsing_api_key') ?? '');
+                                                        if (empty($key)) {
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_safe_browsing_test_empty'))
+                                                                ->warning()->send();
+
+                                                            return;
+                                                        }
+                                                        try {
+                                                            $svc = app(SafeBrowsingService::class);
+                                                            $safe = $svc->isSafeWithKey('https://google.com', $key);
+                                                            Notification::make()
+                                                                ->title($safe
+                                                                    ? __('filament-short-url::default.settings_safe_browsing_test_ok')
+                                                                    : __('filament-short-url::default.settings_safe_browsing_test_fail'))
+                                                                ->color($safe ? 'success' : 'danger')
+                                                                ->send();
+                                                        } catch (\Throwable $e) {
+                                                            Notification::make()
+                                                                ->title(__('filament-short-url::default.settings_safe_browsing_test_error'))
+                                                                ->body($e->getMessage())
+                                                                ->danger()->send();
+                                                        }
+                                                    })
+                                            )
+                                            ->visible(fn (Get $get): bool => (bool) $get('safe_browsing_enabled')),
+                                    ]),
                             ]),
 
                         // ── Tracking Defaults ─────────────────────────────────
@@ -620,7 +720,6 @@ class ShortUrlSettingsPage extends Page implements HasForms
     public function save(): void
     {
         $data = $this->form->getState();
-        file_put_contents('/tmp/debug.txt', print_r($data, true));
 
         app(ShortUrlSettingsManager::class)->set($data);
 

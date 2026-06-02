@@ -374,4 +374,14 @@ return [
     'api_key_name' => 'Key Name (Description)',
     'api_key' => 'API Key',
     'active' => 'Active',
+
+    // World Map Widget
+    'world_map_title'         => 'Visitor World Map',
+    'world_map_total_clicks'  => 'total clicks',
+    'world_map_countries'     => 'countries',
+    'world_map_fewer'         => 'Fewer',
+    'world_map_more'          => 'More',
+    'world_map_top_countries' => 'Top Countries',
+    'world_map_no_data'       => 'No geographic data yet.',
+    'world_map_no_data_sub'   => 'Enable Geo-IP detection to start recording visitor locations.',
 ];

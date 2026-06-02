@@ -47,11 +47,15 @@ class ShortUrlVisit extends Model
         'utm_term',
         'utm_content',
         'visited_at',
+        'is_bot',
+        'is_proxy',
     ];
 
     /** @var array<string, string> */
     protected $casts = [
         'visited_at' => 'datetime',
+        'is_bot' => 'boolean',
+        'is_proxy' => 'boolean',
     ];
 
     public function shortUrl(): BelongsTo

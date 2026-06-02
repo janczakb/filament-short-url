@@ -81,6 +81,13 @@ class ShortUrlSettingsManager
             'api_keys' => [],
             'api_enabled' => false,
             'site_name' => config('filament-short-url.site_name'),
+            // Security v2.0
+            'vpn_detection_enabled' => config('filament-short-url.vpn_detection.enabled', false),
+            'vpn_detection_driver' => config('filament-short-url.vpn_detection.driver', 'ip-api'),
+            'vpnapi_key' => config('filament-short-url.vpn_detection.vpnapi_key'),
+            'vpn_block_action' => config('filament-short-url.vpn_detection.block_action', 'flag_only'),
+            'safe_browsing_enabled' => config('filament-short-url.safe_browsing.enabled', false),
+            'google_safe_browsing_api_key' => config('filament-short-url.safe_browsing.api_key'),
         ], $stored);
 
         return $this->cache;
@@ -152,6 +159,13 @@ class ShortUrlSettingsManager
             'api_keys',
             'api_enabled',
             'site_name',
+            // Security v2.0
+            'vpn_detection_enabled',
+            'vpn_detection_driver',
+            'vpnapi_key',
+            'vpn_block_action',
+            'safe_browsing_enabled',
+            'google_safe_browsing_api_key',
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
@@ -237,6 +251,14 @@ class ShortUrlSettingsManager
             $filtered['qr_gradient_enabled'] = (bool) $filtered['qr_gradient_enabled'];
         }
 
+        // Security v2.0 casts
+        if (isset($filtered['vpn_detection_enabled'])) {
+            $filtered['vpn_detection_enabled'] = (bool) $filtered['vpn_detection_enabled'];
+        }
+        if (isset($filtered['safe_browsing_enabled'])) {
+            $filtered['safe_browsing_enabled'] = (bool) $filtered['safe_browsing_enabled'];
+        }
+
         File::put($path, json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         $this->cache = null;
 
@@ -306,6 +328,15 @@ class ShortUrlSettingsManager
             'filament-short-url.webhook_events' => $settings['webhook_events'] ?? ['visited'],
             'filament-short-url.api_enabled' => (bool) ($settings['api_enabled'] ?? false),
             'filament-short-url.site_name' => $settings['site_name'] ?? null,
+            // Security v2.0
+            'filament-short-url.vpn_detection.enabled' => (bool) ($settings['vpn_detection_enabled'] ?? false),
+            'filament-short-url.vpn_detection.driver' => $settings['vpn_detection_driver'] ?? 'ip-api',
+            'filament-short-url.vpn_detection.vpnapi_key' => $settings['vpnapi_key'] ?? null,
+            'filament-short-url.vpn_detection.block_action' => $settings['vpn_block_action'] ?? 'flag_only',
+            'filament-short-url.vpn_detection.cache_ttl' => 86400,
+            'filament-short-url.vpn_detection.timeout' => 2,
+            'filament-short-url.safe_browsing.enabled' => (bool) ($settings['safe_browsing_enabled'] ?? false),
+            'filament-short-url.safe_browsing.api_key' => $settings['google_safe_browsing_api_key'] ?? null,
         ]);
     }
 }

@@ -45,6 +45,14 @@ class ShortUrlForm
                         ->required()
                         ->url()
                         ->maxLength(2048)
+                        ->rules([
+                            fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
+                                $safeBrowsing = app(\Bjanczak\FilamentShortUrl\Services\SafeBrowsingService::class);
+                                if (! $safeBrowsing->isSafe($value)) {
+                                    $fail(__('filament-short-url::default.safe_browsing_error') ?? 'This URL has been flagged by Google Safe Browsing as unsafe.');
+                                }
+                            },
+                        ])
                         ->live(onBlur: true)
                         ->afterStateHydrated(function (TextInput $component, $state, Set $set) {
                             if (! $state) {

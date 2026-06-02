@@ -37,7 +37,17 @@ class ShortUrlRedirectController extends Controller
             abort(410);
         }
 
-        // 1. Rate Limiting Check
+        // 1. VPN/Proxy & Bot Blocking Check
+        if (config('filament-short-url.vpn_detection.enabled', false) && config('filament-short-url.vpn_detection.block_action') === 'block_with_403') {
+            $ipAddress = ClientIpExtractor::getIp($request);
+            $proxyDetector = app(\Bjanczak\FilamentShortUrl\Services\ProxyDetectionService::class);
+            $detection = $proxyDetector->detect($ipAddress);
+            if ($detection['is_proxy'] || $detection['is_bot']) {
+                abort(403, 'Access denied. VPN, Proxy, or automated scraping connection detected.');
+            }
+        }
+
+        // 2. Rate Limiting Check
         if (config('filament-short-url.rate_limiting.enabled', false)) {
             $maxAttempts = (int) config('filament-short-url.rate_limiting.max_attempts', 60);
             $decaySeconds = (int) config('filament-short-url.rate_limiting.decay_seconds', 60);
@@ -53,7 +63,7 @@ class ShortUrlRedirectController extends Controller
             RateLimiter::hit($limiterKey, $decaySeconds);
         }
 
-        // 2. Password Protection Check
+        // 3. Password Protection Check
         if (! empty($shortUrl->password)) {
             $sessionKey = "short-url-auth-{$shortUrl->id}";
             if (! session()->get($sessionKey)) {
@@ -78,7 +88,7 @@ class ShortUrlRedirectController extends Controller
             }
         }
 
-        // 3. Resolve Destination URL (evaluating targeting rules)
+        // 4. Resolve Destination URL (evaluating targeting rules)
         $destination = $shortUrl->resolveDestinationUrl($request);
 
         // Forward query parameters if configured
@@ -93,13 +103,13 @@ class ShortUrlRedirectController extends Controller
             }
         }
 
-        // 4. Warning / Intermediate Page Check
+        // 5. Warning / Intermediate Page Check
         if ($shortUrl->show_warning_page && ! $request->has('confirmed')) {
             return response(view('filament-short-url::warning', ['destinationUrl' => $destination]))
                 ->header('Content-Type', 'text/html');
         }
 
-        // 5. Track Visit
+        // 6. Track Visit
         if ($shortUrl->track_visits) {
             try {
                 $connection = config('filament-short-url.queue_connection', 'sync');

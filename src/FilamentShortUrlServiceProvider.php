@@ -33,6 +33,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2026_06_01_000005_create_short_url_daily_stats_table',
                 '2026_06_02_000006_add_max_visits_and_expiration_redirect_to_short_urls_table',
                 '2026_06_02_000007_add_retargeting_pixels_and_webhooks_to_short_urls_table',
+                '2026_06_02_000008_add_bot_and_proxy_to_short_url_visits_table',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,
@@ -51,6 +52,8 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
         $this->app->singleton(GeoIpService::class);
         $this->app->singleton(ShortUrlService::class);
         $this->app->singleton(ShortUrlTracker::class);
+        $this->app->singleton(\Bjanczak\FilamentShortUrl\Services\ProxyDetectionService::class);
+        $this->app->singleton(\Bjanczak\FilamentShortUrl\Services\SafeBrowsingService::class);
     }
 
     public function packageBooted(): void

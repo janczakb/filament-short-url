@@ -54,6 +54,12 @@
             </div>
         </div>
 
+        @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlWorldMapWidget::class, [
+            'record' => $record,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ], key('stats-world-map-' . $dateFrom . '-' . $dateTo))
+
         @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsBottomBreakdown::class, [
             'record' => $record,
             'dateFrom' => $dateFrom,

@@ -50,7 +50,17 @@ class ShortUrlVisitsChart extends ChartWidget
                     'fill' => true,
                 ],
             ],
-            'labels' => array_keys($visitsByDay),
+            'labels' => array_map(function (string $date) {
+                try {
+                    $carbon = \Illuminate\Support\Carbon::parse($date);
+                    if (strlen($date) === 7) { // Y-m
+                        return $carbon->format('m.Y');
+                    }
+                    return $carbon->format('d.m');
+                } catch (\Throwable $e) {
+                    return $date;
+                }
+            }, array_keys($visitsByDay)),
         ];
     }
 

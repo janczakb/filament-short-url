@@ -36,7 +36,10 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 
 - 🔗 **Short URL Generation** — Create custom links or let the system auto-generate collision-free Base62 keys.
 - 🌍 **Multiple Geo-IP Drivers** — High-speed offline detection using local MaxMind databases, edge-provided CDN headers (Cloudflare, CloudFront, generic), or fallback API integration.
+- 🗺️ **Visitor World Map Widget** — Interactive SVG world map on the link statistics dashboard showcasing the geographical distribution of visitor clicks with hover details.
 - 📈 **Real-Time Statistics Dashboard** — Track visits in real-time with cached aggregate metrics (countries, devices, browsers, operating systems, referrers, traffic charts, and maps).
+- 🛡️ **VPN, Proxy & Bot Filtering** — Exclude VPNs, proxies, Tor exit nodes, and automated bot clicks from your analytics to keep visitor statistics accurate.
+- 🔍 **Google Safe Browsing Integration** — Automatically verify target URLs on creation/edit to block malicious, phishing, malware, or social engineering links.
 - 🎨 **SVG QR Code Designer** — Built-in interactive design canvas in Filament to customize dot styles, margins, gradient coloring, and background transparency with instant SVG download.
 - ⚡ **Ultra-Fast Redirects** — Redirections resolve in milliseconds. Analytical tasks, event dispatching, and GA4 payloads are processed asynchronously via Laravel Queue jobs.
 - 🎯 **Google Analytics 4 server-side tracking** — Native integration with the GA4 Measurement Protocol to bypass client-side AdBlockers completely.
@@ -672,6 +675,14 @@ As of version `1.3.0`, **you no longer need to manually copy scheduled commands 
 - **`short-url:aggregate-and-prune`** is scheduled **daily at 02:00** (runs automatically only if **Enable Daily Aggregation** is ON).
 - **`short-url:sync-counters`** is scheduled **every minute** (runs automatically only if **Buffer Visit Counts in Cache** is ON).
 
+> [!IMPORTANT]
+> **Cron Setup Required**:
+> For the scheduler to fire these tasks automatically, your server must run the standard Laravel Scheduler cron job. Add this single cron entry to your server:
+> ```bash
+> * * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+> ```
+> *Note: These commands execute synchronously within the scheduling process. You do **not** need a queue worker (`php artisan queue:work`) to run them.*
+
 If you prefer to configure the schedule manually, you can still define them in `routes/console.php` (ensure the corresponding toggles are turned OFF in your Settings panel to avoid redundant executions):
 
 ```php
@@ -790,6 +801,12 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v1.6.0
+- **Google Safe Browsing Integration** — Automatic safety checks against Google's API during link creation or modification. Includes bypass settings, asynchronous checking option, and alert badges.
+- **VPN / Proxy / Bot Filtering** — Detect and filter out VPN/proxy traffic and Tor nodes using external proxy detection APIs to keep traffic analytics clean.
+- **Visitor World Map Widget** — Live interactive SVG world map showing clicks distribution per country, custom intensity highlighting, and hover details.
+- **Enhanced Caching & Chart Formatting** — Improved analytics caching for high volumes, and clean `d.m` date formatting (removed year) on visitor stats charts.
 
 ### v1.5.1
 - **REST API On/Off Toggle** — Enable or disable the entire developer REST API from Settings → API & Webhooks without touching code. Returns `503 Service Unavailable` when disabled. Toggle takes effect immediately without route cache clearing.
