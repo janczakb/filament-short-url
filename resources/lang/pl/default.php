@@ -168,6 +168,8 @@ return [
     'settings_section_ga4' => 'GA4 Measurement Protocol',
     'settings_ga4_description' => 'Skonfiguruj serwerowe śledzenie zdarzeń GA4 przez Measurement Protocol. Zdarzenia są wysyłane w tle bez blokowania przekierowania.',
 
+    'settings_site_name' => 'Niestandardowa nazwa witryny',
+    'settings_site_name_helper' => 'Własna nazwa witryny/marki wyświetlana na ekranach przekierowań (monit o hasło, ostrzeżenia, piksele). W przypadku braku wartości, zostanie użyta nazwa z konfiguracji config("app.name").',
     'settings_route_prefix' => 'Prefiks trasy',
     'settings_route_prefix_helper' => 'Segment URL przed kluczem, np. "/s/abc123". Zmiana wymaga php artisan config:clear.',
     'settings_key_length' => 'Długość auto-generowanego klucza',
@@ -339,6 +341,8 @@ return [
     'warning_description' => 'Opuszczasz ten bezpieczny portal i zostajesz przekierowany na zewnętrzny link docelowy. Upewnij się, że ufasz poniższemu adresowi:',
     'warning_btn_continue' => 'Kontynuuj do celu',
     'warning_btn_back' => 'Wróć',
+    'pixel_loading_title' => 'Łączenie...',
+    'pixel_loading_description' => 'Przygotowujemy połączenie i za chwilę zostaniesz przekierowany.',
 
     // Marketing & API Tab
     'tab_marketing' => 'Marketing i API',

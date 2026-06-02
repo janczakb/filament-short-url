@@ -108,7 +108,7 @@ class ShortUrlForm
                         ->required(),
                 ])->columns(2),
 
-                 Section::make(__('filament-short-url::default.form_section_options'))->schema([
+                Section::make(__('filament-short-url::default.form_section_options'))->schema([
                     Toggle::make('is_enabled')
                         ->label(__('filament-short-url::default.status'))
                         ->default(true)
@@ -438,8 +438,10 @@ class ShortUrlForm
                                         $countries = __('filament-short-url::countries');
                                         if (is_array($countries)) {
                                             asort($countries, SORT_LOCALE_STRING);
+
                                             return $countries;
                                         }
+
                                         return [];
                                     })
                                     ->searchable()

@@ -8,6 +8,7 @@ use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\MessageBag;
 use Symfony\Component\HttpFoundation\Response;
@@ -100,29 +101,37 @@ class ShortUrlRedirectController extends Controller
 
         // 5. Track Visit
         if ($shortUrl->track_visits) {
-            $connection = config('filament-short-url.queue_connection', 'sync');
-            $ipAddress = ClientIpExtractor::getIp($request);
-            $countryCode = ClientIpExtractor::getCountryCode($request);
-            $city = ClientIpExtractor::getCity($request);
+            try {
+                $connection = config('filament-short-url.queue_connection', 'sync');
+                $ipAddress = ClientIpExtractor::getIp($request);
+                $countryCode = ClientIpExtractor::getCountryCode($request);
+                $city = ClientIpExtractor::getCity($request);
 
-            $job = new TrackShortUrlVisitJob(
-                shortUrl: $shortUrl,
-                ipAddress: $ipAddress,
-                userAgent: $request->userAgent() ?? '',
-                refererUrl: $request->header('Referer'),
-                countryCode: $countryCode,
-                city: $city,
-                utmSource: $request->query('utm_source'),
-                utmMedium: $request->query('utm_medium'),
-                utmCampaign: $request->query('utm_campaign'),
-                utmTerm: $request->query('utm_term'),
-                utmContent: $request->query('utm_content'),
-            );
+                $job = new TrackShortUrlVisitJob(
+                    shortUrl: $shortUrl,
+                    ipAddress: $ipAddress,
+                    userAgent: $request->userAgent() ?? '',
+                    refererUrl: $request->header('Referer'),
+                    countryCode: $countryCode,
+                    city: $city,
+                    utmSource: $request->query('utm_source'),
+                    utmMedium: $request->query('utm_medium'),
+                    utmCampaign: $request->query('utm_campaign'),
+                    utmTerm: $request->query('utm_term'),
+                    utmContent: $request->query('utm_content'),
+                );
 
-            if ($connection) {
-                dispatch($job->onConnection($connection));
-            } else {
-                dispatch($job->onConnection('sync'));
+                if ($connection) {
+                    dispatch($job->onConnection($connection));
+                } else {
+                    dispatch($job->onConnection('sync'));
+                }
+            } catch (\Throwable $e) {
+                // Never let tracking failures block the redirection of the user!
+                Log::error('[FilamentShortUrl] Redirect tracking failed', [
+                    'url_key' => $key,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

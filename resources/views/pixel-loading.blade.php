@@ -1,14 +1,37 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Connecting...</title>
-    
-    <!-- Premium Fonts -->
+    <title>{{ __('filament-short-url::default.pixel_loading_title') ?? 'Connecting...' }}</title>
+
+    <!-- Premium Google Fonts: Bricolage Grotesque -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+
+    <!-- Self-contained Tailwind CSS CDN for maximum plug-and-play reliability -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Bricolage Grotesque', 'sans-serif'],
+                    },
+                }
+            }
+        }
+
+        // Detect system dark mode preferences
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 
     <!-- Meta / Facebook Pixel -->
     @if(!empty($pixelMetaId))
@@ -55,103 +78,56 @@
     </script>
     <noscript><img height="1" width="1" style="display:none;" alt="" src="https://px.ads.linkedin.com/collect/?pid={{ $pixelLinkedinId }}&fmt=gif" /></noscript>
     @endif
-
-    <!-- Premium Styling -->
-    <style>
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            color: #f1f5f9;
-            font-family: 'Outfit', -apple-system, sans-serif;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .container {
-            text-align: center;
-            padding: 2.5rem;
-            border-radius: 1.5rem;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            max-width: 400px;
-            width: 90%;
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        .spinner {
-            position: relative;
-            width: 72px;
-            height: 72px;
-            margin: 0 auto 2rem;
-        }
-
-        .spinner-ring {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 4px solid transparent;
-            border-top-color: #6366f1;
-            border-radius: 50%;
-            animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-        }
-
-        .spinner-ring:nth-child(2) {
-            animation-delay: -0.3s;
-            border-top-color: #a855f7;
-        }
-
-        .spinner-ring:nth-child(3) {
-            animation-delay: -0.6s;
-            border-top-color: #ec4899;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin: 0 0 0.5rem;
-            background: linear-gradient(to right, #818cf8, #f472b6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.025em;
-        }
-
-        p {
-            font-size: 0.95rem;
-            color: #94a3b8;
-            margin: 0;
-            font-weight: 300;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <div class="spinner">
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
+<body class="bg-[#FCFCFC] dark:bg-[#0C0C0C] min-h-screen flex flex-col justify-between items-center py-10 px-6 font-sans antialiased">
+    @php
+        $logoPath = function_exists('setting') ? setting('logo_path') : null;
+        $logoUrl = $logoPath ? \Illuminate\Support\Facades\Storage::disk('public')->url($logoPath) : null;
+        $siteName = config('filament-short-url.site_name') ?: config('app.name', 'Laravel');
+    @endphp
+
+    {{-- Main card --}}
+    <div class="w-full max-w-[360px] flex flex-col items-center gap-6 my-auto">
+        <div class="flex flex-col items-center text-center pb-2 select-none w-full">
+            @if ($logoUrl)
+                <img src="{{ $logoUrl }}" alt="{{ $siteName }}" class="h-[60px] w-auto object-contain mb-4" />
+            @else
+                <span class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white mb-3">{{ $siteName }}</span>
+            @endif
+
+            {{-- Animated spinner --}}
+            <div class="my-5 flex items-center justify-center gap-1.5" aria-hidden="true">
+                <span class="block w-2.5 h-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600 animate-bounce [animation-delay:-0.3s]"></span>
+                <span class="block w-2.5 h-2.5 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce [animation-delay:-0.15s]"></span>
+                <span class="block w-2.5 h-2.5 rounded-full bg-neutral-500 dark:bg-neutral-400 animate-bounce"></span>
+            </div>
+
+            <p class="text-xl font-medium text-neutral-900 dark:text-white mt-2">
+                {{ __('filament-short-url::default.pixel_loading_title') ?? 'Connecting...' }}
+            </p>
+            <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
+                {{ __('filament-short-url::default.pixel_loading_description') ?? 'Preparing your connection and forwarding you now.' }}
+            </p>
         </div>
-        <h1>Connecting Safely</h1>
-        <p>Securing connection & forwarding you now...</p>
+
+        {{-- Progress bar --}}
+        <div class="w-full h-1 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+            <div id="pixel-progress" class="h-full w-0 rounded-full bg-neutral-900 dark:bg-white transition-all ease-linear" style="transition-duration: 220ms;"></div>
+        </div>
     </div>
 
-    <!-- Async non-blocking redirect -->
+    {{-- Footer --}}
+    <div class="flex flex-col items-center gap-2 mt-auto select-none">
+        <span class="text-xs font-medium text-neutral-400 dark:text-neutral-600">© {{ date('Y') }} {{ $siteName }} Inc. All rights reserved.</span>
+    </div>
+
+    {{-- Redirect after pixels fire --}}
     <script>
+        // Animate the progress bar to full in sync with the redirect delay
+        requestAnimationFrame(function() {
+            document.getElementById('pixel-progress').style.width = '100%';
+        });
+
         setTimeout(function() {
             window.location.replace("{!! addslashes($destination) !!}");
         }, 250);

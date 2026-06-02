@@ -48,17 +48,17 @@ class SendWebhookJob implements ShouldQueue
                 ->post($this->url, $this->payload);
 
             if ($response->failed()) {
-                Log::warning("[FilamentShortUrl] Webhook delivery returned client/server error", [
+                Log::warning('[FilamentShortUrl] Webhook delivery returned client/server error', [
                     'url' => $this->url,
                     'event' => $this->event,
                     'status' => $response->status(),
                 ]);
 
                 // Throw exception to trigger queue retry
-                throw new \RuntimeException("Webhook failed with status " . $response->status());
+                throw new \RuntimeException('Webhook failed with status '.$response->status());
             }
         } catch (\Throwable $e) {
-            Log::warning("[FilamentShortUrl] Webhook delivery failed", [
+            Log::warning('[FilamentShortUrl] Webhook delivery failed', [
                 'url' => $this->url,
                 'event' => $this->event,
                 'error' => $e->getMessage(),

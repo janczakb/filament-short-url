@@ -8,6 +8,7 @@ use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 
 class ShortUrlApiController extends Controller
 {
@@ -117,21 +118,28 @@ class ShortUrlApiController extends Controller
         $globalUrl = config('filament-short-url.global_webhook_url');
         $events = config('filament-short-url.webhook_events', []);
 
-        if (empty($targetUrl) && !empty($globalUrl) && in_array('created', $events)) {
+        if (empty($targetUrl) && ! empty($globalUrl) && in_array('created', $events)) {
             $targetUrl = $globalUrl;
         }
 
-        if (!empty($targetUrl)) {
-            $connection = config('filament-short-url.queue_connection', 'sync');
-            dispatch(new SendWebhookJob(
-                url: $targetUrl,
-                event: 'created',
-                payload: [
-                    'event' => 'created',
-                    'timestamp' => now()->toIso8601String(),
-                    'short_url' => $this->transformLink($shortUrl),
-                ]
-            )->onConnection($connection ?: 'sync'));
+        if (! empty($targetUrl)) {
+            try {
+                $connection = config('filament-short-url.queue_connection', 'sync');
+                dispatch(new SendWebhookJob(
+                    url: $targetUrl,
+                    event: 'created',
+                    payload: [
+                        'event' => 'created',
+                        'timestamp' => now()->toIso8601String(),
+                        'short_url' => $this->transformLink($shortUrl),
+                    ]
+                )->onConnection($connection ?: 'sync'));
+            } catch (\Throwable $e) {
+                Log::error('[FilamentShortUrl] Created webhook dispatch failed', [
+                    'url_key' => $shortUrl->url_key,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 }

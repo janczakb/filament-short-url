@@ -359,6 +359,24 @@ The `short_url_daily_stats` table stores pre-aggregated daily summaries per shor
 
 The `getCachedStats()` model method **automatically merges** data from both tables: historical days come from `short_url_daily_stats`, while today's data comes directly from `short_url_visits` — completely transparent to the dashboard.
 
+### Queue Worker vs. Synchronous Execution
+
+The plugin is designed to be highly reliable and performant regardless of whether your hosting environment runs a background queue worker. 
+
+#### 1. With a Queue Worker (Recommended)
+If your application runs a queue worker (e.g. via supervisor running `php artisan queue:work`), you should configure the **Queue Connection** in the **Settings** panel (or via `SHORT_URL_QUEUE` env variable) to your primary queue driver (like `redis` or `database`).
+- **Performance**: High-speed redirects are prioritized. Visitor clicks, Geo-IP lookups, GA4 hits, and Webhook dispatches are immediately deferred to background queue jobs (`TrackShortUrlVisitJob` and `SendWebhookJob`), keeping redirect response times under 20ms.
+- **Worker Configuration**: Ensure your queue listener is running:
+  ```bash
+  php artisan queue:work --queue=default
+  ```
+  *(If you customized the queue name in Settings, replace `default` with your custom queue name).*
+
+#### 2. Without a Queue Worker (Sync Driver Fallback)
+If you do not run background queue workers, set the **Queue Connection** to `sync`.
+- **Automatic Fallback**: The plugin dynamically executes all jobs synchronously on the request thread. The visitor is redirected as soon as the synchronous processes (log recording, webhook calls, etc.) complete.
+- **Fault Tolerance (Safety Nets)**: Webhook failures (timeouts, 500 errors) or database tracking glitches can happen. The plugin wraps all synchronous execution points in strict error boundaries (`try/catch`). **A failed tracking job or a slow/offline webhook will NEVER crash the visitor's redirect or programmatic REST API responses.** They are gracefully logged in the background.
+
 ### Queue-Based Counter Fallback
 
 When Redis is not available and counter buffering is enabled, the `IncrementVisitJob` is dispatched to the configured queue connection. This guarantees visit counts are not lost during cache evictions or restarts.
@@ -367,7 +385,12 @@ When Redis is not available and counter buffering is enabled, the `IncrementVisi
 
 ## Social Retargeting Pixels (new in v1.5.0)
 
-The **Marketing & API** tab in the short URL form lets you attach client-side tracking pixels to any link. When a visitor clicks a link that has pixels configured, instead of an instant 302 redirect the plugin serves a lightweight HTML interstitial page (styled with glassmorphism) for ~250 ms. During that time the browser executes the pixel scripts — capturing cookies and building ad audiences — then the visitor is forwarded to the destination URL.
+The **Marketing & API** tab in the short URL form lets you attach client-side tracking pixels to any link. When a visitor clicks a link that has pixels configured, instead of an instant 302 redirect the plugin serves a lightweight, premium HTML interstitial page.
+
+### The Interstitial Experience
+- **Premium Design**: Built using the exact same modern glassmorphic look as the password protection and warning interstitial pages. Supports dark mode automatically.
+- **Brand Customization**: Automatically renders the application logo and the **Site Name Override** (configured globally in Settings, falling back to `config('app.name')`) to ensure the transition page looks professional and trust-instilling.
+- **Micro-Animations & Smooth Redirect**: Displays a sleek animated loading spinner and a progress bar that smoothly fills from 0% to 100% in ~220-250ms. This short delay ensures browser execution time for the tracking scripts before performing a seamless `window.location.replace()` to the destination URL.
 
 This unlocks remarketing to people who clicked your links **even when redirecting to external domains** (e.g. booking.com, amazon.com) where you cannot install your own tracking code.
 
@@ -539,9 +562,14 @@ Webhooks allow external systems to receive real-time HTTP POST notifications whe
 
 Webhooks can be configured at two levels:
 
-**1. Per-link webhook** — Set a `Dedicated Webhook URL` in the **Marketing & API** tab of a specific short URL. Fires for every click on that link.
+**1. Per-link Webhook (Dedicated Webhook URL)**:
+*   **Where to configure**: Set the `Dedicated Webhook URL` in the **Marketing & API** tab of a specific short URL (or pass it via the `webhook_url` parameter in the REST API).
+*   **How it works**: When a visitor clicks the short URL, or when the link is programmatically created via the REST API, a webhook notification is sent directly to this URL.
+*   **Bypassing Global Filters**: Dedicated webhooks **always fire** for these events and are completely independent of the global *Monitored Webhook Events* settings. This is useful for third-party landing pages or integrations that need to track a specific link's traffic without routing all package events.
 
-**2. Global webhook** — Set a **Global Webhook URL** in **Settings → API & Webhooks → Global Webhook Configuration**. Fires for all links that don't have their own webhook URL, for the event types you select.
+**2. Global Webhook**:
+*   **Where to configure**: Set a **Global Webhook URL** in **Settings → API & Webhooks → Global Webhook Configuration**.
+*   **How it works**: Fires for all links that *do not* have their own Dedicated Webhook URL configured. It will only fire for the specific event types selected in the **Monitored Webhook Events** setting.
 
 ### Monitored Events
 

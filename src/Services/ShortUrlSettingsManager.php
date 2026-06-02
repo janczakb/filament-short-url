@@ -80,6 +80,7 @@ class ShortUrlSettingsManager
             'webhook_events' => ['visited'],
             'api_keys' => [],
             'api_enabled' => false,
+            'site_name' => config('filament-short-url.site_name'),
         ], $stored);
 
         return $this->cache;
@@ -150,6 +151,7 @@ class ShortUrlSettingsManager
             'webhook_events',
             'api_keys',
             'api_enabled',
+            'site_name',
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
@@ -303,6 +305,7 @@ class ShortUrlSettingsManager
             'filament-short-url.global_webhook_url' => $settings['global_webhook_url'] ?? null,
             'filament-short-url.webhook_events' => $settings['webhook_events'] ?? ['visited'],
             'filament-short-url.api_enabled' => (bool) ($settings['api_enabled'] ?? false),
+            'filament-short-url.site_name' => $settings['site_name'] ?? null,
         ]);
     }
 }

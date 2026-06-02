@@ -107,13 +107,15 @@ class ShortUrlService
      */
     public function resolveRedirectUrl(ShortUrl $shortUrl, Request $request): string
     {
-        $destination = $shortUrl->destination_url;
+        $destination = $shortUrl->resolveDestinationUrl($request);
 
         if (! $shortUrl->forward_query_params) {
             return $destination;
         }
 
         $queryParams = $request->query();
+        // Remove routing/auth parameters so they don't leak to destination
+        unset($queryParams['confirmed'], $queryParams['password']);
 
         if (empty($queryParams)) {
             return $destination;

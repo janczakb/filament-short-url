@@ -6,6 +6,7 @@ use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -78,6 +79,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'webhook_events' => $mgr->get('webhook_events', ['visited']),
             'api_keys' => $mgr->get('api_keys', []),
             'api_enabled' => $mgr->get('api_enabled', false),
+            'site_name' => $mgr->get('site_name'),
         ]);
     }
 
@@ -96,6 +98,13 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                 Section::make(__('filament-short-url::default.settings_section_routing'))
                                     ->columns(2)
                                     ->schema([
+                                        TextInput::make('site_name')
+                                            ->label(__('filament-short-url::default.settings_site_name'))
+                                            ->helperText(__('filament-short-url::default.settings_site_name_helper'))
+                                            ->nullable()
+                                            ->maxLength(100)
+                                            ->columnSpanFull(),
+
                                         TextInput::make('route_prefix')
                                             ->label(__('filament-short-url::default.settings_route_prefix'))
                                             ->helperText(__('filament-short-url::default.settings_route_prefix_helper'))
@@ -582,7 +591,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                 Section::make(__('filament-short-url::default.settings_section_api_keys'))
                                     ->description(__('filament-short-url::default.settings_api_keys_description'))
                                     ->schema([
-                                        \Filament\Forms\Components\Repeater::make('api_keys')
+                                        Repeater::make('api_keys')
                                             ->label(__('filament-short-url::default.settings_api_keys'))
                                             ->schema([
                                                 TextInput::make('name')
@@ -609,6 +618,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
     public function save(): void
     {
         $data = $this->form->getState();
+        file_put_contents('/tmp/debug.txt', print_r($data, true));
 
         app(ShortUrlSettingsManager::class)->set($data);
 

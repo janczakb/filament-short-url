@@ -42,8 +42,10 @@ class AggregateAndPruneVisitsCommand extends Command
                 // Accumulate stats per short_url_id using chunked reads — avoids loading
                 // potentially millions of rows into PHP memory at once.
                 $statsByUrl = [];
+                $nextDate = Carbon::parse($date)->addDay()->toDateString();
 
-                ShortUrlVisit::whereBetween('visited_at', [$date.' 00:00:00', $date.' 23:59:59'])
+                ShortUrlVisit::where('visited_at', '>=', $date.' 00:00:00')
+                    ->where('visited_at', '<', $nextDate.' 00:00:00')
                     ->chunk(1000, function ($chunk) use (&$statsByUrl): void {
                         foreach ($chunk as $visit) {
                             $urlId = $visit->short_url_id;

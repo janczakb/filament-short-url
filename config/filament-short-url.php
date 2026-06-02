@@ -16,6 +16,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Site Name Override
+    |--------------------------------------------------------------------------
+    | The brand or site name displayed on the password prompt, redirect warnings,
+    | and pixel loading screens. Falls back to config('app.name') if empty.
+    |
+    */
+    'site_name' => env('SHORT_URL_SITE_NAME'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Redirect Status Code
     |--------------------------------------------------------------------------
     | Use 302 for better tracking accuracy. 301 redirects are cached by browsers,

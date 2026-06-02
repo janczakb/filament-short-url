@@ -37,7 +37,7 @@
     @php
         $logoPath = function_exists('setting') ? setting('logo_path') : null;
         $logoUrl = $logoPath ? \Illuminate\Support\Facades\Storage::disk('public')->url($logoPath) : null;
-        $siteName = config('app.name', 'Laravel');
+        $siteName = config('filament-short-url.site_name') ?: config('app.name', 'Laravel');
     @endphp
 
     {{-- Main Warning Box --}}

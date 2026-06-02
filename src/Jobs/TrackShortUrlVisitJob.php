@@ -100,41 +100,48 @@ class TrackShortUrlVisitJob implements ShouldQueue
         }
 
         if (! empty($targetUrl)) {
-            dispatch(new \Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob(
-                url: $targetUrl,
-                event: 'visited',
-                payload: [
-                    'event' => 'visited',
-                    'timestamp' => now()->toIso8601String(),
-                    'short_url' => [
-                        'id' => $shortUrl->id,
-                        'destination_url' => $shortUrl->destination_url,
-                        'url_key' => $shortUrl->url_key,
-                        'short_url' => $shortUrl->getShortUrl(),
-                        'total_visits' => (int) $shortUrl->getRealTimeTotalVisits(),
-                        'unique_visits' => (int) $shortUrl->unique_visits,
-                    ],
-                    'visit' => [
-                        'id' => $visit->id,
-                        'visited_at' => $visit->visited_at->toIso8601String(),
-                        'device_type' => $visit->device_type,
-                        'browser' => $visit->browser,
-                        'browser_version' => $visit->browser_version,
-                        'operating_system' => $visit->operating_system,
-                        'operating_system_version' => $visit->operating_system_version,
-                        'country' => $visit->country,
-                        'country_code' => $visit->country_code,
-                        'city' => $visit->city,
-                        'referer_url' => $visit->referer_url,
-                        'referer_host' => $visit->referer_host,
-                        'utm_source' => $visit->utm_source,
-                        'utm_medium' => $visit->utm_medium,
-                        'utm_campaign' => $visit->utm_campaign,
-                        'utm_term' => $visit->utm_term,
-                        'utm_content' => $visit->utm_content,
-                    ],
-                ]
-            )->onConnection($this->connection ?: 'sync'));
+            try {
+                dispatch(new SendWebhookJob(
+                    url: $targetUrl,
+                    event: 'visited',
+                    payload: [
+                        'event' => 'visited',
+                        'timestamp' => now()->toIso8601String(),
+                        'short_url' => [
+                            'id' => $shortUrl->id,
+                            'destination_url' => $shortUrl->destination_url,
+                            'url_key' => $shortUrl->url_key,
+                            'short_url' => $shortUrl->getShortUrl(),
+                            'total_visits' => (int) $shortUrl->getRealTimeTotalVisits(),
+                            'unique_visits' => (int) $shortUrl->unique_visits,
+                        ],
+                        'visit' => [
+                            'id' => $visit->id,
+                            'visited_at' => $visit->visited_at->toIso8601String(),
+                            'device_type' => $visit->device_type,
+                            'browser' => $visit->browser,
+                            'browser_version' => $visit->browser_version,
+                            'operating_system' => $visit->operating_system,
+                            'operating_system_version' => $visit->operating_system_version,
+                            'country' => $visit->country,
+                            'country_code' => $visit->country_code,
+                            'city' => $visit->city,
+                            'referer_url' => $visit->referer_url,
+                            'referer_host' => $visit->referer_host,
+                            'utm_source' => $visit->utm_source,
+                            'utm_medium' => $visit->utm_medium,
+                            'utm_campaign' => $visit->utm_campaign,
+                            'utm_term' => $visit->utm_term,
+                            'utm_content' => $visit->utm_content,
+                        ],
+                    ]
+                )->onConnection($this->connection ?: 'sync'));
+            } catch (\Throwable $e) {
+                Log::error('[FilamentShortUrl] Visited webhook dispatch failed', [
+                    'url_key' => $shortUrl->url_key,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         // Optional GA4 Measurement Protocol integration

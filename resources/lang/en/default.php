@@ -167,6 +167,8 @@ return [
     'settings_section_ga4' => 'GA4 Measurement Protocol',
     'settings_ga4_description' => 'Configure server-side Google Analytics 4 event tracking via the Measurement Protocol. Events are sent in the background without blocking the redirect.',
 
+    'settings_site_name' => 'Site Name Override',
+    'settings_site_name_helper' => 'Custom brand/site name displayed on redirect prompt screens. If empty, falls back to config("app.name").',
     'settings_route_prefix' => 'Route Prefix',
     'settings_route_prefix_helper' => 'URL segment before the short key, e.g. "/s/abc123". Change requires a config:clear.',
     'settings_key_length' => 'Auto-generated Key Length',
@@ -338,6 +340,8 @@ return [
     'warning_description' => 'You are leaving this secure portal and being redirected to an external target link. Please ensure you trust the address below:',
     'warning_btn_continue' => 'Continue to Destination',
     'warning_btn_back' => 'Go Back',
+    'pixel_loading_title' => 'Connecting...',
+    'pixel_loading_description' => 'Preparing your connection and forwarding you now.',
 
     // Marketing & API Tab
     'tab_marketing' => 'Marketing & API',

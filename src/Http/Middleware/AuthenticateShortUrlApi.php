@@ -22,7 +22,7 @@ class AuthenticateShortUrlApi
 
         $apiKey = $request->header('X-Api-Key');
 
-        if (!$apiKey && $auth = $request->header('Authorization')) {
+        if (! $apiKey && $auth = $request->header('Authorization')) {
             if (str_starts_with(strtolower($auth), 'bearer ')) {
                 $apiKey = substr($auth, 7);
             }
@@ -45,7 +45,7 @@ class AuthenticateShortUrlApi
             }
         }
 
-        if (!$valid) {
+        if (! $valid) {
             return response()->json([
                 'error' => 'Unauthorized. Invalid or inactive API Key.',
             ], 401);
