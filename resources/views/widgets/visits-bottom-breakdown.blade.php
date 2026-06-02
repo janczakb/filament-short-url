@@ -9,7 +9,7 @@
     $browserIcons = [
         'Chrome'            => 'heroicon-m-globe-alt',
         'Firefox'           => 'heroicon-m-globe-americas',
-        'Safari'            => 'heroicon-m-compass',
+        'Safari'            => 'heroicon-m-globe-europe-africa',
         'Edge'              => 'heroicon-m-globe-asia-australia',
         'Opera'             => 'heroicon-m-bolt',
         'Internet Explorer' => 'heroicon-m-wrench',

@@ -89,11 +89,22 @@ class ShortUrlWorldMapWidget extends Widget
             $normalized[$code] = round(($count / $max) * 100);
         }
 
+        // Load and clean up raw SVG map on the server-side where paths are reliable
+        $svgPath = dirname(__FILE__, 6) . '/resources/views/widgets/world-map.svg';
+        $svgContent = '';
+        if (file_exists($svgPath)) {
+            $svgContent = file_get_contents($svgPath);
+            // Remove XML declaration and DOCTYPE tags
+            $svgContent = preg_replace('/<\?xml[^>]*\?>/i', '', $svgContent);
+            $svgContent = preg_replace('/<!DOCTYPE[^>]*>/i', '', $svgContent);
+        }
+
         return [
             'countryData' => $countryData,
             'maxCount' => $max,
             'totalClicks' => $total,
             'normalized' => $normalized,
+            'svgContent' => $svgContent,
         ];
     }
 }
