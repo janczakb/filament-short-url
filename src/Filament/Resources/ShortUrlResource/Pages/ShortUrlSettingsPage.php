@@ -7,10 +7,12 @@ use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Illuminate\Support\HtmlString;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -177,6 +179,15 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->default('default')
                                             ->required(fn (Get $get): bool => $get('queue_connection') !== 'sync')
                                             ->visible(fn (Get $get): bool => $get('queue_connection') !== 'sync'),
+
+                                        Placeholder::make('queue_worker_info')
+                                            ->content(function (Get $get) {
+                                                $queueName = $get('queue_name') ?: 'default';
+                                                $html = __('filament-short-url::default.settings_queue_worker_info', ['queue' => $queueName]);
+                                                return new HtmlString($html);
+                                            })
+                                            ->visible(fn (Get $get): bool => $get('queue_connection') !== 'sync')
+                                            ->columnSpanFull(),
                                     ]),
 
                                 Section::make(__('filament-short-url::default.settings_section_buffering'))
