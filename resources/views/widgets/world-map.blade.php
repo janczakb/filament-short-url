@@ -101,13 +101,8 @@
                                     const count = this.countryData[code] || 0;
                                     if (count > 0) {
                                         const intensity = this.normalized[code] || 0;
-                                        const name = this.countryNames[code] || code;
-
                                         el.classList.add('world-map-country-active');
                                         el.style.setProperty('--intensity', intensity / 100);
-
-                                        el.addEventListener('mouseenter', () => this.showTooltip(name, count));
-                                        el.addEventListener('mouseleave', () => this.hideTooltip());
                                     } else {
                                         el.classList.add('world-map-country-inactive');
                                     }
@@ -150,23 +145,31 @@
                             });
                         },
 
-                        updateTooltipPos(event) {
-                            const rect = this.$el.getBoundingClientRect();
-                            this.tooltip.x = event.clientX - rect.left;
-                            this.tooltip.y = event.clientY - rect.top;
-                        },
+                        handleMouseMove(event) {
+                            const activeEl = event.target.closest('.world-map-country-active');
+                            if (activeEl) {
+                                const code = activeEl.id.toUpperCase();
+                                const count = this.countryData[code] || 0;
+                                const name = this.countryNames[code] || code;
 
-                        showTooltip(country, count) {
-                            this.tooltip.show = true;
-                            this.tooltip.country = country;
-                            this.tooltip.count = count;
+                                this.tooltip.show = true;
+                                this.tooltip.country = name;
+                                this.tooltip.count = count;
+
+                                const rect = this.$el.getBoundingClientRect();
+                                this.tooltip.x = event.clientX - rect.left;
+                                this.tooltip.y = event.clientY - rect.top;
+                            } else {
+                                this.tooltip.show = false;
+                            }
                         },
 
                         hideTooltip() {
                             this.tooltip.show = false;
                         }
                      }"
-                     @mousemove="updateTooltipPos($event)"
+                     @mousemove="handleMouseMove($event)"
+                     @mouseleave="hideTooltip()"
                 >
                     {{-- Tooltip --}}
                     <div x-show="tooltip.show"
