@@ -3,6 +3,8 @@
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\FilamentShortUrlPlugin;
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Filament\Actions\Action;
@@ -12,7 +14,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Illuminate\Support\HtmlString;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -23,7 +24,9 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\HtmlString;
 
 class ShortUrlSettingsPage extends Page implements HasForms
 {
@@ -33,10 +36,10 @@ class ShortUrlSettingsPage extends Page implements HasForms
 
     protected string $view = 'filament-short-url::settings';
 
-    public static function canAccess(): bool
+    public static function canAccess(array $parameters = []): bool
     {
         try {
-            $plugin = \Bjanczak\FilamentShortUrl\FilamentShortUrlPlugin::get();
+            $plugin = FilamentShortUrlPlugin::get();
 
             if ($callback = $plugin->getAuthorizeSettingsUsing()) {
                 return (bool) app()->call($callback);
@@ -46,9 +49,9 @@ class ShortUrlSettingsPage extends Page implements HasForms
         }
 
         // Fallback: Check if there's a Model Policy with `manageSettings` method
-        if (\Illuminate\Support\Facades\Gate::getPolicyFor(\Bjanczak\FilamentShortUrl\Models\ShortUrl::class) &&
-            method_exists(\Illuminate\Support\Facades\Gate::getPolicyFor(\Bjanczak\FilamentShortUrl\Models\ShortUrl::class), 'manageSettings')) {
-            return \Illuminate\Support\Facades\Gate::allows('manageSettings', \Bjanczak\FilamentShortUrl\Models\ShortUrl::class);
+        if (Gate::getPolicyFor(ShortUrl::class) &&
+            method_exists(Gate::getPolicyFor(ShortUrl::class), 'manageSettings')) {
+            return Gate::allows('manageSettings', ShortUrl::class);
         }
 
         // Default fallback: Check if the user is authorized to view the resource in general
@@ -141,7 +144,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         TextInput::make('route_prefix')
                                             ->label(__('filament-short-url::default.settings_route_prefix'))
                                             ->helperText(__('filament-short-url::default.settings_route_prefix_helper'))
-                                            ->prefix(new HtmlString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -3px; width: 15px; height: 15px;" class="text-emerald-600 dark:text-emerald-500"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v7a2 2 0 00 2 2h10a2 2 0 00 2-2v-7a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 00 10 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>https://' . request()->getHost() . '/'))
+                                            ->prefix(new HtmlString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -3px; width: 15px; height: 15px;" class="text-emerald-600 dark:text-emerald-500"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v7a2 2 0 00 2 2h10a2 2 0 00 2-2v-7a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 00 10 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>https://'.request()->getHost().'/'))
                                             ->required()
                                             ->alphaDash()
                                             ->maxLength(20),
@@ -184,6 +187,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         Placeholder::make('trust_cdn_headers_info')
                                             ->content(function () {
                                                 $html = __('filament-short-url::default.settings_trust_cdn_headers_info_callout');
+
                                                 return new HtmlString($html);
                                             })
                                             ->visible(fn (Get $get): bool => (bool) $get('trust_cdn_headers'))
@@ -219,6 +223,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->content(function (Get $get) {
                                                 $queueName = $get('queue_name') ?: 'default';
                                                 $html = __('filament-short-url::default.settings_queue_worker_info', ['queue' => $queueName]);
+
                                                 return new HtmlString($html);
                                             })
                                             ->visible(fn (Get $get): bool => $get('queue_connection') !== 'sync')
@@ -236,6 +241,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         Placeholder::make('counter_buffering_info')
                                             ->content(function () {
                                                 $html = __('filament-short-url::default.settings_buffering_worker_info');
+
                                                 return new HtmlString($html);
                                             })
                                             ->visible(fn (Get $get): bool => (bool) $get('counter_buffering_enabled'))
@@ -273,11 +279,11 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         Placeholder::make('geoip_headers_warning')
                                             ->content(function () {
                                                 $html = __('filament-short-url::default.settings_geoip_headers_warning');
+
                                                 return new HtmlString($html);
                                             })
-                                            ->visible(fn (Get $get): bool => 
-                                                (bool) $get('geo_ip_enabled') && 
-                                                $get('geo_ip_driver') === 'headers' && 
+                                            ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') &&
+                                                $get('geo_ip_driver') === 'headers' &&
                                                 ! (bool) $get('trust_cdn_headers')
                                             )
                                             ->columnSpanFull(),
@@ -322,6 +328,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         Placeholder::make('maxmind_info')
                                             ->content(function () {
                                                 $html = __('filament-short-url::default.settings_maxmind_info_callout');
+
                                                 return new HtmlString($html);
                                             })
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind')
@@ -365,9 +372,9 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                             ->danger()
                                                             ->send();
                                                     }
-                                                })
+                                                }),
                                         ])
-                                        ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind'),
+                                            ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind'),
                                     ]),
                             ]),
 
@@ -803,10 +810,10 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                 'created' => __('filament-short-url::default.webhook_event_created'),
                                                 'expired' => __('filament-short-url::default.webhook_event_expired'),
                                                 'limit_reached' => __('filament-short-url::default.webhook_event_limit_reached'),
-                                             ])
-                                             ->default(['visited'])
-                                             ->columnSpanFull()
-                                             ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
+                                            ])
+                                            ->default(['visited'])
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
                                     ]),
                             ]),
                     ]),
