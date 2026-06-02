@@ -362,6 +362,8 @@ return [
     'settings_api_enabled' => 'Włącz Developer REST API',
     'settings_api_enabled_helper' => 'Zezwól zewnętrznym systemom na tworzenie, listowanie i usuwanie krótkich linków przez REST API. Wyłącz, aby zablokować wszystkie endpointy /api/short-url/* odpowiedzią 503.',
     'settings_section_global_webhook' => 'Konfiguracja globalnego Webhooka',
+    'settings_global_webhook_enabled' => 'Włącz globalny webhook',
+    'settings_global_webhook_enabled_helper' => 'Gdy włączone, wtyczka będzie wysyłać powiadomienia HTTP POST w tle przy zdarzeniach wszystkich linków.',
     'settings_global_webhook_url' => 'Globalny Webhook URL',
     'settings_global_webhook_url_helper' => 'Adres URL, pod który wysyłane będą w tle powiadomienia o zdarzeniach ze wszystkich linków.',
     'settings_webhook_events' => 'Monitorowane zdarzenia Webhooka',

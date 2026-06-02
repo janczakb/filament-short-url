@@ -78,6 +78,7 @@ class ShortUrlSettingsManager
             'qr_gradient_type' => config('filament-short-url.qr_defaults.gradient_type', 'linear'),
             'global_webhook_url' => null,
             'webhook_events' => ['visited'],
+            'global_webhook_enabled' => false,
             'api_keys' => [],
             'api_enabled' => false,
             'site_name' => config('filament-short-url.site_name'),
@@ -156,6 +157,7 @@ class ShortUrlSettingsManager
             'qr_gradient_type',
             'global_webhook_url',
             'webhook_events',
+            'global_webhook_enabled',
             'api_keys',
             'api_enabled',
             'site_name',
@@ -249,6 +251,10 @@ class ShortUrlSettingsManager
         }
         if (isset($filtered['qr_gradient_enabled'])) {
             $filtered['qr_gradient_enabled'] = (bool) $filtered['qr_gradient_enabled'];
+        }
+
+        if (isset($filtered['global_webhook_enabled'])) {
+            $filtered['global_webhook_enabled'] = (bool) $filtered['global_webhook_enabled'];
         }
 
         // Security v2.0 casts

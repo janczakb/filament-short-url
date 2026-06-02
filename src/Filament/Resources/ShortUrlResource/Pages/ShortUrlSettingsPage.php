@@ -80,6 +80,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'qr_gradient_type' => $mgr->get('qr_gradient_type', 'linear'),
             'global_webhook_url' => $mgr->get('global_webhook_url'),
             'webhook_events' => $mgr->get('webhook_events', ['visited']),
+            'global_webhook_enabled' => $mgr->get('global_webhook_enabled', false),
             'api_keys' => $mgr->get('api_keys', []),
             'api_enabled' => $mgr->get('api_enabled', false),
             'site_name' => $mgr->get('site_name'),
@@ -118,6 +119,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         TextInput::make('route_prefix')
                                             ->label(__('filament-short-url::default.settings_route_prefix'))
                                             ->helperText(__('filament-short-url::default.settings_route_prefix_helper'))
+                                            ->prefix(new HtmlString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -3px; width: 15px; height: 15px;" class="text-emerald-600 dark:text-emerald-500"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v7a2 2 0 00 2 2h10a2 2 0 00 2-2v-7a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 00 10 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>https://' . request()->getHost() . '/'))
                                             ->required()
                                             ->alphaDash()
                                             ->maxLength(20),
@@ -133,10 +135,12 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         TextInput::make('key_length')
                                             ->label(__('filament-short-url::default.settings_key_length'))
                                             ->helperText(__('filament-short-url::default.settings_key_length_helper'))
-                                            ->numeric()
-                                            ->integer()
-                                            ->minValue(4)
-                                            ->maxValue(20)
+                                            ->rules(['required', 'integer', 'between:3,20'])
+                                            ->extraInputAttributes([
+                                                'maxlength' => 2,
+                                                'oninput' => "this.value = this.value.replace(/[^0-9]/g, ''); if(this.value !== '') { let val = parseInt(this.value); if(val > 20) this.value = 20; }",
+                                                'onblur' => "if(this.value !== '') { let val = parseInt(this.value); if(val < 3) this.value = 3; if(val > 20) this.value = 20; }",
+                                            ])
                                             ->required(),
 
                                         TextInput::make('cache_ttl')
@@ -705,12 +709,25 @@ class ShortUrlSettingsPage extends Page implements HasForms
 
                                 Section::make(__('filament-short-url::default.settings_section_global_webhook'))
                                     ->schema([
+                                        Toggle::make('global_webhook_enabled')
+                                            ->label(__('filament-short-url::default.settings_global_webhook_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_global_webhook_enabled_helper'))
+                                            ->live()
+                                            ->inline(false)
+                                            ->afterStateUpdated(function (bool $state, $set) {
+                                                if (! $state) {
+                                                    $set('global_webhook_url', null);
+                                                    $set('webhook_events', ['visited']);
+                                                }
+                                            }),
+
                                         TextInput::make('global_webhook_url')
                                             ->label(__('filament-short-url::default.settings_global_webhook_url'))
                                             ->helperText(__('filament-short-url::default.settings_global_webhook_url_helper'))
                                             ->url()
                                             ->nullable()
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
 
                                         Select::make('webhook_events')
                                             ->label(__('filament-short-url::default.settings_webhook_events'))
@@ -721,9 +738,10 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                 'created' => __('filament-short-url::default.webhook_event_created'),
                                                 'expired' => __('filament-short-url::default.webhook_event_expired'),
                                                 'limit_reached' => __('filament-short-url::default.webhook_event_limit_reached'),
-                                            ])
-                                            ->default(['visited'])
-                                            ->columnSpanFull(),
+                                             ])
+                                             ->default(['visited'])
+                                             ->columnSpanFull()
+                                             ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
                                     ]),
                             ]),
                     ]),
