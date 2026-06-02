@@ -156,7 +156,16 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_trust_cdn_headers'))
                                             ->helperText(__('filament-short-url::default.settings_trust_cdn_headers_helper'))
                                             ->columnSpanFull()
-                                            ->inline(false),
+                                            ->inline(false)
+                                            ->live(),
+
+                                        Placeholder::make('trust_cdn_headers_info')
+                                            ->content(function () {
+                                                $html = __('filament-short-url::default.settings_trust_cdn_headers_info_callout');
+                                                return new HtmlString($html);
+                                            })
+                                            ->visible(fn (Get $get): bool => (bool) $get('trust_cdn_headers'))
+                                            ->columnSpanFull(),
                                     ]),
 
                                 Section::make(__('filament-short-url::default.settings_section_queue'))
@@ -199,7 +208,16 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         Toggle::make('counter_buffering_enabled')
                                             ->label(__('filament-short-url::default.settings_buffering_enabled'))
                                             ->helperText(__('filament-short-url::default.settings_buffering_helper'))
-                                            ->inline(false),
+                                            ->inline(false)
+                                            ->live(),
+
+                                        Placeholder::make('counter_buffering_info')
+                                            ->content(function () {
+                                                $html = __('filament-short-url::default.settings_buffering_worker_info');
+                                                return new HtmlString($html);
+                                            })
+                                            ->visible(fn (Get $get): bool => (bool) $get('counter_buffering_enabled'))
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
 
@@ -230,6 +248,18 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->live()
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled')),
 
+                                        Placeholder::make('geoip_headers_warning')
+                                            ->content(function () {
+                                                $html = __('filament-short-url::default.settings_geoip_headers_warning');
+                                                return new HtmlString($html);
+                                            })
+                                            ->visible(fn (Get $get): bool => 
+                                                (bool) $get('geo_ip_enabled') && 
+                                                $get('geo_ip_driver') === 'headers' && 
+                                                ! (bool) $get('trust_cdn_headers')
+                                            )
+                                            ->columnSpanFull(),
+
                                         // ── Cache TTL (only when geo-ip is on) ──
                                         TextInput::make('geo_ip_cache_ttl')
                                             ->label(__('filament-short-url::default.settings_geoip_cache_ttl'))
@@ -237,6 +267,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->numeric()
                                             ->integer()
                                             ->minValue(0)
+                                            ->maxValue(31536000)
                                             ->suffix('s')
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled')),
@@ -248,6 +279,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->numeric()
                                             ->integer()
                                             ->minValue(0)
+                                            ->maxValue(86400)
                                             ->suffix('s')
                                             ->required()
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled')),
@@ -265,44 +297,55 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'ip-api'),
 
                                         // ── MaxMind path (only for maxmind driver) ──
+                                        Placeholder::make('maxmind_info')
+                                            ->content(function () {
+                                                $html = __('filament-short-url::default.settings_maxmind_info_callout');
+                                                return new HtmlString($html);
+                                            })
+                                            ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind')
+                                            ->columnSpanFull(),
+
                                         TextInput::make('maxmind_database_path')
                                             ->label(__('filament-short-url::default.settings_maxmind_path'))
                                             ->helperText(__('filament-short-url::default.settings_maxmind_path_helper'))
                                             ->columnSpanFull()
                                             ->placeholder('/var/www/html/database/geoip/GeoLite2-Country.mmdb')
-                                            ->suffixAction(
-                                                Action::make('verifyMaxmindPath')
-                                                    ->label(__('filament-short-url::default.settings_maxmind_verify'))
-                                                    ->icon('heroicon-o-server')
-                                                    ->action(function (?string $state): void {
-                                                        $path = trim($state ?? '');
-
-                                                        if (empty($path)) {
-                                                            Notification::make()
-                                                                ->title(__('filament-short-url::default.settings_maxmind_verify_empty'))
-                                                                ->warning()
-                                                                ->send();
-
-                                                            return;
-                                                        }
-
-                                                        if (file_exists($path) && is_readable($path) && str_ends_with($path, '.mmdb')) {
-                                                            $sizeKb = round(filesize($path) / 1024);
-                                                            Notification::make()
-                                                                ->title(__('filament-short-url::default.settings_maxmind_verify_ok'))
-                                                                ->body("{$path} ({$sizeKb} KB)")
-                                                                ->success()
-                                                                ->send();
-                                                        } else {
-                                                            Notification::make()
-                                                                ->title(__('filament-short-url::default.settings_maxmind_verify_fail'))
-                                                                ->body($path)
-                                                                ->danger()
-                                                                ->send();
-                                                        }
-                                                    })
-                                            )
                                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind'),
+
+                                        Actions::make([
+                                            Action::make('verifyMaxmindPath')
+                                                ->label(__('filament-short-url::default.settings_maxmind_verify'))
+                                                ->icon('heroicon-o-check-circle')
+                                                ->color('gray')
+                                                ->action(function (Get $get): void {
+                                                    $path = trim($get('maxmind_database_path') ?? '');
+
+                                                    if (empty($path)) {
+                                                        Notification::make()
+                                                            ->title(__('filament-short-url::default.settings_maxmind_verify_empty'))
+                                                            ->warning()
+                                                            ->send();
+
+                                                        return;
+                                                    }
+
+                                                    if (file_exists($path) && is_readable($path) && str_ends_with($path, '.mmdb')) {
+                                                        $sizeKb = round(filesize($path) / 1024);
+                                                        Notification::make()
+                                                            ->title(__('filament-short-url::default.settings_maxmind_verify_ok'))
+                                                            ->body("{$path} ({$sizeKb} KB)")
+                                                            ->success()
+                                                            ->send();
+                                                    } else {
+                                                        Notification::make()
+                                                            ->title(__('filament-short-url::default.settings_maxmind_verify_fail'))
+                                                            ->body($path)
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                })
+                                        ])
+                                        ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') && $get('geo_ip_driver') === 'maxmind'),
                                     ]),
                             ]),
 

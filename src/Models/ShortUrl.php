@@ -185,6 +185,7 @@ class ShortUrl extends Model
         static::saving(function (self $m) {
             if ($m->single_use) {
                 $m->max_visits = null;
+                $m->redirect_status_code = 302; // Force temporary redirect to prevent browser caching of single-use URLs
             }
 
             if ($m->activated_at === null && $m->expires_at === null) {
@@ -240,14 +241,7 @@ class ShortUrl extends Model
 
     public function getRealTimeTotalVisits(): int
     {
-        $total = $this->total_visits;
-
-        if (config('filament-short-url.counter_buffering.enabled', false)) {
-            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
-            $total += (int) cache()->get("{$prefix}total:{$this->id}", 0);
-        }
-
-        return $total;
+        return $this->total_visits;
     }
 
     public function isActive(): bool
@@ -406,21 +400,36 @@ class ShortUrl extends Model
     public function incrementVisits(bool $isUnique = false): void
     {
         if (config('filament-short-url.counter_buffering.enabled', false)) {
-            if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
-                $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
-                try {
-                    cache()->increment("{$prefix}total:{$this->id}");
+            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+            try {
+                // Increment atomically in cache (works on Redis, Memcached, Database, File, etc.)
+                cache()->increment("{$prefix}total:{$this->id}");
 
-                    if ($isUnique) {
-                        cache()->increment("{$prefix}unique:{$this->id}");
-                    }
-
-                    Redis::sadd("{$prefix}dirty_ids", $this->id);
-
-                    return;
-                } catch (\Throwable) {
-                    // Fallback to queue job below
+                if ($isUnique) {
+                    cache()->increment("{$prefix}unique:{$this->id}");
                 }
+
+                // Add to dirty IDs list atomically
+                if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
+                    Redis::sadd("{$prefix}dirty_ids", $this->id);
+                } else {
+                    // Safe, concurrent-proof fallback for non-Redis stores using Cache locks
+                    $lock = cache()->lock("{$prefix}dirty_ids_lock", 2);
+                    $lock->get(function () use ($prefix) {
+                        $dirtyIds = cache()->get("{$prefix}dirty_ids", []);
+                        if (! is_array($dirtyIds)) {
+                            $dirtyIds = [];
+                        }
+                        if (! in_array($this->id, $dirtyIds)) {
+                            $dirtyIds[] = $this->id;
+                            cache()->forever("{$prefix}dirty_ids", $dirtyIds);
+                        }
+                    });
+                }
+
+                return;
+            } catch (\Throwable $e) {
+                // Log and fall back to queue job below if caching backend fails
             }
 
             // Safe fallback: Dispatch async job so clicks are queued and not lost on cache clear
