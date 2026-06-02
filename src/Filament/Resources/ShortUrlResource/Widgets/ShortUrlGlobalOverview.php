@@ -67,7 +67,7 @@ class ShortUrlGlobalOverview extends BaseWidget
             $agg = ShortUrl::query()
                 ->select([
                     DB::raw('COUNT(*) as total'),
-                    DB::raw('SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) as active'),
+                    DB::raw('SUM(CASE WHEN is_enabled THEN 1 ELSE 0 END) as active'),
                 ])
                 ->first();
 
