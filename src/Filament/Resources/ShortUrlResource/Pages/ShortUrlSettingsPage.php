@@ -174,7 +174,8 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                         TextInput::make('queue_name')
                                             ->label(__('filament-short-url::default.settings_queue_name'))
                                             ->helperText(__('filament-short-url::default.settings_queue_name_helper'))
-                                            ->required()
+                                            ->default('default')
+                                            ->required(fn (Get $get): bool => $get('queue_connection') !== 'sync')
                                             ->visible(fn (Get $get): bool => $get('queue_connection') !== 'sync'),
                                     ]),
 
