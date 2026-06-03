@@ -71,9 +71,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
         $this->app->booted(function (): void {
             $schedule = $this->app->make(Schedule::class);
 
-            if (config('filament-short-url.pruning.enabled', true)) {
-                $schedule->command('short-url:aggregate-and-prune')->dailyAt('02:00');
-            }
+            $schedule->command('short-url:aggregate-and-prune')->dailyAt('02:00');
 
             if (config('filament-short-url.counter_buffering.enabled', false)) {
                 $schedule->command('short-url:sync-counters')->everyMinute();

@@ -91,7 +91,7 @@ class GeoIpService
 
         if (class_exists(\Locale::class)) {
             try {
-                $name = \Locale::getDisplayRegion('-'.$code, 'en');
+                $name = \Locale::getDisplayRegion('en-'.$code, 'en');
                 if ($name && $name !== $code) {
                     return $name;
                 }

@@ -47,8 +47,26 @@ class AggregateAndPruneVisitsCommand extends Command
                     $statsByUrl = [];
                     $nextDate = Carbon::parse($date)->addDay()->toDateString();
 
-                    ShortUrlVisit::where('visited_at', '>=', $date.' 00:00:00')
+                    DB::table('short_url_visits')
+                        ->where('visited_at', '>=', $date.' 00:00:00')
                         ->where('visited_at', '<', $nextDate.' 00:00:00')
+                        ->select([
+                            'short_url_id',
+                            'is_qr_scan',
+                            'ip_hash',
+                            'device_type',
+                            'browser',
+                            'operating_system',
+                            'country',
+                            'country_code',
+                            'utm_source',
+                            'utm_medium',
+                            'utm_campaign',
+                            'browser_language',
+                            'city',
+                            'referer_host',
+                        ])
+                        ->orderBy('id')
                         ->chunk(1000, function ($chunk) use (&$statsByUrl): void {
                             foreach ($chunk as $visit) {
                                 $urlId = $visit->short_url_id;

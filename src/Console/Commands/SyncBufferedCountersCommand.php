@@ -25,9 +25,13 @@ class SyncBufferedCountersCommand extends Command
         if (Cache::getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
             $tempKey = "{$dirtyKey}:temp:".time();
             try {
-                Redis::rename($dirtyKey, $tempKey);
-                $dirtyIds = Redis::smembers($tempKey);
-                Redis::del($tempKey);
+                if (Redis::exists($dirtyKey)) {
+                    Redis::rename($dirtyKey, $tempKey);
+                    $dirtyIds = Redis::smembers($tempKey);
+                    Redis::del($tempKey);
+                } else {
+                    $dirtyIds = [];
+                }
             } catch (\Throwable) {
                 // If key does not exist or rename fails, fallback
                 $dirtyIds = [];

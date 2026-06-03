@@ -89,20 +89,8 @@ class ShortUrlRedirectController extends Controller
             }
         }
 
-        // 4. Resolve Destination URL (evaluating targeting rules)
-        $destination = $shortUrl->resolveDestinationUrl($request);
-
-        // Forward query parameters if configured
-        if ($shortUrl->forward_query_params) {
-            $queryParams = $request->query();
-            // Remove routing/auth parameters so they don't leak to destination
-            unset($queryParams['confirmed'], $queryParams['password']);
-
-            if (! empty($queryParams)) {
-                $separator = str_contains($destination, '?') ? '&' : '?';
-                $destination .= $separator.http_build_query($queryParams);
-            }
-        }
+        // 4. Resolve Destination URL (evaluating targeting rules and forwarding query parameters)
+        $destination = $this->service->resolveRedirectUrl($shortUrl, $request);
 
         // 5. Warning / Intermediate Page Check
         if ($shortUrl->show_warning_page && ! $request->has('confirmed')) {

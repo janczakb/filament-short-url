@@ -276,13 +276,34 @@ class ShortUrl extends Model
 
     public function getRealTimeTotalVisits(): int
     {
-        return $this->total_visits;
+        $buffered = 0;
+        if (config('filament-short-url.counter_buffering.enabled', false)) {
+            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+            $buffered = (int) cache()->get("{$prefix}total:{$this->id}", 0);
+        }
+
+        if ($this->max_visits !== null) {
+            $dbVal = (int) DB::table($this->table)
+                ->where('id', $this->id)
+                ->value('total_visits');
+
+            return $dbVal + $buffered;
+        }
+
+        return $this->total_visits + $buffered;
     }
 
     public function isActive(): bool
     {
         if (! $this->is_enabled) {
             return false;
+        }
+
+        if ($this->single_use) {
+            $realEnabled = DB::table($this->table)->where('id', $this->id)->value('is_enabled');
+            if (! $realEnabled) {
+                return false;
+            }
         }
 
         // Not yet active

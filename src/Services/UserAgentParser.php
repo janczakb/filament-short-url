@@ -37,6 +37,8 @@ class UserAgentParser
         // Order matters — check specific first, generic last
         $patterns = [
             'Edg/' => 'Edge',
+            'EdgiOS' => 'Edge',
+            'EdgA' => 'Edge',
             'OPR/' => 'Opera',
             'Opera' => 'Opera',
             'SamsungBrowser' => 'Samsung Browser',
@@ -67,6 +69,8 @@ class UserAgentParser
     {
         $patterns = [
             '/Edg\/([0-9.]+)/',
+            '/EdgiOS\/([0-9.]+)/',
+            '/EdgA\/([0-9.]+)/',
             '/OPR\/([0-9.]+)/',
             '/SamsungBrowser\/([0-9.]+)/',
             '/CriOS\/([0-9.]+)/',
