@@ -42,6 +42,8 @@ class ShortUrlDailyStats extends Model
         'utm_source_stats',
         'utm_medium_stats',
         'utm_campaign_stats',
+        'qr_visits_count',
+        'language_stats',
     ];
 
     /** @var array<string, string> */
@@ -58,6 +60,8 @@ class ShortUrlDailyStats extends Model
         'utm_source_stats' => 'array',
         'utm_medium_stats' => 'array',
         'utm_campaign_stats' => 'array',
+        'qr_visits_count' => 'integer',
+        'language_stats' => 'array',
     ];
 
     public function shortUrl(): BelongsTo

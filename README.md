@@ -20,15 +20,15 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 <p align="center">
   <table align="center" style="border-collapse: collapse; border: none;">
     <tr style="border: none;">
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/1.png" alt="Dashboard Stats" style="border-radius: 8px;"></td>
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/2.png" alt="Short URL Creation Form" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_1.png" alt="Dashboard Stats" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_2.png" alt="Short URL Creation Form" style="border-radius: 8px;"></td>
     </tr>
     <tr style="border: none;">
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/3.png" alt="Targeting and Rules" style="border-radius: 8px;"></td>
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/4.png" alt="Interactive Settings Panel" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_3.png" alt="Targeting and Rules" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_4.png" alt="Interactive Settings Panel" style="border-radius: 8px;"></td>
     </tr>
     <tr style="border: none;">
-      <td colspan="2" style="border: none; padding: 5px;"><img src="art/5.png" alt="Visit Logs Table" style="border-radius: 8px; width: 100%;"></td>
+      <td colspan="2" style="border: none; padding: 5px;"><img src="art/v2_5.png" alt="Visit Logs Table" style="border-radius: 8px; width: 100%;"></td>
     </tr>
   </table>
 </p>
@@ -43,7 +43,9 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 - 📈 **Real-Time Statistics Dashboard** — Track visits in real-time with cached aggregate metrics (countries, devices, browsers, operating systems, referrers, traffic charts, and maps).
 - 🛡️ **VPN, Proxy & Bot Filtering** — Exclude VPNs, proxies, Tor exit nodes, and automated bot clicks from your analytics to keep visitor statistics accurate.
 - 🔍 **Google Safe Browsing Integration** — Automatically verify target URLs on creation/edit to block malicious, phishing, malware, or social engineering links.
-- 🎨 **SVG QR Code Designer** — Built-in interactive design canvas in Filament to customize dot styles, margins, gradient coloring, and background transparency with instant SVG download.
+- 🎨 **SVG QR Code Designer & Custom Logo Overlay** *(new in v2.0)* — Built-in interactive design canvas to customize dot styles, margins, gradient coloring, and background transparency. Upload custom brand logos with shape configuration (square/circle), margins, sizes, and auto-clear overlapping dots, with instant SVG/PNG download.
+- 📊 **Dedicated QR Code Scan Tracking** *(new in v2.0)* — Separates direct visits from QR code scans in analytics. Dynamically appends tracking tags and showcases QR scans in its own badge within tables.
+- 🌐 **Browser Language Analytics** *(new in v2.0)* — Detects client browser preferred language settings to showcase a "Top Languages" analytics breakdown in the link statistics dashboard.
 - ⚡ **Ultra-Fast Redirects** — Redirections resolve in milliseconds. Analytical tasks, event dispatching, and GA4 payloads are processed asynchronously via Laravel Queue jobs.
 - 🎯 **Google Analytics 4 server-side tracking** — Native integration with the GA4 Measurement Protocol to bypass client-side AdBlockers completely.
 - ⚙️ **Dual-way UTM Campaign Builder** — Built-in form builder synchronizes UTM parameters with your destination URLs in real-time (two-way binding).
@@ -410,6 +412,8 @@ The `short_url_daily_stats` table stores pre-aggregated daily summaries per shor
 | `utm_source_stats` | JSON — visit counts by UTM source |
 | `utm_medium_stats` | JSON — visit counts by UTM medium |
 | `utm_campaign_stats` | JSON — visit counts by UTM campaign |
+| `qr_visits_count` | Pre-aggregated daily QR code scans |
+| `language_stats` | JSON — visit counts by browser language preferences |
 
 The `getCachedStats()` model method **automatically merges** data from both tables: historical days come from `short_url_daily_stats`, while today's data comes directly from `short_url_visits` — completely transparent to the dashboard.
 
@@ -852,6 +856,15 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v2.0.0
+- **Interactive QR Code Designer Branding Logo** — Upload custom brand logos inside the QR designer canvas in Filament. Configure logo sizing, margins, shapes (square/circle), and toggle dot backing removal to prevent dots overlapping with the logo.
+- **Dedicated QR Code Scan Tracking** — Differentiates visitor clicks from physical QR code scans by dynamically appending source tags (`?source=qr`). Added a new database tracking column (`is_qr_scan` on visits, `qr_scans` on short URLs, and `qr_visits_count` on daily stats). Displays a dedicated scans counter badge in the Filament list table.
+- **Browser Language Detection & Statistics** — Captures visitor browser preferred language headers (`browser_language` field) and aggregates them into the daily stats table. Displays a new "Top Languages" widget breakdown in the link statistics dashboard.
+- **High-Traffic Performance Safeguards & Robust Rollbacks** — Atomic database transactions for buffered counter updates with fail-safe rollback that restores cache values in case of DB connection failures. Prevents N+1 queries by preloading request-wide counters in a single batch cache lookup.
+- **Early Boot & Test Container Safety** — Safe settings caching that checks app container state before resolving `cache`, preventing early boot container exceptions during tests or artisan boots.
+- **Atomic Duplicate Visit Caching** — Bypasses database exists checks for duplicate visitors by utilizing atomic `cache()->add` keys to prevent database bottlenecking.
+- **Support for Empty Route Prefix (Root-Level URLs)** — Enhanced `getShortUrl()` to support empty route prefixes without generating double slashes (e.g. `domain.com/abc123` instead of `domain.com//abc123`). This allows clean root-level redirection domains. Added defensive slash trimming to standard prefixes.
 
 ### v1.7.0
 - **Role-based Settings Access Control** — New `authorizeSettingsUsing(Closure)` method on the plugin to restrict who can access the Settings page. Supports any callable returning a `bool`. Also auto-detects a `manageSettings` method on a registered `ShortUrl` policy. The Settings button in the table header is hidden automatically when access is denied.

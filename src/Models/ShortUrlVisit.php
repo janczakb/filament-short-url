@@ -49,6 +49,8 @@ class ShortUrlVisit extends Model
         'visited_at',
         'is_bot',
         'is_proxy',
+        'is_qr_scan',
+        'browser_language',
     ];
 
     /** @var array<string, string> */
@@ -56,6 +58,7 @@ class ShortUrlVisit extends Model
         'visited_at' => 'datetime',
         'is_bot' => 'boolean',
         'is_proxy' => 'boolean',
+        'is_qr_scan' => 'boolean',
     ];
 
     public function shortUrl(): BelongsTo

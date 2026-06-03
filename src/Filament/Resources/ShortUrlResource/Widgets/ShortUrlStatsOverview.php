@@ -41,6 +41,10 @@ class ShortUrlStatsOverview extends BaseWidget
                 ->icon('heroicon-o-user-group')
                 ->color('info'),
 
+            Stat::make(__('filament-short-url::default.stats_card_today_clicks'), number_format($stats['visitsToday'] ?? 0))
+                ->icon('heroicon-o-clock')
+                ->color('success'),
+
             Stat::make(__('filament-short-url::default.stats_card_top_source'), $topSource)
                 ->icon('heroicon-o-megaphone')
                 ->color('warning'),
@@ -48,6 +52,10 @@ class ShortUrlStatsOverview extends BaseWidget
             Stat::make(__('filament-short-url::default.stats_card_top_country'), $topCountry)
                 ->icon('heroicon-o-globe-alt')
                 ->color('success'),
+
+            Stat::make(__('filament-short-url::default.stats_card_qr_scans'), number_format($stats['qrScans'] ?? 0))
+                ->icon('heroicon-o-qr-code')
+                ->color('info'),
         ];
     }
 }

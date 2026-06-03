@@ -61,7 +61,8 @@ class SafeBrowsingService
                 ->post($endpoint, $payload);
 
             if ($response->failed()) {
-                Log::warning("Google Safe Browsing API request failed with status: " . $response->status());
+                Log::warning('Google Safe Browsing API request failed with status: '.$response->status());
+
                 return true; // Default to safe if API is down
             }
 
@@ -70,7 +71,8 @@ class SafeBrowsingService
             // If there are matches, the URL is flagged as unsafe
             return empty($matches);
         } catch (\Throwable $e) {
-            Log::warning("Google Safe Browsing check failed: " . $e->getMessage());
+            Log::warning('Google Safe Browsing check failed: '.$e->getMessage());
+
             return true; // Default to safe on exception
         }
     }

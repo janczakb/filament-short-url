@@ -90,7 +90,7 @@ class ShortUrlWorldMapWidget extends Widget
         }
 
         // Load and clean up raw SVG map on the server-side where paths are reliable
-        $svgPath = dirname(__FILE__, 6) . '/resources/views/widgets/world-map.svg';
+        $svgPath = dirname(__FILE__, 6).'/resources/views/widgets/world-map.svg';
         $svgContent = '';
         if (file_exists($svgPath)) {
             $svgContent = file_get_contents($svgPath);

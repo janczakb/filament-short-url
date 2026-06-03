@@ -20,6 +20,7 @@ class IncrementVisitJob implements ShouldQueue
     public function __construct(
         public readonly int $shortUrlId,
         public readonly bool $isUnique = false,
+        public readonly bool $isQrScan = false,
     ) {
         $this->onQueue(config('filament-short-url.queue_name', 'default'));
     }
@@ -32,12 +33,20 @@ class IncrementVisitJob implements ShouldQueue
             return;
         }
 
+        $updates = [];
+        if ($this->isUnique) {
+            $updates['unique_visits'] = DB::raw('unique_visits + 1');
+        }
+        if ($this->isQrScan) {
+            $updates['qr_scans'] = DB::raw('qr_scans + 1');
+        }
+
         $shortUrl->newQuery()
             ->where('id', $shortUrl->id)
             ->increment(
                 'total_visits',
                 1,
-                $this->isUnique ? ['unique_visits' => DB::raw('unique_visits + 1')] : []
+                $updates
             );
     }
 }

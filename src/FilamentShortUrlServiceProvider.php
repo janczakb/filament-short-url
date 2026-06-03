@@ -4,6 +4,8 @@ namespace Bjanczak\FilamentShortUrl;
 
 use Bjanczak\FilamentShortUrl\Console\Commands\SyncBufferedCountersCommand;
 use Bjanczak\FilamentShortUrl\Services\GeoIpService;
+use Bjanczak\FilamentShortUrl\Services\ProxyDetectionService;
+use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTracker;
@@ -34,6 +36,9 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2026_06_02_000006_add_max_visits_and_expiration_redirect_to_short_urls_table',
                 '2026_06_02_000007_add_retargeting_pixels_and_webhooks_to_short_urls_table',
                 '2026_06_02_000008_add_bot_and_proxy_to_short_url_visits_table',
+                '2026_06_02_224250_add_qr_logo_to_short_urls_table',
+                '2026_06_03_110000_add_qr_and_language_to_visits_and_daily_stats',
+                '2026_06_03_120000_add_track_browser_language_to_short_urls_table',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,
@@ -52,8 +57,8 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
         $this->app->singleton(GeoIpService::class);
         $this->app->singleton(ShortUrlService::class);
         $this->app->singleton(ShortUrlTracker::class);
-        $this->app->singleton(\Bjanczak\FilamentShortUrl\Services\ProxyDetectionService::class);
-        $this->app->singleton(\Bjanczak\FilamentShortUrl\Services\SafeBrowsingService::class);
+        $this->app->singleton(ProxyDetectionService::class);
+        $this->app->singleton(SafeBrowsingService::class);
     }
 
     public function packageBooted(): void

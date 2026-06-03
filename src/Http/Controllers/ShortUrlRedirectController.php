@@ -5,6 +5,7 @@ namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
+use Bjanczak\FilamentShortUrl\Services\ProxyDetectionService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -40,7 +41,7 @@ class ShortUrlRedirectController extends Controller
         // 1. VPN/Proxy & Bot Blocking Check
         if (config('filament-short-url.vpn_detection.enabled', false) && config('filament-short-url.vpn_detection.block_action') === 'block_with_403') {
             $ipAddress = ClientIpExtractor::getIp($request);
-            $proxyDetector = app(\Bjanczak\FilamentShortUrl\Services\ProxyDetectionService::class);
+            $proxyDetector = app(ProxyDetectionService::class);
             $detection = $proxyDetector->detect($ipAddress);
             if ($detection['is_proxy'] || $detection['is_bot']) {
                 abort(403, 'Access denied. VPN, Proxy, or automated scraping connection detected.');
@@ -117,6 +118,17 @@ class ShortUrlRedirectController extends Controller
                 $countryCode = ClientIpExtractor::getCountryCode($request);
                 $city = ClientIpExtractor::getCity($request);
 
+                $isQrScan = (bool) ($request->query('source') === 'qr' || $request->query('qr') === '1');
+                $languages = $request->getLanguages();
+                $browserLanguage = null;
+                if (! empty($languages)) {
+                    $parts = explode('-', str_replace('_', '-', $languages[0]));
+                    $browserLanguage = strtolower(trim($parts[0]));
+                    if (strlen($browserLanguage) > 5) {
+                        $browserLanguage = substr($browserLanguage, 0, 5);
+                    }
+                }
+
                 $job = new TrackShortUrlVisitJob(
                     shortUrl: $shortUrl,
                     ipAddress: $ipAddress,
@@ -129,6 +141,8 @@ class ShortUrlRedirectController extends Controller
                     utmCampaign: $request->query('utm_campaign'),
                     utmTerm: $request->query('utm_term'),
                     utmContent: $request->query('utm_content'),
+                    isQrScan: $isQrScan,
+                    browserLanguage: $browserLanguage,
                 );
 
                 if ($connection) {

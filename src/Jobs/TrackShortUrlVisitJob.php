@@ -47,6 +47,8 @@ class TrackShortUrlVisitJob implements ShouldQueue
         public readonly ?string $utmCampaign = null,
         public readonly ?string $utmTerm = null,
         public readonly ?string $utmContent = null,
+        public readonly bool $isQrScan = false,
+        public readonly ?string $browserLanguage = null,
     ) {
         $this->onQueue(config('filament-short-url.queue_name', 'default'));
     }
@@ -80,6 +82,8 @@ class TrackShortUrlVisitJob implements ShouldQueue
             utmCampaign: $this->utmCampaign,
             utmTerm: $this->utmTerm,
             utmContent: $this->utmContent,
+            isQrScan: $this->isQrScan,
+            browserLanguage: $this->browserLanguage,
         );
 
         // Null means bot/crawler — nothing to dispatch or report
@@ -133,6 +137,8 @@ class TrackShortUrlVisitJob implements ShouldQueue
                     'utm_campaign' => $visit->utm_campaign,
                     'utm_term' => $visit->utm_term,
                     'utm_content' => $visit->utm_content,
+                    'is_qr_scan' => (bool) $visit->is_qr_scan,
+                    'browser_language' => $visit->browser_language,
                 ],
             ];
 

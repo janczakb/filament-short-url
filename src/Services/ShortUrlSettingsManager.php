@@ -25,16 +25,22 @@ class ShortUrlSettingsManager
             return $this->cache;
         }
 
-        $path = $this->getSettingsPath();
-        $stored = [];
-
-        if (File::exists($path)) {
-            try {
-                $stored = json_decode(File::get($path), true) ?: [];
-            } catch (\Throwable) {
-                // Fallback to empty if json is corrupt
+        $readFromFile = function () {
+            $path = $this->getSettingsPath();
+            if (File::exists($path)) {
+                try {
+                    return json_decode(File::get($path), true) ?: [];
+                } catch (\Throwable) {
+                    // Fallback to empty if json is corrupt
+                }
             }
-        }
+
+            return [];
+        };
+
+        $stored = app()->bound('cache')
+            ? cache()->remember('filament-short-url:settings', 86400, $readFromFile)
+            : $readFromFile();
 
         // Merge stored settings with default values from config()
         $this->cache = array_merge([
@@ -67,6 +73,7 @@ class ShortUrlSettingsManager
             'tracking_fields_operating_system_version' => config('filament-short-url.tracking.fields.operating_system_version', true),
             'tracking_fields_referer_url' => config('filament-short-url.tracking.fields.referer_url', true),
             'tracking_fields_device_type' => config('filament-short-url.tracking.fields.device_type', true),
+            'tracking_fields_browser_language' => config('filament-short-url.tracking.fields.browser_language', true),
             'qr_size' => config('filament-short-url.qr_defaults.size', 300),
             'qr_margin' => config('filament-short-url.qr_defaults.margin', 1),
             'qr_dot_style' => config('filament-short-url.qr_defaults.dot_style', 'square'),
@@ -146,6 +153,7 @@ class ShortUrlSettingsManager
             'tracking_fields_operating_system_version',
             'tracking_fields_referer_url',
             'tracking_fields_device_type',
+            'tracking_fields_browser_language',
             'qr_size',
             'qr_margin',
             'qr_dot_style',
@@ -241,6 +249,9 @@ class ShortUrlSettingsManager
         if (isset($filtered['tracking_fields_device_type'])) {
             $filtered['tracking_fields_device_type'] = (bool) $filtered['tracking_fields_device_type'];
         }
+        if (isset($filtered['tracking_fields_browser_language'])) {
+            $filtered['tracking_fields_browser_language'] = (bool) $filtered['tracking_fields_browser_language'];
+        }
 
         // QR defaults
         if (isset($filtered['qr_size'])) {
@@ -266,6 +277,7 @@ class ShortUrlSettingsManager
         }
 
         File::put($path, json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        cache()->forget('filament-short-url:settings');
         $this->cache = null;
 
         // Apply immediately to current request config
@@ -321,6 +333,7 @@ class ShortUrlSettingsManager
             'filament-short-url.tracking.fields.operating_system_version' => $settings['tracking_fields_operating_system_version'],
             'filament-short-url.tracking.fields.referer_url' => $settings['tracking_fields_referer_url'],
             'filament-short-url.tracking.fields.device_type' => $settings['tracking_fields_device_type'],
+            'filament-short-url.tracking.fields.browser_language' => $settings['tracking_fields_browser_language'],
             'filament-short-url.qr_defaults.size' => $settings['qr_size'],
             'filament-short-url.qr_defaults.margin' => $settings['qr_margin'],
             'filament-short-url.qr_defaults.dot_style' => $settings['qr_dot_style'],

@@ -37,22 +37,17 @@
             'dateTo' => $dateTo,
         ], key('stats-overview-' . $dateFrom . '-' . $dateTo))
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div class="lg:col-span-2">
-                @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsChart::class, [
-                    'record' => $record,
-                    'dateFrom' => $dateFrom,
-                    'dateTo' => $dateTo,
-                ], key('stats-chart-' . $dateFrom . '-' . $dateTo))
-            </div>
-            <div>
-                @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsRightBreakdown::class, [
-                    'record' => $record,
-                    'dateFrom' => $dateFrom,
-                    'dateTo' => $dateTo,
-                ], key('stats-right-breakdown-' . $dateFrom . '-' . $dateTo))
-            </div>
-        </div>
+        @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsChart::class, [
+            'record' => $record,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ], key('stats-chart-' . $dateFrom . '-' . $dateTo))
+
+        @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsRightBreakdown::class, [
+            'record' => $record,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ], key('stats-right-breakdown-' . $dateFrom . '-' . $dateTo))
 
         @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlWorldMapWidget::class, [
             'record' => $record,

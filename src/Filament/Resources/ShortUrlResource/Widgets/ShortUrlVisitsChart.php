@@ -4,6 +4,7 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets;
 
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Carbon;
 
 class ShortUrlVisitsChart extends ChartWidget
 {
@@ -15,9 +16,7 @@ class ShortUrlVisitsChart extends ChartWidget
 
     protected ?string $maxHeight = '200px';
 
-    protected int|string|array $columnSpan = [
-        'lg' => 2,
-    ];
+    protected int|string|array $columnSpan = 'full';
 
     public function getHeading(): string
     {
@@ -52,10 +51,11 @@ class ShortUrlVisitsChart extends ChartWidget
             ],
             'labels' => array_map(function (string $date) {
                 try {
-                    $carbon = \Illuminate\Support\Carbon::parse($date);
+                    $carbon = Carbon::parse($date);
                     if (strlen($date) === 7) { // Y-m
                         return $carbon->format('m.Y');
                     }
+
                     return $carbon->format('d.m');
                 } catch (\Throwable $e) {
                     return $date;

@@ -2,6 +2,7 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas;
 
+use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -47,7 +49,7 @@ class ShortUrlForm
                         ->maxLength(2048)
                         ->rules([
                             fn (): \Closure => function (string $attribute, $value, \Closure $fail) {
-                                $safeBrowsing = app(\Bjanczak\FilamentShortUrl\Services\SafeBrowsingService::class);
+                                $safeBrowsing = app(SafeBrowsingService::class);
                                 if (! $safeBrowsing->isSafe($value)) {
                                     $fail(__('filament-short-url::default.safe_browsing_error') ?? 'This URL has been flagged by Google Safe Browsing as unsafe.');
                                 }
@@ -296,6 +298,12 @@ class ShortUrlForm
                             ->default(fn () => config('filament-short-url.tracking.fields.referer_url', true))
                             ->inline(false)
                             ->disabled(fn (Get $get): bool => ! $get('track_visits')),
+
+                        Toggle::make('track_browser_language')
+                            ->label(__('filament-short-url::default.track_browser_language'))
+                            ->default(fn () => config('filament-short-url.tracking.fields.browser_language', true))
+                            ->inline(false)
+                            ->disabled(fn (Get $get): bool => ! $get('track_visits')),
                     ])
                     ->columns(4)
                     ->hidden(fn (Get $get): bool => ! $get('track_visits')),
@@ -360,18 +368,32 @@ class ShortUrlForm
         return Tab::make(__('filament-short-url::default.tab_qr_design'))
             ->icon('heroicon-o-qr-code')
             ->schema([
-                TextInput::make('qr_options')
-                    ->extraAttributes([
-                        'id' => 'qr-options-json-input',
-                        'style' => 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none',
-                        'aria-hidden' => 'true',
-                    ])
-                    ->dehydrateStateUsing(fn (?string $state): array => json_decode($state ?? '{}', true) ?: [])
-                    ->afterStateHydrated(function (TextInput $component, mixed $state): void {
-                        $component->state(is_array($state) ? json_encode($state) : ($state ?? '{}'));
-                    })
-                    ->columnSpanFull()
-                    ->label(''),
+                Group::make([
+                    TextInput::make('qr_options')
+                        ->extraAttributes([
+                            'style' => 'display: none !important;',
+                        ])
+                        ->extraInputAttributes([
+                            'id' => 'qr-options-json-input',
+                        ])
+                        ->hiddenLabel()
+                        ->dehydrateStateUsing(fn (?string $state): array => json_decode($state ?? '{}', true) ?: [])
+                        ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                            $component->state(is_array($state) ? json_encode($state) : ($state ?? '{}'));
+                        }),
+
+                    TextInput::make('qr_logo')
+                        ->extraAttributes([
+                            'style' => 'display: none !important;',
+                        ])
+                        ->extraInputAttributes([
+                            'id' => 'qr-logo-path-input',
+                        ])
+                        ->hiddenLabel()
+                        ->nullable(),
+                ])->extraAttributes([
+                    'style' => 'display: none !important;',
+                ]),
 
                 ViewField::make('qr_designer')
                     ->view('filament-short-url::qr-designer')

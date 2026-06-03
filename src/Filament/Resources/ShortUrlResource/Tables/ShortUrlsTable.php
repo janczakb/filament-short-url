@@ -121,7 +121,7 @@ HTML
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
-                                        '.$record->total_visits.' clicks
+                                        '.$record->total_visits.' '.__('filament-short-url::default.badge_clicks').'
                                     </span>
 
                                     <!-- Unique Clicks Badge -->
@@ -129,7 +129,16 @@ HTML
                                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                         </svg>
-                                        '.$record->unique_visits.' unique
+                                        '.$record->unique_visits.' '.__('filament-short-url::default.badge_unique').'
+                                    </span>
+
+                                    <!-- QR Scans Badge -->
+                                    <span class="inline-flex items-center gap-1 bg-[#f4f4f5] dark:bg-gray-800 px-2 py-1 rounded text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12h.008v.008H15V12Zm0 3h.008v.008H15V15Zm0 3h.008v.008H15V18Zm3-3h.008v.008H18V15Zm0 3h.008v.008H18V18Zm3-3h.008v.008H21V15Zm0 3h.008v.008H21V18Zm0-6h.008v.008H21V12Zm-3 0h.008v.008H18V12Z" />
+                                        </svg>
+                                        '.$record->qr_scans.' '.__('filament-short-url::default.badge_qr_scans').'
                                     </span>
 
                                     <!-- Date Added Badge -->
@@ -137,7 +146,7 @@ HTML
                                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        '.$record->created_at->format('M d, Y').'
+                                        '.$record->created_at->translatedFormat('M d, Y').'
                                     </span>
 
                                     <!-- Expiry / Single Use Badge -->
@@ -146,12 +155,12 @@ HTML
                                             <svg class="w-3.5 h-3.5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            Expires: '.$record->expires_at->format('M d, Y').'
+                                            '.__('filament-short-url::default.badge_expires', ['date' => $record->expires_at->translatedFormat('M d, Y')]).'
                                         ' : '
                                             <svg class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                             </svg>
-                                            No expiry
+                                            '.__('filament-short-url::default.badge_no_expiry').'
                                         ').'
                                     </span>
 
@@ -160,7 +169,7 @@ HTML
                                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                         </svg>
-                                        '.$record->redirect_status_code.' redirect
+                                        '.__('filament-short-url::default.badge_redirect', ['code' => $record->redirect_status_code]).'
                                     </span>
                                 </div>
                             ')),
@@ -293,6 +302,284 @@ HTML
                                 </div>
                             ')),
                     ]),
+
+                Action::make('qrCode')
+                    ->label(__('filament-short-url::default.action_qr') ?? 'QR Code')
+                    ->icon('heroicon-o-qr-code')
+                    ->color('gray')
+                    ->iconButton()
+                    ->tooltip(__('filament-short-url::default.action_qr') ?? 'QR Code')
+                    ->modalWidth('md')
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(false)
+                    ->form(function (ShortUrl $record): array {
+                        $shortUrl = $record->getShortUrl();
+                        $qrTargetUrl = $shortUrl.'?source=qr';
+                        $destHost = parse_url($record->destination_url, PHP_URL_HOST) ?? '';
+                        $urlKey = $record->url_key;
+                        $eid = 'fsu_'.substr(md5($shortUrl), 0, 8);
+
+                        $qrHelperText = __('filament-short-url::default.qr_modal_helper') ?? 'Scan, copy, or download your custom QR code.';
+                        $downloadSvgText = __('filament-short-url::default.qr_download_svg') ?? 'Download SVG';
+                        $downloadPngText = __('filament-short-url::default.qr_download_png') ?? 'Download PNG';
+                        $closeButtonText = __('filament-short-url::default.close_button') ?? 'Close';
+                        $copyLinkText = __('filament-short-url::default.action_copy') ?? 'Copy link';
+                        $openLinkText = __('filament-short-url::default.open_link') ?? 'Open link';
+
+                        $qrDefaults = $record->getQrOptions();
+                        $isGrad = ($qrDefaults['gradient_enabled'] ?? false) || (($qrDefaults['color_mode'] ?? '') === 'gradient');
+                        $dotStyle = $qrDefaults['dot_style'] ?? 'square';
+                        $fgColor = $qrDefaults['foreground_color'] ?? '#000000';
+                        $bgColor = ($qrDefaults['bg_transparent'] ?? false) ? 'rgba(0,0,0,0)' : ($qrDefaults['background_color'] ?? '#ffffff');
+
+                        $dotsOptions = $isGrad ? [
+                            'type' => $dotStyle,
+                            'gradient' => [
+                                'type' => $qrDefaults['gradient_type'] ?? 'linear',
+                                'colorStops' => [
+                                    ['offset' => 0, 'color' => $qrDefaults['gradient_from'] ?? '#4f46e5'],
+                                    ['offset' => 1, 'color' => $qrDefaults['gradient_to'] ?? '#06b6d4'],
+                                ],
+                            ],
+                        ] : [
+                            'type' => $dotStyle,
+                            'color' => $fgColor,
+                        ];
+
+                        $mainColor = $isGrad ? ($qrDefaults['gradient_from'] ?? '#4f46e5') : $fgColor;
+
+                        $eyeConfigEnabled = $qrDefaults['eye_config_enabled'] ?? false;
+                        $eyeSquareStyle = $qrDefaults['eye_square_style'] ?? ($dotStyle === 'dots' ? 'dot' : 'square');
+                        $eyeDotStyle = $qrDefaults['eye_dot_style'] ?? ($dotStyle === 'dots' ? 'dot' : 'square');
+                        $eyeColor = $qrDefaults['eye_color'] ?? $mainColor;
+
+                        $cornersSquareOptions = $eyeConfigEnabled ? [
+                            'type' => $eyeSquareStyle,
+                            'color' => $eyeColor,
+                        ] : [
+                            'type' => $dotStyle === 'dots' ? 'dot' : 'square',
+                            'color' => $mainColor,
+                        ];
+
+                        $cornersDotOptions = $eyeConfigEnabled ? [
+                            'type' => $eyeDotStyle,
+                            'color' => $eyeColor,
+                        ] : [
+                            'type' => $dotStyle === 'dots' ? 'dot' : 'square',
+                            'color' => $mainColor,
+                        ];
+
+                        $logo = $qrDefaults['logo'] ?? null;
+                        $logoSize = $qrDefaults['logo_size'] ?? 0.3;
+                        $logoMargin = $qrDefaults['logo_margin'] ?? 9;
+                        $logoHideBackground = $qrDefaults['logo_hide_background'] ?? true;
+                        $logoShape = $qrDefaults['logo_shape'] ?? 'square';
+
+                        $qrOptionsJson = json_encode([
+                            'type' => 'svg',
+                            'width' => 200,
+                            'height' => 200,
+                            'margin' => $qrDefaults['margin'] ?? 1,
+                            'dotsOptions' => $dotsOptions,
+                            'backgroundOptions' => ['color' => $bgColor],
+                            'cornersSquareOptions' => $cornersSquareOptions,
+                            'cornersDotOptions' => $cornersDotOptions,
+                            'image' => $logo ?: null,
+                            'imageOptions' => [
+                                'crossOrigin' => 'anonymous',
+                                'hideBackgroundDots' => $logoHideBackground,
+                                'imageSize' => $logoSize,
+                                'margin' => $logoMargin,
+                                'logoShape' => $logoShape,
+                            ],
+                            'qrOptions' => ['errorCorrectionLevel' => $logo ? 'H' : 'M'],
+                        ]);
+
+                        $escapedQrOptions = e($qrOptionsJson);
+
+                        $html = <<<HTML
+<div data-qr-options="{$escapedQrOptions}" x-data="{
+    shortUrl: '{$shortUrl}',
+    qrTargetUrl: '{$qrTargetUrl}',
+    urlKey: '{$urlKey}',
+    eid: '{$eid}',
+    init() {
+        this.\$nextTick(() => {
+            this.loadScript().then(() => {
+                const canvas = document.getElementById(this.eid + '_qr_canvas');
+                if (canvas && !canvas.innerHTML) {
+                    const opts = JSON.parse(this.\$el.getAttribute('data-qr-options'));
+                    opts.data = this.qrTargetUrl;
+                    
+                    const fixSvg = () => {
+                        const svg = canvas.querySelector('svg');
+                        if (svg) {
+                            const w = svg.getAttribute('width') || opts.width || 200;
+                            const h = svg.getAttribute('height') || opts.height || 200;
+                            svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+                            svg.style.width = '100%';
+                            svg.style.height = '100%';
+                        }
+                    };
+
+                    if (opts.image && opts.imageOptions) {
+                        const img = new Image();
+                        img.onload = () => {
+                            const cv = document.createElement('canvas');
+                            cv.width = 1200;
+                            cv.height = 1200;
+                            const cx = cv.getContext('2d');
+                            cx.imageSmoothingEnabled = true;
+                            cx.imageSmoothingQuality = 'high';
+
+                            const isCircle = opts.imageOptions.logoShape === 'circle';
+                            const targetDim = 1200 - (parseFloat(opts.imageOptions.margin || 0) * 20);
+
+                            cx.save();
+                            if (isCircle) {
+                                cx.beginPath();
+                                cx.arc(600, 600, targetDim / 2, 0, 2 * Math.PI);
+                                cx.clip();
+
+                                const scale = Math.max(targetDim / img.width, targetDim / img.height);
+                                const w = img.width * scale;
+                                const h = img.height * scale;
+                                const x = (1200 - w) / 2;
+                                const y = (1200 - h) / 2;
+
+                                cx.drawImage(img, x, y, w, h);
+                            } else {
+                                cx.beginPath();
+                                const offset = (1200 - targetDim) / 2;
+                                const radius = 144 * (targetDim / 1200);
+
+                                if (typeof cx.roundRect === 'function') {
+                                    cx.roundRect(offset, offset, targetDim, targetDim, radius);
+                                } else {
+                                    cx.moveTo(offset + radius, offset);
+                                    cx.lineTo(offset + targetDim - radius, offset);
+                                    cx.quadraticCurveTo(offset + targetDim, offset, offset + targetDim, offset + radius);
+                                    cx.lineTo(offset + targetDim, offset + targetDim - radius);
+                                    cx.quadraticCurveTo(offset + targetDim, offset + targetDim, offset + targetDim - radius, offset + targetDim);
+                                    cx.lineTo(offset + radius, offset + targetDim);
+                                    cx.quadraticCurveTo(offset, offset + targetDim, offset, offset + targetDim - radius);
+                                    cx.lineTo(offset, offset + radius);
+                                    cx.quadraticCurveTo(offset, offset, offset + radius, offset);
+                                    cx.closePath();
+                                }
+                                cx.clip();
+
+                                const scale = Math.max(targetDim / img.width, targetDim / img.height);
+                                const w = img.width * scale;
+                                const h = img.height * scale;
+                                const x = (1200 - w) / 2;
+                                const y = (1200 - h) / 2;
+
+                                cx.drawImage(img, x, y, w, h);
+                            }
+                            cx.restore();
+
+                            opts.image = cv.toDataURL('image/png');
+                            opts.imageOptions.margin = 0;
+
+
+                            window['qr_' + this.eid] = new window.QRCodeStyling(opts);
+                            window['qr_' + this.eid].append(canvas);
+                            fixSvg();
+                        };
+                        img.src = opts.image;
+                    } else {
+                        window['qr_' + this.eid] = new window.QRCodeStyling(opts);
+                        window['qr_' + this.eid].append(canvas);
+                        fixSvg();
+                    }
+                }
+            });
+        });
+    },
+    loadScript() {
+        return new Promise((resolve) => {
+            if (window.QRCodeStyling) return resolve();
+            const s = document.createElement('script');
+            s.src = 'https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js';
+            s.onload = () => resolve();
+            s.onerror = () => {
+                const s2 = document.createElement('script');
+                s2.src = 'https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js';
+                s2.onload = () => resolve();
+                document.head.appendChild(s2);
+            };
+            document.head.appendChild(s);
+        });
+    }
+}">
+
+<!-- Close Button (x) -->
+<button type="button" x-on:click="event.preventDefault(); event.stopPropagation(); const f=\$el.closest('.fi-modal-window'); const m=f?(f.getAttribute('x-on:keydown.window.escape')||'').match(/'(fi-[^']*)'/):null; if(m){\$dispatch('close-modal',{id:m[1]})}else{\$wire.unmountAction()}"
+        style="position:absolute;top:16px;right:16px;z-index:50;width:28px;height:28px;border-radius:50%;border:none;background:#f3f4f6;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6b7280;transition:color .15s,background-color .15s"
+        onmouseover="this.style.color='#374151';this.style.backgroundColor='#e5e7eb'"
+        onmouseout="this.style.color='#6b7280';this.style.backgroundColor='#f3f4f6'"
+        title="{$closeButtonText}">
+    <svg style="width:16px;height:16px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+</button>
+
+<div style="text-align:center;padding:4px 0 8px">
+    <p style="font-size:13px;color:#9ca3af;margin:0">{$qrHelperText}</p>
+</div>
+
+<!-- URL pill -->
+<div style="display:flex;align-items:center;gap:10px;background:#EFF6FF;border-radius:999px;padding:10px 14px;margin:18px 0 0">
+    <div style="width:30px;height:30px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #e5e7eb">
+        <img src="https://icons.duckduckgo.com/ip2/{$destHost}.ico" style="width:16px;height:16px;object-fit:contain" onerror="this.style.display='none'">
+    </div>
+    <span style="flex:1;font-size:14px;font-weight:600;color:#1d4ed8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{$shortUrl}</span>
+    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <button id="{$eid}_copy" type="button"
+            onclick="
+                event.preventDefault();
+                event.stopPropagation();
+                const u='{$shortUrl}';
+                if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(u);}
+                else{const t=document.createElement('textarea');t.value=u;t.style.cssText='position:fixed;left:-9999px';document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}
+                const b=document.getElementById('{$eid}_copy');
+                const prev=b.innerHTML;
+                b.innerHTML='<svg style=\'width:16px;height:16px;color:#16a34a\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\' stroke-width=\'2\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M5 13l4 4L19 7\'/></svg>';
+                setTimeout(()=>b.innerHTML=prev,1800);
+            "
+            style="width:30px;height:30px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s"
+            onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'" title="{$copyLinkText}">
+            <svg style="width:16px;height:16px;color:#6b7280" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+        <a href="{$shortUrl}" target="_blank" rel="noopener noreferrer"
+           style="width:30px;height:30px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:background .15s"
+           onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'" title="{$openLinkText}">
+            <svg style="width:15px;height:15px;color:#6b7280" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+    </div>
+</div>
+
+<!-- QR Code Container (Visible immediately) -->
+<div id="{$eid}_qr_container" style="display:block;margin:16px 0 0;text-align:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px">
+    <div style="display:flex;justify-content:center;margin-bottom:12px">
+        <div id="{$eid}_qr_canvas" style="background:#fff;padding:8px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05)"></div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:8px">
+        <button type="button" onclick="event.preventDefault();event.stopPropagation();window['qr_{$eid}']?.download({ name: '{$urlKey}-qr', extension: 'svg' })" style="font-size:12px;font-weight:600;color:#374151;border:1.5px solid #e5e7eb;background:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'">{$downloadSvgText}</button>
+        <button type="button" onclick="event.preventDefault();event.stopPropagation();window['qr_{$eid}']?.download({ name: '{$urlKey}-qr', extension: 'png' })" style="font-size:12px;font-weight:600;color:#374151;border:1.5px solid #e5e7eb;background:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'">{$downloadPngText}</button>
+    </div>
+</div>
+
+</div>
+HTML;
+
+                        return [
+                            Forms\Components\Placeholder::make('qr_modal_content')
+                                ->hiddenLabel()
+                                ->content(new HtmlString($html)),
+                        ];
+                    }),
 
                 Action::make('stats')
                     ->label(__('filament-short-url::default.action_stats'))

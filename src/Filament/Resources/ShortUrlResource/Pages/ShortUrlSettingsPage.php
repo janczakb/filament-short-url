@@ -94,6 +94,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'tracking_fields_operating_system_version' => $mgr->get('tracking_fields_operating_system_version', true),
             'tracking_fields_referer_url' => $mgr->get('tracking_fields_referer_url', true),
             'tracking_fields_device_type' => $mgr->get('tracking_fields_device_type', true),
+            'tracking_fields_browser_language' => $mgr->get('tracking_fields_browser_language', true),
             'qr_size' => $mgr->get('qr_size', 300),
             'qr_margin' => $mgr->get('qr_margin', 1),
             'qr_dot_style' => $mgr->get('qr_dot_style', 'square'),
@@ -650,6 +651,11 @@ class ShortUrlSettingsPage extends Page implements HasForms
 
                                         Toggle::make('tracking_fields_operating_system_version')
                                             ->label(__('filament-short-url::default.settings_track_os_version_default'))
+                                            ->inline(false)
+                                            ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
+
+                                        Toggle::make('tracking_fields_browser_language')
+                                            ->label(__('filament-short-url::default.settings_track_browser_language_default'))
                                             ->inline(false)
                                             ->disabled(fn (Get $get): bool => ! $get('tracking_enabled')),
 

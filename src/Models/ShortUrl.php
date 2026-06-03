@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -71,6 +72,7 @@ class ShortUrl extends Model
         'track_operating_system_version',
         'track_device_type',
         'track_referer_url',
+        'track_browser_language',
         'qr_options',
         'ga_tracking_id',
         'password',
@@ -84,6 +86,8 @@ class ShortUrl extends Model
         'pixel_google_id',
         'pixel_linkedin_id',
         'webhook_url',
+        'qr_logo',
+        'qr_scans',
     ];
 
     /** @var array<string, string> */
@@ -99,6 +103,7 @@ class ShortUrl extends Model
         'track_operating_system_version' => 'boolean',
         'track_device_type' => 'boolean',
         'track_referer_url' => 'boolean',
+        'track_browser_language' => 'boolean',
         'qr_options' => 'array',
         'show_warning_page' => 'boolean',
         'targeting_rules' => 'array',
@@ -106,6 +111,7 @@ class ShortUrl extends Model
         'activated_at' => 'datetime',
         'deactivated_at' => 'datetime',
         'expires_at' => 'datetime',
+        'qr_scans' => 'integer',
     ];
 
     // ─── Relations ───────────────────────────────────────────────────────────
@@ -204,6 +210,29 @@ class ShortUrl extends Model
             if (empty($m->webhook_url)) {
                 $m->webhook_url = null;
             }
+
+            if ($m->isDirty('qr_logo') && ! empty($m->qr_logo)) {
+                if (str_starts_with($m->qr_logo, 'short-urls/tmp/')) {
+                    $tmpPath = $m->qr_logo;
+                    $filename = basename($tmpPath);
+                    $newPath = 'short-urls/logos/'.$filename;
+
+                    $disk = Storage::disk('public');
+                    if ($disk->exists($tmpPath)) {
+                        $disk->move($tmpPath, $newPath);
+                        $m->qr_logo = $newPath;
+                    }
+                }
+            }
+        });
+
+        static::updating(function (self $m) {
+            if ($m->isDirty('qr_logo')) {
+                $oldLogo = $m->getOriginal('qr_logo');
+                if (! empty($oldLogo)) {
+                    Storage::disk('public')->delete($oldLogo);
+                }
+            }
         });
 
         static::saved(function (self $m) {
@@ -216,11 +245,17 @@ class ShortUrl extends Model
                 }
             }
         });
-        static::deleted(fn (self $m) => cache()->forget("filament-short-url:{$m->url_key}"));
+        static::deleted(function (self $m) {
+            cache()->forget("filament-short-url:{$m->url_key}");
+            cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY);
+
+            if (! empty($m->qr_logo)) {
+                Storage::disk('public')->delete($m->qr_logo);
+            }
+        });
 
         // Bust the forever-cached link counts displayed in the global overview widget.
         static::created(fn () => cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY));
-        static::deleted(fn () => cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY));
     }
 
     /** @return Collection<int, static> */
@@ -308,23 +343,34 @@ class ShortUrl extends Model
             'operating_system_version' => $this->track_operating_system_version,
             'device_type' => $this->track_device_type,
             'referer_url' => $this->track_referer_url,
+            'browser_language' => $this->track_browser_language,
         ]));
     }
 
     /** @return array<string, mixed> */
     public function getQrOptions(): array
     {
-        return array_merge(
+        $opts = array_merge(
             config('filament-short-url.qr_defaults', []),
             $this->qr_options ?? []
         );
+
+        if (! empty($this->qr_logo)) {
+            $opts['logo'] = route('short-url.logo', ['filename' => basename($this->qr_logo)]);
+        }
+
+        return $opts;
     }
 
     public function getShortUrl(): string
     {
-        $prefix = config('filament-short-url.route_prefix', 's');
+        $prefix = config('filament-short-url.route_prefix');
 
-        return rtrim(config('app.url'), '/')."/{$prefix}/{$this->url_key}";
+        if (! empty($prefix)) {
+            return rtrim(config('app.url'), '/').'/'.trim($prefix, '/').'/'.$this->url_key;
+        }
+
+        return rtrim(config('app.url'), '/').'/'.$this->url_key;
     }
 
     /**
@@ -397,7 +443,7 @@ class ShortUrl extends Model
      * Atomically increment visit counters — single query when unique,
      * to avoid race conditions and two round-trips. Supports write-back caching.
      */
-    public function incrementVisits(bool $isUnique = false): void
+    public function incrementVisits(bool $isUnique = false, bool $isQrScan = false): void
     {
         if (config('filament-short-url.counter_buffering.enabled', false)) {
             $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
@@ -407,6 +453,10 @@ class ShortUrl extends Model
 
                 if ($isUnique) {
                     cache()->increment("{$prefix}unique:{$this->id}");
+                }
+
+                if ($isQrScan) {
+                    cache()->increment("{$prefix}qr:{$this->id}");
                 }
 
                 // Add to dirty IDs list atomically
@@ -434,14 +484,22 @@ class ShortUrl extends Model
 
             // Safe fallback: Dispatch async job so clicks are queued and not lost on cache clear
             $connection = config('filament-short-url.queue_connection', 'sync');
-            dispatch(new IncrementVisitJob($this->id, $isUnique)->onConnection($connection ?: 'sync'));
+            dispatch((new IncrementVisitJob($this->id, $isUnique, $isQrScan))->onConnection($connection ?: 'sync'));
 
             return;
         }
 
+        $updates = [];
+        if ($isUnique) {
+            $updates['unique_visits'] = DB::raw('unique_visits + 1');
+        }
+        if ($isQrScan) {
+            $updates['qr_scans'] = DB::raw('qr_scans + 1');
+        }
+
         $this->newQuery()
             ->where('id', $this->id)
-            ->increment('total_visits', 1, $isUnique ? ['unique_visits' => DB::raw('unique_visits + 1')] : []);
+            ->increment('total_visits', 1, $updates);
     }
 
     /**
@@ -499,6 +557,7 @@ class ShortUrl extends Model
             $visitsToday = count($rawVisits);
             $visitsThisWeek = 0;
             $visitsThisMonth = 0;
+            $qrScans = 0;
 
             $visitsByCountry = [];
             $visitsByCity = [];
@@ -509,6 +568,7 @@ class ShortUrl extends Model
             $utmSources = [];
             $utmMediums = [];
             $utmCampaigns = [];
+            $visitsByLanguage = [];
 
             // Sum up daily stats
             $startOfWeek = now()->startOfWeek()->toDateString();
@@ -517,6 +577,7 @@ class ShortUrl extends Model
             foreach ($dailyStatsRows as $row) {
                 $totalVisits += $row->visits_count;
                 $uniqueVisitsCount += $row->unique_visits_count;
+                $qrScans += $row->qr_visits_count ?? 0;
 
                 $rowDate = $row->date->toDateString();
                 if ($rowDate >= $startOfWeek) {
@@ -535,6 +596,7 @@ class ShortUrl extends Model
                 $utmSources = $mergeStats($utmSources, $row->utm_source_stats);
                 $utmMediums = $mergeStats($utmMediums, $row->utm_medium_stats);
                 $utmCampaigns = $mergeStats($utmCampaigns, $row->utm_campaign_stats);
+                $visitsByLanguage = $mergeStats($visitsByLanguage, $row->language_stats);
             }
 
             // Combine today's raw visits
@@ -546,6 +608,12 @@ class ShortUrl extends Model
                 $visitsThisMonth += count($rawVisits);
 
                 foreach ($rawVisits as $visit) {
+                    if ($visit->is_qr_scan) {
+                        $qrScans++;
+                    }
+                    if ($visit->browser_language) {
+                        $visitsByLanguage[$visit->browser_language] = ($visitsByLanguage[$visit->browser_language] ?? 0) + 1;
+                    }
                     if ($visit->country) {
                         $visitsByCountry[$visit->country] = ($visitsByCountry[$visit->country] ?? 0) + 1;
                     }
@@ -622,6 +690,7 @@ class ShortUrl extends Model
             arsort($utmSources);
             arsort($utmMediums);
             arsort($utmCampaigns);
+            arsort($visitsByLanguage);
 
             return [
                 'totalVisits' => $totalVisits,
@@ -639,6 +708,8 @@ class ShortUrl extends Model
                 'utmSources' => array_slice($utmSources, 0, 8, true),
                 'utmMediums' => array_slice($utmMediums, 0, 8, true),
                 'utmCampaigns' => array_slice($utmCampaigns, 0, 8, true),
+                'qrScans' => $qrScans,
+                'visitsByLanguage' => array_slice($visitsByLanguage, 0, 10, true),
             ];
         });
     }
@@ -649,6 +720,8 @@ class ShortUrl extends Model
     protected static ?array $bufferedTotalVisits = null;
 
     protected static ?array $bufferedUniqueVisits = null;
+
+    protected static ?array $bufferedQrScans = null;
 
     /**
      * Preload all buffered clicks in a single batch query for the entire request.
@@ -662,6 +735,7 @@ class ShortUrl extends Model
 
         static::$bufferedTotalVisits = [];
         static::$bufferedUniqueVisits = [];
+        static::$bufferedQrScans = [];
 
         if (! config('filament-short-url.counter_buffering.enabled', false)) {
             return;
@@ -691,21 +765,27 @@ class ShortUrl extends Model
         // 2. Build array of keys to fetch in a single cache store read
         $totalKeys = [];
         $uniqueKeys = [];
+        $qrKeys = [];
         foreach ($dirtyIds as $id) {
             $totalKeys[$id] = "{$prefix}total:{$id}";
             $uniqueKeys[$id] = "{$prefix}unique:{$id}";
+            $qrKeys[$id] = "{$prefix}qr:{$id}";
         }
 
         try {
             // Cache::many() is highly optimized (e.g. 1 database query for database store, or 1 MGET for Redis)
             $totals = cache()->many(array_values($totalKeys));
             $uniques = cache()->many(array_values($uniqueKeys));
+            $qrs = cache()->many(array_values($qrKeys));
 
             foreach ($totalKeys as $id => $key) {
                 static::$bufferedTotalVisits[$id] = (int) ($totals[$key] ?? 0);
             }
             foreach ($uniqueKeys as $id => $key) {
                 static::$bufferedUniqueVisits[$id] = (int) ($uniques[$key] ?? 0);
+            }
+            foreach ($qrKeys as $id => $key) {
+                static::$bufferedQrScans[$id] = (int) ($qrs[$key] ?? 0);
             }
         } catch (\Throwable) {
             // Fallback
@@ -746,6 +826,25 @@ class ShortUrl extends Model
         static::loadAllBufferedVisits();
 
         $buffered = static::$bufferedUniqueVisits[$this->id] ?? 0;
+
+        return $dbValue + $buffered;
+    }
+
+    /**
+     * Get the QR scans count, merging the database value with any buffered clicks in cache.
+     * Prevents database N+1 queries.
+     */
+    public function getQrScansAttribute(): int
+    {
+        $dbValue = $this->attributes['qr_scans'] ?? 0;
+
+        if (! config('filament-short-url.counter_buffering.enabled', false)) {
+            return $dbValue;
+        }
+
+        static::loadAllBufferedVisits();
+
+        $buffered = static::$bufferedQrScans[$this->id] ?? 0;
 
         return $dbValue + $buffered;
     }

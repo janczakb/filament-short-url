@@ -7,6 +7,7 @@ use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class AggregateAndPruneVisitsCommand extends Command
 {
@@ -65,11 +66,17 @@ class AggregateAndPruneVisitsCommand extends Command
                                         'utm_source_stats' => [],
                                         'utm_medium_stats' => [],
                                         'utm_campaign_stats' => [],
+                                        'qr_scans' => 0,
+                                        'language_stats' => [],
                                     ];
                                 }
 
                                 $s = &$statsByUrl[$urlId];
                                 $s['total']++;
+
+                                if ($visit->is_qr_scan) {
+                                    $s['qr_scans']++;
+                                }
 
                                 if ($visit->ip_hash) {
                                     $s['ip_hashes'][$visit->ip_hash] = true;
@@ -88,6 +95,7 @@ class AggregateAndPruneVisitsCommand extends Command
                                 $inc($visit->utm_source, 'utm_source_stats');
                                 $inc($visit->utm_medium, 'utm_medium_stats');
                                 $inc($visit->utm_campaign, 'utm_campaign_stats');
+                                $inc($visit->browser_language, 'language_stats');
 
                                 if ($visit->city) {
                                     $cityKey = "{$visit->city} ({$visit->country_code})";
@@ -116,6 +124,8 @@ class AggregateAndPruneVisitsCommand extends Command
                             'utm_source_stats' => $s['utm_source_stats'],
                             'utm_medium_stats' => $s['utm_medium_stats'],
                             'utm_campaign_stats' => $s['utm_campaign_stats'],
+                            'qr_visits_count' => $s['qr_scans'],
+                            'language_stats' => $s['language_stats'],
                         ]);
                     }
                 });
@@ -132,6 +142,26 @@ class AggregateAndPruneVisitsCommand extends Command
             $deleted = ShortUrlVisit::where('visited_at', '<', $cutoff)->delete();
 
             $this->info("Successfully pruned {$deleted} raw visit records older than {$retentionDays} days.");
+        }
+
+        // 3. Prune old temporary logo files (older than 24 hours)
+        $disk = Storage::disk('public');
+        if ($disk->exists('short-urls/tmp')) {
+            $files = $disk->files('short-urls/tmp');
+            $now = time();
+            $prunedCount = 0;
+
+            foreach ($files as $file) {
+                $lastModified = $disk->lastModified($file);
+                if (($now - $lastModified) > 86400) { // 86400 seconds = 24 hours
+                    $disk->delete($file);
+                    $prunedCount++;
+                }
+            }
+
+            if ($prunedCount > 0) {
+                $this->info("Successfully pruned {$prunedCount} temporary logo files older than 24 hours.");
+            }
         }
 
         return 0;

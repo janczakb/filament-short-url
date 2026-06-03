@@ -78,6 +78,7 @@ return [
             'operating_system_version' => true,
             'referer_url' => true,
             'device_type' => true,
+            'browser_language' => true,
         ],
     ],
 

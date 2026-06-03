@@ -34,6 +34,8 @@ class ShortUrlTracker
         ?string $utmCampaign = null,
         ?string $utmTerm = null,
         ?string $utmContent = null,
+        bool $isQrScan = false,
+        ?string $browserLanguage = null,
     ): ?ShortUrlVisit {
         $ip = ClientIpExtractor::getIp($request);
         $ipHash = hash('sha256', $ip);
@@ -56,9 +58,19 @@ class ShortUrlTracker
 
         // Determine uniqueness: first time this IP hash visits this URL.
         // We check BEFORE insert to avoid a self-referential race.
-        $isUnique = ! ShortUrlVisit::where('short_url_id', $shortUrl->id)
-            ->where('ip_hash', $ipHash)
-            ->exists();
+        $isUnique = false;
+        if (config('filament-short-url.counter_buffering.enabled', false)) {
+            $uniqueCacheKey = "filament-short-url:unique-visit:{$shortUrl->id}:{$ipHash}";
+            if (cache()->add($uniqueCacheKey, true, 86400)) {
+                $isUnique = ! ShortUrlVisit::where('short_url_id', $shortUrl->id)
+                    ->where('ip_hash', $ipHash)
+                    ->exists();
+            }
+        } else {
+            $isUnique = ! ShortUrlVisit::where('short_url_id', $shortUrl->id)
+                ->where('ip_hash', $ipHash)
+                ->exists();
+        }
 
         $visit = new ShortUrlVisit;
         $visit->short_url_id = $shortUrl->id;
@@ -76,6 +88,8 @@ class ShortUrlTracker
         $visit->city = $geo['city'] ?? null;
         $visit->is_bot = $isBot;
         $visit->is_proxy = $isProxy;
+        $visit->is_qr_scan = $isQrScan;
+        $visit->browser_language = $shortUrl->track_browser_language ? $browserLanguage : null;
 
         $visit->utm_source = $utmSource;
         $visit->utm_medium = $utmMedium;
@@ -114,7 +128,7 @@ class ShortUrlTracker
 
         // Increment stats only if it's NOT a bot or proxy/VPN to keep analytics clean
         if (! $isBot && ! $isProxy) {
-            $shortUrl->incrementVisits($isUnique);
+            $shortUrl->incrementVisits($isUnique, $isQrScan);
         }
 
         return $visit;

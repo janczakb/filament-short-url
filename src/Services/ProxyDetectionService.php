@@ -39,7 +39,7 @@ class ProxyDetectionService
                 // Default to ip-api
                 return $this->queryIpApi($ip, $timeout);
             } catch (\Throwable $e) {
-                Log::warning("Proxy detection failed for IP: {$ip}. Error: " . $e->getMessage());
+                Log::warning("Proxy detection failed for IP: {$ip}. Error: ".$e->getMessage());
 
                 return ['is_proxy' => false, 'is_bot' => false];
             }
