@@ -447,9 +447,9 @@ When Redis is not available and counter buffering is enabled, the `IncrementVisi
 
 ---
 
-## Social Retargeting Pixels (new in v1.5.0)
+## Social Retargeting Pixels & Central Pixel Registry (new in v2.1.0)
 
-The **Marketing & API** tab in the short URL form lets you attach client-side tracking pixels to any link. When a visitor clicks a link that has pixels configured, instead of an instant 302 redirect the plugin serves a lightweight, premium HTML interstitial page.
+Instead of manually copy-pasting tracking pixel IDs (Meta, Google Tag, LinkedIn, TikTok, Pinterest) every time you create a new link, the package features a centralized **Retargeting Pixel Registry** with a Many-to-Many relationship. You define your marketing pixels once in the new **Pixel Registry** resource, and then easily select them via checkbox/list options when creating or editing short links.
 
 ### The Interstitial Experience
 - **Premium Design**: Built using the exact same modern glassmorphic look as the password protection and warning interstitial pages. Supports dark mode automatically.
@@ -460,23 +460,39 @@ This unlocks remarketing to people who clicked your links **even when redirectin
 
 ### Supported Pixel Providers
 
-| Field | Provider | Script loaded |
+| Type | Provider | Script loaded |
 |---|---|---|
-| **Meta Pixel ID** | Meta / Facebook Ads | `fbevents.js` via `fbq('init', ...)` |
-| **Google Tag / GA4 ID** | Google Ads, GA4 | `gtag.js` via Google Tag Manager |
-| **LinkedIn Partner ID** | LinkedIn Insight Tag | `insight.min.js` via LinkedIn |
+| `meta` | Meta / Facebook Ads | `fbevents.js` via `fbq('init', ...)` |
+| `google` | Google Ads / GA4 | `gtag.js` via Google Tag Manager |
+| `linkedin` | LinkedIn Insight Tag | `insight.min.js` via LinkedIn |
+| `tiktok` | TikTok Pixel | TikTok Analytics pixel script |
+| `pinterest` | Pinterest Tag | Pinterest Tag pixel script |
 
 > **Note:** These pixels fire **client-side** in the visitor's browser — completely separate from the server-side GA4 Measurement Protocol integration. Both systems work in parallel and do not interfere with each other.
 
 ### How to use
 
-1. Open any short URL for editing.
-2. Navigate to the **Marketing & API** tab.
-3. Enter your pixel IDs in the **Retargeting Pixels** section.
-4. Save. Done — every click will now trigger the configured tracking scripts.
+1. Open **Pixel Registry** in your panel sidebar and register your pixels.
+2. Open any short URL for editing.
+3. Navigate to the **Marketing & API** tab.
+4. Select the configured pixels from the list under **Retargeting Pixels**.
+5. Save. Done — every click will now trigger the configured tracking scripts.
+
+#### Programmatic Association
+
+To associate centrally registered pixels programmatically, use standard Eloquent relationship syncing:
 
 ```php
-// Programmatically via model attributes
+$shortUrl = ShortUrl::find($id);
+
+// Sync with specific pixel registry IDs
+$shortUrl->pixels()->sync([$pixelId1, $pixelId2]);
+```
+
+For backward compatibility, assigning individual attributes directly on the model still works and will automatically find or create a pixel registry entry:
+
+```php
+// Programmatically via model attributes (automatically handles registration under the hood)
 $shortUrl->update([
     'pixel_meta_id'     => '1234567890',
     'pixel_google_id'   => 'G-XXXXXXXXXX',
@@ -542,6 +558,12 @@ curl https://yourdomain.com/api/short-url/links \
       "pixel_google_id": null,
       "pixel_linkedin_id": null,
       "webhook_url": null,
+      "targeting_rules": null,
+      "password": null,
+      "show_warning_page": false,
+      "track_visits": true,
+      "track_browser_language": true,
+      "pixels": [],
       "notes": null,
       "created_at": "2026-06-01T12:00:00+00:00"
     }
@@ -588,9 +610,10 @@ curl -X POST https://yourdomain.com/api/short-url/links \
 | `expiration_redirect_url` | string (URL) | ❌ | Fallback URL on expiry |
 | `activated_at` | datetime | ❌ | Activation timestamp |
 | `expires_at` | datetime | ❌ | Expiration timestamp |
-| `pixel_meta_id` | string | ❌ | Meta Pixel ID |
-| `pixel_google_id` | string | ❌ | Google Tag / GA4 ID |
-| `pixel_linkedin_id` | string | ❌ | LinkedIn Partner ID |
+| `pixel_meta_id` | string | ❌ | Meta Pixel ID (Legacy support) |
+| `pixel_google_id` | string | ❌ | Google Tag / GA4 ID (Legacy support) |
+| `pixel_linkedin_id` | string | ❌ | LinkedIn Partner ID (Legacy support) |
+| `pixels` | array of integers | ❌ | List of pixel registry IDs to associate with the link |
 | `webhook_url` | string (URL) | ❌ | Per-link webhook endpoint |
 | `targeting_rules` | array | ❌ | JSON targeting rules (device, geo, rotation, language) |
 | `password` | string | ❌ | Access protection password |
@@ -867,6 +890,11 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v2.1.0
+- **Central Retargeting Pixel Registry** — Introduced a premium Many-to-Many pixel management registry. Define pixels centrally (Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, Pinterest Tag) and easily associate them with short links via the Filament panel or the REST API.
+- **Backward-Compatible REST API** — The API now exposes the `pixels` relationship list, while fully retaining backward-compatible support for legacy single-pixel parameters (`pixel_meta_id`, `pixel_google_id`, `pixel_linkedin_id`).
+- **Enhanced Browser Language Redirection** — Robust double-pass language targeting logic matching exact locales first (e.g. `en-US`, `zh-CN`) and falling back to base language codes (e.g. `en`, `zh`).
 
 ### v2.0.0
 - **Interactive QR Code Designer Branding Logo** — Upload custom brand logos inside the QR designer canvas in Filament. Configure logo sizing, margins, shapes (square/circle), and toggle dot backing removal to prevent dots overlapping with the logo.
