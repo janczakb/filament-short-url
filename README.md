@@ -243,7 +243,7 @@ Settings are stored dynamically in `storage/app/filament-short-url-settings.json
 The settings panel allows you to configure:
 
 ### 1. General Routing & Queueing
-*   **Route Prefix**: The slug prepended to short URLs (e.g. `s` for `/s/{key}`).
+*   **Route Prefix**: The slug prepended to short URLs (e.g. `s` for `/s/{key}`). Can be left empty to serve links directly from the root domain (e.g. `domain.com/{key}`).
 *   **Default Redirect Status**: Choose `302 (Found / Temporary)` or `301 (Moved Permanently)`.
     *   *Note: `302` is highly recommended for analytics accuracy because browsers cache `301` redirects, skipping subsequent logs.*
 *   **Key Length**: Default character count (base62) for auto-generated keys (default: `6`).
@@ -263,26 +263,16 @@ Sends server-side `short_url_visit` hits using the **GA4 Measurement Protocol AP
 ### 4. Counter Buffering (Write-back Caching)
 For extremely high-traffic applications, direct database writes for click counts can cause row-locking bottlenecks.
 *   **Buffer Click Counts**: Toggling this option buffers total and unique visit count increments in the application cache.
-*   **Cron Synchronization**: When enabled, you must schedule the synchronization command to run periodically (e.g., every minute) to flush counts to the database:
-    ```bash
-    php artisan short-url:sync-counters
-    ```
-    In your scheduler (`routes/console.php` or `app/Console/Kernel.php`):
-    ```php
-    $schedule->command('short-url:sync-counters')->everyMinute();
-    ```
+*   **Cron Synchronization**: When enabled, the synchronization command flushes counts to the database. The package automatically registers this in the Laravel Scheduler to run every minute when counter buffering is active, so you only need to ensure the standard Laravel schedule runner (`* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1`) is running on your server.
+    *   Command: `php artisan short-url:sync-counters`
 
 ### 5. Performance & Security Tab (new in v1.2.0)
 
 #### High-Traffic Log Management (Aggregation & Pruning)
 At scale, the `short_url_visits` table can grow to tens of gigabytes. The aggregation system solves this:
-*   **Enable Daily Aggregation**: When enabled, the nightly `short-url:aggregate-and-prune` command summarizes the previous day's raw visit records into the compact `short_url_daily_stats` table.
+*   **Enable Daily Aggregation**: When enabled, the stats are summarized. The package automatically registers the aggregation command in the Laravel Scheduler to run daily at 02:00, so you only need to ensure the standard Laravel schedule runner is running on your server.
+    *   Command: `php artisan short-url:aggregate-and-prune`
 *   **Prune Raw Logs After (days)**: Raw visit records older than this threshold are permanently deleted after aggregation. Set to `0` to disable pruning. Default: `90` days.
-
-Schedule the command in your scheduler:
-```php
-$schedule->command('short-url:aggregate-and-prune')->dailyAt('02:00');
-```
 
 #### Rate Limiting / Bot Protection
 Prevent redirect abuse and bot traffic flooding:
