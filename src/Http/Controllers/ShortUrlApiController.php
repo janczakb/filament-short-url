@@ -61,6 +61,11 @@ class ShortUrlApiController extends Controller
             'pixel_google_id' => 'nullable|string|max:100',
             'pixel_linkedin_id' => 'nullable|string|max:100',
             'webhook_url' => 'nullable|url|max:2048',
+            'targeting_rules' => 'nullable|array',
+            'password' => 'nullable|string|max:255',
+            'show_warning_page' => 'nullable|boolean',
+            'track_visits' => 'nullable|boolean',
+            'track_browser_language' => 'nullable|boolean',
         ]);
 
         $shortUrl = $this->service->create($validated);
@@ -108,6 +113,11 @@ class ShortUrlApiController extends Controller
             'pixel_google_id' => $link->pixel_google_id,
             'pixel_linkedin_id' => $link->pixel_linkedin_id,
             'webhook_url' => $link->webhook_url,
+            'targeting_rules' => $link->targeting_rules,
+            'password' => $link->password,
+            'show_warning_page' => (bool) $link->show_warning_page,
+            'track_visits' => (bool) $link->track_visits,
+            'track_browser_language' => (bool) $link->track_browser_language,
             'notes' => $link->notes,
             'created_at' => $link->created_at->toIso8601String(),
         ];

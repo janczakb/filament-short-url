@@ -592,6 +592,11 @@ curl -X POST https://yourdomain.com/api/short-url/links \
 | `pixel_google_id` | string | ❌ | Google Tag / GA4 ID |
 | `pixel_linkedin_id` | string | ❌ | LinkedIn Partner ID |
 | `webhook_url` | string (URL) | ❌ | Per-link webhook endpoint |
+| `targeting_rules` | array | ❌ | JSON targeting rules (device, geo, rotation, language) |
+| `password` | string | ❌ | Access protection password |
+| `show_warning_page` | boolean | ❌ | Show safety warning page before redirect |
+| `track_visits` | boolean | ❌ | Track visitor clicks and logs |
+| `track_browser_language` | boolean | ❌ | Track visitor browser language locale |
 
 **Response:** `201 Created` with the created link object.
 
