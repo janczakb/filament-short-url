@@ -96,6 +96,10 @@ class ShortUrlSettingsManager
             'vpn_block_action' => config('filament-short-url.vpn_detection.block_action', 'flag_only'),
             'safe_browsing_enabled' => config('filament-short-url.safe_browsing.enabled', false),
             'google_safe_browsing_api_key' => config('filament-short-url.safe_browsing.api_key'),
+            // Deep Linking v2.1
+            'deep_linking_enabled' => config('filament-short-url.deep_linking.enabled', false),
+            'aasa_json' => config('filament-short-url.deep_linking.aasa_json'),
+            'assetlinks_json' => config('filament-short-url.deep_linking.assetlinks_json'),
         ], $stored);
 
         return $this->cache;
@@ -176,6 +180,10 @@ class ShortUrlSettingsManager
             'vpn_block_action',
             'safe_browsing_enabled',
             'google_safe_browsing_api_key',
+            // Deep Linking v2.1
+            'deep_linking_enabled',
+            'aasa_json',
+            'assetlinks_json',
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
@@ -275,6 +283,9 @@ class ShortUrlSettingsManager
         if (isset($filtered['safe_browsing_enabled'])) {
             $filtered['safe_browsing_enabled'] = (bool) $filtered['safe_browsing_enabled'];
         }
+        if (isset($filtered['deep_linking_enabled'])) {
+            $filtered['deep_linking_enabled'] = (bool) $filtered['deep_linking_enabled'];
+        }
 
         File::put($path, json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         cache()->forget('filament-short-url:settings');
@@ -356,6 +367,10 @@ class ShortUrlSettingsManager
             'filament-short-url.vpn_detection.timeout' => 2,
             'filament-short-url.safe_browsing.enabled' => (bool) ($settings['safe_browsing_enabled'] ?? false),
             'filament-short-url.safe_browsing.api_key' => $settings['google_safe_browsing_api_key'] ?? null,
+            // Deep Linking v2.1
+            'filament-short-url.deep_linking.enabled' => (bool) ($settings['deep_linking_enabled'] ?? false),
+            'filament-short-url.deep_linking.aasa_json' => $settings['aasa_json'] ?? null,
+            'filament-short-url.deep_linking.assetlinks_json' => $settings['assetlinks_json'] ?? null,
         ]);
     }
 }

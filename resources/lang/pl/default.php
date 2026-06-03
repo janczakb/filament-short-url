@@ -9,6 +9,12 @@ return [
     'tab_link' => 'Szczegóły linku',
     'tab_tracking' => 'Ustawienia śledzenia',
     'tab_qr_design' => 'Wygląd kodu QR',
+    'tab_app_linking' => 'Autootwieranie aplikacji',
+
+    // App Linking
+    'form_section_app_linking' => 'Autootwieranie aplikacji / Głębokie linkowanie',
+    'auto_open_app_mobile' => 'Automatycznie otwieraj aplikację na urządzeniach mobilnych',
+    'auto_open_app_mobile_helper' => 'Włącz tę opcję, jeśli chcesz, aby po kliknięciu linku na telefonie automatycznie otwierała się dedykowana aplikacja mobilna zamiast przeglądarki.',
 
     // Link Form Fields
     'destination_url' => 'Docelowy URL',
@@ -467,4 +473,39 @@ return [
     'pixel_type' => 'Dostawca',
     'pixel_id_label' => 'ID Piksela / Tagu',
     'pixel_status_active' => 'Aktywny',
+    'settings_tab_deep_linking' => 'Głębokie linkowanie',
+    'settings_section_deep_linking' => 'Pliki powiązań Universal Links & App Links',
+    'settings_deep_linking_enabled' => 'Włącz serwowanie plików powiązań',
+    'settings_deep_linking_enabled_helper' => 'Po włączeniu wtyczka będzie serwować pliki konfiguracyjne AASA (iOS) oraz AssetLinks (Android) z poziomu domeny głównej.',
+    'settings_aasa_json' => 'apple-app-site-association (iOS)',
+    'settings_aasa_json_helper' => 'Wprowadź prawidłowy kod JSON dla Apple App Site Association. Nie dołączaj znaczników HTML/JavaScript.',
+    'settings_assetlinks_json' => 'assetlinks.json (Android)',
+    'settings_assetlinks_json_helper' => 'Wprowadź prawidłową tablicę JSON dla Android Digital Asset Links.',
+    'validation_invalid_json' => 'Wprowadzony tekst nie jest poprawnym ciągiem JSON.',
+
+    // App Linking Preview
+    'app_linking_supported_os' => 'Wspierane systemy operacyjne:',
+    'app_linking_supported_apps' => 'Wspierane aplikacje',
+    'app_linking_supported_apps_helper' => 'Jeśli nie znajdziesz swojej aplikacji na liście, możesz użyć funkcji Targetowania, aby przekierować użytkownika za pomocą własnego głębokiego linku (Deep Link).',
+    'app_linking_matched' => 'Dopasowano',
+    'app_linking_preconfigured_count' => ':count gotowych aplikacji do automatycznego przekierowania.',
+    'app_linking_redirect_active' => 'Otwiera się bezpośrednio w :app',
+    'app_linking_auto_open' => 'Autootwieranie',
+    'app_linking_matched_description' => 'Po kliknięciu na telefonie lub tablecie, ten link otworzy się od razu w dedykowanej aplikacji <strong>:app</strong> zamiast w zwykłej przeglądarce.',
+    'app_linking_deep_link_scheme' => 'Używany schemat (Deep Link): :scheme',
+    'app_linking_standard_redirect' => 'Ten link otworzy się w zwykłej przeglądarce internetowej (brak dopasowanej aplikacji mobilnej).',
+
+    // App Redirect Page
+    'app_redirect_title' => 'Otwieranie aplikacji...',
+    'app_redirect_opening_in' => 'Otwieranie w: :app',
+    'app_redirect_waiting_text' => 'Przekierowujemy Cię do natywnej aplikacji. Proszę czekać...',
+    'app_redirect_btn_open' => 'Otwórz aplikację',
+    'app_redirect_btn_browser' => 'Otwórz w przeglądarce',
+    'app_redirect_in_app_warning_title' => 'Wykryto przeglądarkę wewnątrz aplikacji',
+    'app_redirect_in_app_warning_desc' => 'Przekierowania mogą być blokowane wewnątrz Instagrama lub Facebooka. Kliknij ikonę trzech kropek (•••) w prawym górnym rogu i wybierz „Otwórz w Safari” lub „Otwórz w Chrome”, aby uruchomić aplikację.',
+
+    // Link Expired Page
+    'expired_title' => 'Link nieaktywny lub wygasł',
+    'expired_description' => 'Ten link jest już nieaktywny. Mógł osiągnąć limit kliknięć, minął jego termin ważności lub został wyłączony.',
+    'expired_btn_home' => 'Przejdź do strony głównej',
 ];

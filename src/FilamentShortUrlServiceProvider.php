@@ -39,6 +39,8 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2026_06_02_224250_add_qr_logo_to_short_urls_table',
                 '2026_06_03_110000_add_qr_and_language_to_visits_and_daily_stats',
                 '2026_06_03_120000_add_track_browser_language_to_short_urls_table',
+                '2026_06_03_150000_create_short_url_pixels_table',
+                '2026_06_03_160000_add_auto_open_app_mobile_to_short_urls_table',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,

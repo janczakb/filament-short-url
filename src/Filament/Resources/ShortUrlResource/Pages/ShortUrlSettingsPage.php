@@ -12,12 +12,13 @@ use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\Page;
+use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -32,9 +33,34 @@ class ShortUrlSettingsPage extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static string $resource = ShortUrlResource::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
+
+    protected static ?string $slug = 'short-url-settings';
 
     protected string $view = 'filament-short-url::settings';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('filament-short-url::default.settings_nav_label') ?? 'Settings';
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        try {
+            return ShortUrlResource::getNavigationGroup();
+        } catch (\Throwable) {
+            return __('filament-short-url::default.navigation_group');
+        }
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        try {
+            return ShortUrlResource::getNavigationSort() + 2;
+        } catch (\Throwable) {
+            return 52;
+        }
+    }
 
     public static function canAccess(array $parameters = []): bool
     {
@@ -55,7 +81,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
         }
 
         // Default fallback: Check if the user is authorized to view the resource in general
-        return static::getResource()::canViewAny();
+        return ShortUrlResource::canViewAny();
     }
 
     public ?array $data = [];
@@ -63,6 +89,22 @@ class ShortUrlSettingsPage extends Page implements HasForms
     public function mount(): void
     {
         $mgr = app(ShortUrlSettingsManager::class);
+
+        $aasa = $mgr->get('aasa_json');
+        if (! empty($aasa)) {
+            $decoded = json_decode($aasa, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $aasa = json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        $assetlinks = $mgr->get('assetlinks_json');
+        if (! empty($assetlinks)) {
+            $decoded = json_decode($assetlinks, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $assetlinks = json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+        }
 
         $this->form->fill([
             'route_prefix' => $mgr->get('route_prefix', 's'),
@@ -117,6 +159,10 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'vpn_block_action' => $mgr->get('vpn_block_action', 'flag_only'),
             'safe_browsing_enabled' => $mgr->get('safe_browsing_enabled', false),
             'google_safe_browsing_api_key' => $mgr->get('google_safe_browsing_api_key'),
+            // Deep Linking v2.1
+            'deep_linking_enabled' => $mgr->get('deep_linking_enabled', false),
+            'aasa_json' => $aasa,
+            'assetlinks_json' => $assetlinks,
         ]);
     }
 
@@ -823,6 +869,65 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
                                     ]),
                             ]),
+
+                        // ── Deep Linking ─────────────────────────────────────
+                        Tab::make(__('filament-short-url::default.settings_tab_deep_linking'))
+                            ->icon('heroicon-o-device-phone-mobile')
+                            ->schema([
+                                Section::make(__('filament-short-url::default.settings_section_deep_linking'))
+                                    ->schema([
+                                        Toggle::make('deep_linking_enabled')
+                                            ->label(__('filament-short-url::default.settings_deep_linking_enabled'))
+                                            ->helperText(__('filament-short-url::default.settings_deep_linking_enabled_helper'))
+                                            ->default(false)
+                                            ->inline(false)
+                                            ->live(),
+
+                                        Textarea::make('aasa_json')
+                                            ->label(__('filament-short-url::default.settings_aasa_json'))
+                                            ->helperText(__('filament-short-url::default.settings_aasa_json_helper'))
+                                            ->nullable()
+                                            ->visible(fn (Get $get): bool => (bool) $get('deep_linking_enabled'))
+                                            ->columnSpanFull()
+                                            ->extraInputAttributes(['style' => 'font-family: monospace;'])
+                                            ->rows(8)
+                                            ->rules([
+                                                function () {
+                                                    return function (string $attribute, $value, \Closure $fail) {
+                                                        if (empty($value)) {
+                                                            return;
+                                                        }
+                                                        json_decode($value);
+                                                        if (json_last_error() !== JSON_ERROR_NONE) {
+                                                            $fail(__('filament-short-url::default.validation_invalid_json'));
+                                                        }
+                                                    };
+                                                },
+                                            ]),
+
+                                        Textarea::make('assetlinks_json')
+                                            ->label(__('filament-short-url::default.settings_assetlinks_json'))
+                                            ->helperText(__('filament-short-url::default.settings_assetlinks_json_helper'))
+                                            ->nullable()
+                                            ->visible(fn (Get $get): bool => (bool) $get('deep_linking_enabled'))
+                                            ->columnSpanFull()
+                                            ->extraInputAttributes(['style' => 'font-family: monospace;'])
+                                            ->rows(8)
+                                            ->rules([
+                                                function () {
+                                                    return function (string $attribute, $value, \Closure $fail) {
+                                                        if (empty($value)) {
+                                                            return;
+                                                        }
+                                                        json_decode($value);
+                                                        if (json_last_error() !== JSON_ERROR_NONE) {
+                                                            $fail(__('filament-short-url::default.validation_invalid_json'));
+                                                        }
+                                                    };
+                                                },
+                                            ]),
+                                    ]),
+                            ]),
                     ]),
             ])
             ->statePath('data');
@@ -833,6 +938,10 @@ class ShortUrlSettingsPage extends Page implements HasForms
         $data = $this->form->getState();
 
         app(ShortUrlSettingsManager::class)->set($data);
+
+        // Clear deep linking cache when settings are saved!
+        cache()->forget('fsu:deep-linking:aasa');
+        cache()->forget('fsu:deep-linking:assetlinks');
 
         Notification::make()
             ->title(__('filament-short-url::default.settings_saved'))
@@ -848,7 +957,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
                 ->size('sm')
-                ->url(static::getResource()::getUrl()),
+                ->url(ShortUrlResource::getUrl()),
         ];
     }
 

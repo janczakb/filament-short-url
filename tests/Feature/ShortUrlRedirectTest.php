@@ -675,3 +675,13 @@ it('enforces single_use in real-time even when model caching is active', functio
     // Second visit: should return 410, even if the model exists in the cache as enabled
     $this->get('/s/single-use-cache')->assertStatus(410);
 });
+
+it('renders custom branded expired view on deactivated URL', function () {
+    createShortUrl(['url_key' => 'disabled-view', 'is_enabled' => false, 'track_visits' => false]);
+
+    $response = $this->get('/s/disabled-view');
+    $response->assertStatus(410);
+    $response->assertSee('Link Inactive or Expired');
+    $response->assertSee('Go to Homepage');
+});
+

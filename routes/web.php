@@ -7,6 +7,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/.well-known/apple-app-site-association', [ShortUrlRedirectController::class, 'serveAasa'])
+    ->middleware(['web']);
+Route::get('/apple-app-site-association', [ShortUrlRedirectController::class, 'serveAasa'])
+    ->middleware(['web']);
+Route::get('/.well-known/assetlinks.json', [ShortUrlRedirectController::class, 'serveAssetLinks'])
+    ->middleware(['web']);
+
 Route::match(
     ['GET', 'POST'],
     config('filament-short-url.route_prefix', 's').'/{key}',
@@ -15,6 +22,7 @@ Route::match(
     ->name('short-url.redirect')
     ->where('key', '[a-zA-Z0-9_-]+')
     ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
+
 
 Route::prefix('api/short-url')
     ->middleware([AuthenticateShortUrlApi::class])

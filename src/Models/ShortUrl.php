@@ -86,6 +86,7 @@ class ShortUrl extends Model
         'webhook_url',
         'qr_logo',
         'qr_scans',
+        'auto_open_app_mobile',
     ];
 
     /** @var array<string, string> */
@@ -93,6 +94,7 @@ class ShortUrl extends Model
         'is_enabled' => 'boolean',
         'single_use' => 'boolean',
         'forward_query_params' => 'boolean',
+        'auto_open_app_mobile' => 'boolean',
         'track_visits' => 'boolean',
         'track_ip_address' => 'boolean',
         'track_browser' => 'boolean',

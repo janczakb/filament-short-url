@@ -7,10 +7,10 @@ use Bjanczak\FilamentShortUrl\Models\ShortUrlPixel;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -137,8 +137,17 @@ class ShortUrlPixelResource extends Resource
             ])
             ->filters([])
             ->actions([
-                EditAction::make()->modalWidth('md'),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->iconButton()
+                    ->tooltip(__('filament-short-url::default.action_edit'))
+                    ->modalWidth('md'),
+                DeleteAction::make()
+                    ->icon('heroicon-o-trash')
+                    ->color('gray')
+                    ->iconButton()
+                    ->tooltip(__('filament-short-url::default.action_delete')),
             ])
             ->bulkActions([]);
     }

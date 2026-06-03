@@ -4,9 +4,11 @@ namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 
 use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Services\AppLinkingEngine;
 use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
 use Bjanczak\FilamentShortUrl\Services\ProxyDetectionService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
+use Bjanczak\FilamentShortUrl\Services\UserAgentParser;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +37,9 @@ class ShortUrlRedirectController extends Controller
                 return redirect()->away($shortUrl->expiration_redirect_url, 302);
             }
 
-            abort(410);
+            return response(view('filament-short-url::expired', [
+                'shortUrl' => $shortUrl,
+            ]), 410)->header('Content-Type', 'text/html');
         }
 
         // 1. VPN/Proxy & Bot Blocking Check
@@ -91,6 +95,27 @@ class ShortUrlRedirectController extends Controller
 
         // 4. Resolve Destination URL (evaluating targeting rules and forwarding query parameters)
         $destination = $this->service->resolveRedirectUrl($shortUrl, $request);
+
+        // App Linking / Deep Links Auto-Open Check
+        if ($shortUrl->auto_open_app_mobile) {
+            $uaParser = app(UserAgentParser::class);
+            $parsedUa = $uaParser->parse($request->userAgent() ?? '');
+
+            if ($parsedUa['device_type'] === 'mobile' || $parsedUa['device_type'] === 'tablet') {
+                $matchedApp = AppLinkingEngine::matchApp($destination);
+                if ($matchedApp !== null) {
+                    $deepLink = AppLinkingEngine::convertToScheme($destination, $matchedApp);
+                    $activePixels = $shortUrl->pixels()->where('is_active', true)->get();
+
+                    return response(view('filament-short-url::app-redirect', [
+                        'destination' => $destination,
+                        'deepLink' => $deepLink,
+                        'appId' => $matchedApp,
+                        'pixels' => $activePixels,
+                    ]))->header('Content-Type', 'text/html');
+                }
+            }
+        }
 
         // 5. Warning / Intermediate Page Check
         if ($shortUrl->show_warning_page && ! $request->has('confirmed')) {
@@ -155,7 +180,9 @@ class ShortUrlRedirectController extends Controller
 
             // Another request beat us to it — this visit should 410
             if ($affected === 0) {
-                abort(410);
+                return response(view('filament-short-url::expired', [
+                    'shortUrl' => $shortUrl,
+                ]), 410)->header('Content-Type', 'text/html');
             }
 
             // Manually forget cache since DB-level update does not trigger Eloquent events
@@ -172,5 +199,71 @@ class ShortUrlRedirectController extends Controller
         }
 
         return redirect()->away($destination, $shortUrl->redirect_status_code);
+    }
+
+    /**
+     * Serve the Apple App Site Association (AASA) file for iOS Universal Links.
+     */
+    public function serveAasa(Request $request): Response
+    {
+        if (! config('filament-short-url.deep_linking.enabled', false)) {
+            abort(404);
+        }
+
+        $aasaJson = config('filament-short-url.deep_linking.aasa_json');
+
+        if (empty($aasaJson)) {
+            abort(404);
+        }
+
+        $minified = cache()->remember('fsu:deep-linking:aasa', 604800, function () use ($aasaJson): string {
+            try {
+                $decoded = json_decode($aasaJson, true, 512, JSON_THROW_ON_ERROR);
+
+                return json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            } catch (\Throwable) {
+                return $aasaJson;
+            }
+        });
+
+        return response($minified, 200, [
+            'Content-Type' => 'application/json; charset=utf-8',
+            'Cache-Control' => 'public, max-age=604800, must-revalidate',
+            'X-Content-Type-Options' => 'nosniff',
+            'Access-Control-Allow-Origin' => '*',
+        ]);
+    }
+
+    /**
+     * Serve the Asset Links file for Android App Links.
+     */
+    public function serveAssetLinks(Request $request): Response
+    {
+        if (! config('filament-short-url.deep_linking.enabled', false)) {
+            abort(404);
+        }
+
+        $assetlinksJson = config('filament-short-url.deep_linking.assetlinks_json');
+
+        if (empty($assetlinksJson)) {
+            abort(404);
+        }
+
+        $minified = cache()->remember('fsu:deep-linking:assetlinks', 604800, function () use ($assetlinksJson): string {
+            try {
+                $decoded = json_decode($assetlinksJson, true, 512, JSON_THROW_ON_ERROR);
+
+                return json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            } catch (\Throwable) {
+                return $assetlinksJson;
+            }
+        });
+
+        return response($minified, 200, [
+            'Content-Type' => 'application/json; charset=utf-8',
+            'Cache-Control' => 'public, max-age=604800, must-revalidate',
+            'X-Content-Type-Options' => 'nosniff',
+            'Access-Control-Allow-Origin' => '*',
+        ]);
     }
 }

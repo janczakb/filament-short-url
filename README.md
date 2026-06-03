@@ -13,7 +13,16 @@
     <a href="https://github.com/janczakb/filament-short-url/actions"><img src="https://img.shields.io/badge/tests-passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
-A professional, high-performance **Short URL Manager** plugin for [Filament v5](https://filamentphp.com). Built from scratch with cutting-edge practices, proxy resistance, offline Geo-IP engines, enterprise-grade smart targeting, and zero external shortening API dependencies.
+A professional, high-performance **Short URL Manager, Redirect Engine & QR Code Generator** plugin for [Filament v5](https://filamentphp.com). 
+
+Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, this package provides advanced link shortening, mobile app deep linking (Universal Links & Android App Links), client-side retargeting pixels, offline Geo-IP country routing, real-time analytics, and webhooks—with zero external API dependencies.
+
+### Why choose Filament Short URL?
+* **Save on SaaS Costs**: Replace expensive Bitly or Rebrandly subscriptions with a self-hosted solution that has zero click or creation limits.
+* **Server-Side GA4 Tracking**: Bypasses browser-side ad blockers completely to ensure 100% accurate traffic data.
+* **Retarget on External Sites**: Inject tracking pixels (Meta, Google Ads, LinkedIn, TikTok, Pinterest) on a beautiful glassmorphic redirect page before forwarding visitors.
+* **Seamless Mobile App Redirects**: Launch native mobile applications (Instagram, YouTube, Spotify, WhatsApp) automatically using deep links.
+* **GDPR-Friendly Geo-IP**: Resolve visitor countries offline using local MaxMind databases or trust your CDN headers (Cloudflare, CloudFront).
 
 ## Screenshots
 
@@ -37,30 +46,33 @@ A professional, high-performance **Short URL Manager** plugin for [Filament v5](
 
 ## Features
 
-- 🔗 **Short URL Generation** — Create custom links or let the system auto-generate collision-free Base62 keys.
-- 🌍 **Multiple Geo-IP Drivers** — High-speed offline detection using local MaxMind databases, edge-provided CDN headers (Cloudflare, CloudFront, generic), or fallback API integration.
-- 🗺️ **Visitor World Map Widget** — Interactive SVG world map on the link statistics dashboard showcasing the geographical distribution of visitor clicks with hover details.
-- 📈 **Real-Time Statistics Dashboard** — Track visits in real-time with cached aggregate metrics (countries, devices, browsers, operating systems, referrers, traffic charts, and maps).
-- 🛡️ **VPN, Proxy & Bot Filtering** — Exclude VPNs, proxies, Tor exit nodes, and automated bot clicks from your analytics to keep visitor statistics accurate.
-- 🔍 **Google Safe Browsing Integration** — Automatically verify target URLs on creation/edit to block malicious, phishing, malware, or social engineering links.
-- 🎨 **SVG QR Code Designer & Custom Logo Overlay** *(new in v2.0)* — Built-in interactive design canvas to customize dot styles, margins, gradient coloring, and background transparency. Upload custom brand logos with shape configuration (square/circle), margins, sizes, and auto-clear overlapping dots, with instant SVG/PNG download.
-- 📊 **Dedicated QR Code Scan Tracking** *(new in v2.0)* — Separates direct visits from QR code scans in analytics. Dynamically appends tracking tags and showcases QR scans in its own badge within tables.
-- 🌐 **Browser Language Analytics** *(new in v2.0)* — Detects client browser preferred language settings to showcase a "Top Languages" analytics breakdown in the link statistics dashboard.
-- ⚡ **Ultra-Fast Redirects** — Redirections resolve in milliseconds. Analytical tasks, event dispatching, and GA4 payloads are processed asynchronously via Laravel Queue jobs.
-- 🎯 **Google Analytics 4 server-side tracking** — Native integration with the GA4 Measurement Protocol to bypass client-side AdBlockers completely.
-- ⚙️ **Dual-way UTM Campaign Builder** — Built-in form builder synchronizes UTM parameters with your destination URLs in real-time (two-way binding).
-- 🔒 **Link Validity Ranges & Expiry** — Set activation date ranges (From - To), custom visit limit counters (e.g. active for 3 clicks then expires), single-use restrictions, and custom fallback redirect URLs on expiration instead of static 410 Gone errors.
-- ➡️ **Query Parameter Forwarding** — Dynamically forward client query parameters (e.g. ad tokens, discount codes) to the destination URL.
-- 🛠️ **Dedicated Settings GUI** — Manage global configuration (routing, Geo-IP, GA4, cache, rate limiting, aggregation) directly inside the Filament panel without modifying files or `.env` files.
-- 💻 **Fluent Developer Builder** — Native model query builder pattern and robust programmatic generation APIs.
-- 🔑 **Password-Protected Links** — Require a password before redirecting visitors, with session-based unlock.
-- ⚠️ **Redirect Warning Pages** — Show an interstitial security page before redirecting to external URLs (phishing/NSFW protection).
-- 🎯 **Smart Link Targeting** — Route visitors to different destination URLs based on their device type, country, or via weighted A/B split rotation.
-- 🛡️ **Rate Limiting / Bot Protection** — Configurable per-IP rate limits on redirects with automatic `429 Too Many Requests` responses.
-- 📊 **Daily Stats Aggregation & Pruning** — Automatic daily summarization of raw visit logs into compact daily stats tables. Configurable retention window prevents unbounded database growth at scale.
-- 🎯 **Social Retargeting Pixels** *(new in v1.5)* — Inject Meta Pixel, Google Tag, and LinkedIn Insight tracking scripts client-side via a premium glassmorphic interstitial page. Build remarketing audiences even when redirecting to external domains.
-- 🔌 **Developer REST API** *(new in v1.5)* — Full REST API (`GET`, `POST`, `DELETE`) for external integrations. Secured with API Key authentication managed via the Settings panel.
-- 📡 **Webhooks** *(new in v1.5)* — Real-time HTTP POST event notifications on every click, link creation, or expiration. Configure per-link or globally, dispatched asynchronously via the queue.
+- 🔗 **Base62 Short Link Generation** — Create clean, custom short links or let the system auto-generate collision-free Base62 keys.
+- 🌍 **Multiple Geo-IP Drivers** — Route and analyze traffic with offline MaxMind detection, CDN edge headers (Cloudflare's `CF-IPCountry`, CloudFront), or fallback APIs.
+- 🗺️ **Interactive Visitor World Map** — Showcase geographic click distribution on a beautiful SVG world map widget with real-time hover details.
+- 📈 **Comprehensive Analytics Dashboard** — Monitor total/unique visits, referrers, operating systems, devices, browsers, and top browser languages in real-time.
+- 🛡️ **VPN, Proxy & Bot Filtering** — Exclude scrapers, crawlers, Tor exit nodes, and automated bot clicks to keep your analytics clean and accurate.
+- 🔍 **Google Safe Browsing** — Automatically scan target URLs on creation/edit to block phishing, malware, and social engineering links.
+- 🎨 **SVG QR Code Designer** — Customize dot styles, gradients, margins, and upload custom brand logos with auto-clear backing dots and high-quality SVG/PNG exports.
+- 📊 **Dedicated QR Code Tracking** — Differentiate physical QR scans from direct web clicks with automatically appended query parameters (`?source=qr`).
+- 🌐 **Browser Language Targeting** — Route visitors dynamically based on their browser language preferences (e.g., redirect Polish speakers to a Polish landing page).
+- ⚡ **Ultra-Fast Redirections** — Redirections resolve in milliseconds. Logging, GA4 payloads, and webhooks are processed asynchronously in the background.
+- 🎯 **Server-Side GA4 Integration** — Send server-side `short_url_visit` hits using the Google Analytics 4 Measurement Protocol to bypass ad-blockers.
+- ⚙️ **Dual-way UTM Builder** — Build campaign URLs with a real-time synchronized UTM builder directly in the link creation form.
+- 🔒 **Link Expiration & Fallbacks** — Set activation date ranges, click-limit caps, single-use restrictions, and custom redirection fallbacks on expiration.
+- ➡️ **Query Parameter Forwarding** — Automatically forward client query strings (e.g., ad tokens, UTM parameters, discount codes) to the destination.
+- 🛠️ **Central Settings Panel** — Manage routes, Geo-IP, GA4, caching, rate limiting, and retention directly inside your Filament panel.
+- 🔑 **Password-Protected Links** — Secure sensitive links with a customizable, session-based password entry interstitial.
+- ⚠️ **Redirect Warning Interstitials** — Show a security warning page to verify external links (phishing and NSFW protection).
+- 🎯 **Advanced Smart Targeting** — Redirect visitors dynamically based on device type (iOS, Android, Desktop), country (Geo-IP), or browser language.
+- ⚖️ **A/B Split Testing Rotation** — Distribute traffic randomly across multiple landing pages using custom weighted rotation rules.
+- 🛡️ **Throttling & Rate Limiting** — Protect your redirection routes from flood attacks with configurable per-IP rate limits.
+- 📊 **Log Aggregation & Pruning** — Compact millions of raw visit logs into daily summaries automatically to prevent database bloat.
+- 🎯 **Central Retargeting Pixel Registry (new in v3.0.0)** — Register Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, and Pinterest Tag centrally and associate them with links via checkboxes.
+- 🔌 **Developer REST API** — Full programmatical control with secure API Key authentication to create, list, and delete short links externally.
+- 📡 **Real-Time Webhooks** — Asynchronous HTTP POST notifications on `visited`, `created`, `expired`, and `limit_reached` events with a built-in retry policy.
+- 📱 **Mobile App Deep Linking (new in v3.0.0)** — Detect mobile visitors and open links directly in 24+ native apps (Instagram, YouTube, Spotify, TikTok, etc.) using custom URI schemes.
+- 🔗 **Universal Links & App Links (new in v3.0.0)** — Host iOS `apple-app-site-association` and Android `assetlinks.json` domain configuration files directly from your root domain.
+- 🎨 **Branded Expiry Pages (new in v3.0.0)** — Display a premium, dark-mode compatible custom expiry page when a link is deactivated or limit-reached, falling back to a clean site-name greeting instead of a generic browser error.
 
 ---
 
@@ -122,6 +134,13 @@ php artisan filament:assets
 That's all. The plugin's CSS will be served from `public/css/janczakb/filament-short-url/filament-short-url.css` and Filament registers it automatically.
 
 > **You do not need to run Tailwind, Vite, or npm for the plugin styles.** The compiled file is included in the package.
+> 
+> **Using a Custom Filament Theme (Tailwind CSS v4)?**
+> If you are compiling your own Filament panel theme stylesheet, you can optionally tell Tailwind to scan the plugin's views by adding the `@source` directive to your theme's CSS file (e.g., `resources/css/filament/admin/theme.css`):
+> 
+> ```css
+> @source './vendor/janczakb/filament-short-url/resources/views/**/*.blade.php';
+> ```
 
 **Tip — automate on every `composer install` / `composer update`:**
 
@@ -136,21 +155,6 @@ Add `filament:assets` to the `post-autoload-dump` scripts in your application's 
     ]
 }
 ```
-
----
-
-> #### 🛠 For Plugin Developers Only
->
-> If you are modifying the plugin source and need to recompile its stylesheet after changing Blade/PHP files:
->
-> ```bash
-> # 1. Recompile the plugin CSS with Tailwind v4
-> npx @tailwindcss/cli -i ./packages/filament-short-url/resources/css/plugin.css \
->     -o ./packages/filament-short-url/resources/dist/filament-short-url.css --minify
->
-> # 2. Re-publish the compiled asset to public/
-> php artisan filament:assets
-> ```
 
 ---
 
@@ -236,7 +240,7 @@ protected $policies = [
 
 ## Global Settings GUI
 
-The package comes with a built-in admin settings dashboard. You can access it by clicking the **Settings** action button on the top-right header of the Short URLs resource.
+The package comes with a built-in admin settings dashboard. It is accessible directly from your sidebar menu under the same navigation group as your links.
 
 Settings are stored dynamically in `storage/app/filament-short-url-settings.json` and immediately override config defaults.
 
@@ -315,6 +319,18 @@ The warning page:
 - Is styled to match the password prompt page (glassmorphism, dark mode compatible).
 
 This feature is useful for NSFW links, external partner links, or any URL that leaves a trusted domain.
+
+---
+
+## Custom Branded Expiry Pages (new in v3.0.0)
+
+When a short URL is expired, deactivated, or has reached its maximum visit limit, it needs to handle the redirect gracefully:
+* **Custom Fallback URL**: If configured, visitors are immediately redirected to the `expiration_redirect_url` target.
+* **Branded Expiry Page (Default)**: If no fallback URL is specified, the system displays a premium branded, fully localized, dark-mode compatible HTML page (`expired.blade.php`) instead of a generic browser `410 Gone` error.
+  - Automatically displays your customized **Site Name** (and host application logo if the `setting('logo_path')` helper is defined).
+  - Displays a clean visual alert state with details about the expired link.
+  - Features a friendly back button pointing to your website's homepage.
+  - Can be easily customized by publishing package views: `php artisan vendor:publish --tag=filament-short-url-views`.
 
 ---
 
@@ -398,6 +414,78 @@ $shortUrl->update([
 
 ---
 
+## Native App Linking & Deep Linking (new in v3.0.0)
+
+This package supports two distinct levels of mobile app integration: **Per-Link App Linking** (client-side redirects using custom schemes) and **Global Deep Linking Files** (domain association files for OS-level native integration).
+
+### 1. Per-Link App Linking (Mobile Auto-Open)
+
+When creating or editing a short URL, the **App Linking** tab allows you to configure automatic redirects into native mobile applications.
+
+* **How it works**: If a destination URL matches one of the 24+ pre-configured native applications (such as YouTube, TikTok, Instagram, Facebook, Spotify, WhatsApp, Messenger, etc.), the plugin can bypass standard web views for mobile visitors. 
+* **The Interstitial Experience**: If **Auto open app on mobile** is enabled, mobile visitors are shown a premium glassmorphic redirect interstitial page that triggers the corresponding custom URL scheme (e.g. `whatsapp://`, `instagram://`, `youtube://`) to launch the native app directly, with fallback options to open in a web browser.
+* **Interactive Panel Preview**: Inside the Filament resource edit form, a live preview widget demonstrates if the URL was matched, showing:
+  - The matched app with its official favicon.
+  - The calculated deep link scheme.
+  - An interactive grid showing all supported native applications.
+
+Supported apps include: YouTube, TikTok, Instagram, X (Twitter), Spotify, Facebook, Reddit, Snapchat, WhatsApp, LinkedIn, Pinterest, Twitch, Netflix, Google Docs/Sheets/Slides/Maps, Messenger, Apple Music, Airbnb, TripAdvisor, Amazon, StockX, Booking, AliExpress.
+
+---
+
+### 2. Global Deep Linking Files (Universal Links & App Links)
+
+To support seamless OS-level integrations without browser intermediaries—such as iOS Universal Links and Android App Links—you can serve domain association files directly from your application's root domain.
+
+> [!IMPORTANT]
+> **Disabled by default**: This feature is turned **off** by default. You can enable it and customize the association JSON in your settings panel.
+
+#### Enabling and Configuration
+1. Open the **Settings** panel from your Filament sidebar.
+2. Navigate to the **Deep Linking** tab.
+3. Toggle **Enable Deep Linking Files** to ON.
+4. Fill in your configurations:
+   * **apple-app-site-association (iOS)**: The JSON configuration representing your iOS application IDs and supported paths (e.g., `/s/*`). This will be served at `/.well-known/apple-app-site-association` and `/apple-app-site-association` with the `application/json` content-type header.
+   * **assetlinks.json (Android)**: The Digital Asset Links JSON array representing your Android application package names and SHA-256 certificate fingerprints. This will be served at `/.well-known/assetlinks.json`.
+
+#### Example Configurations
+##### iOS AASA Example:
+```json
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "YOUR_TEAM_ID.com.yourcompany.app",
+                "paths": [
+                    "/s/*"
+                ]
+            }
+        ]
+    }
+}
+```
+
+##### Android AssetLinks Example:
+```json
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.yourcompany.app",
+            "sha256_cert_fingerprints": [
+                "14:6D:E9:57:3E:28:B6:58:91:..."
+            ]
+        }
+    }
+]
+```
+
+---
+
 ## High-Traffic Optimizations (new in v1.2.0)
 
 ### Daily Stats Aggregation
@@ -447,13 +535,13 @@ When Redis is not available and counter buffering is enabled, the `IncrementVisi
 
 ---
 
-## Social Retargeting Pixels & Central Pixel Registry (new in v2.1.0)
+## Social Retargeting Pixels & Central Pixel Registry (new in v3.0.0)
 
 Instead of manually copy-pasting tracking pixel IDs (Meta, Google Tag, LinkedIn, TikTok, Pinterest) every time you create a new link, the package features a centralized **Retargeting Pixel Registry** with a Many-to-Many relationship. You define your marketing pixels once in the new **Pixel Registry** resource, and then easily select them via checkbox/list options when creating or editing short links.
 
 ### The Interstitial Experience
 - **Premium Design**: Built using the exact same modern glassmorphic look as the password protection and warning interstitial pages. Supports dark mode automatically.
-- **Brand Customization**: Automatically renders the application logo and the **Site Name Override** (configured globally in Settings, falling back to `config('app.name')`) to ensure the transition page looks professional and trust-instilling.
+- **Brand Customization**: Automatically renders the application logo (if defined via the `setting('logo_path')` helper) and the **Site Name Override** (configured globally in Settings, falling back to `config('app.name')`) to ensure the transition page looks professional and trust-instilling.
 - **Micro-Animations & Smooth Redirect**: Displays a sleek animated loading spinner and a progress bar that smoothly fills from 0% to 100% in ~220-250ms. This short delay ensures browser execution time for the tracking scripts before performing a seamless `window.location.replace()` to the destination URL.
 
 This unlocks remarketing to people who clicked your links **even when redirecting to external domains** (e.g. booking.com, amazon.com) where you cannot install your own tracking code.
@@ -891,10 +979,15 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 
 ## Changelog
 
-### v2.1.0
+### v3.0.0
+- **Native App Linking (Mobile Auto-Open)** — Automatically match and redirect mobile visitors directly inside 24+ native mobile apps (such as WhatsApp, YouTube, TikTok, Instagram, Spotify, etc.) using custom schemes, complete with a glassmorphic redirect page and a live interactive matching preview widget.
+- **Global Deep Linking (Universal Links & App Links)** — Easily serve iOS `apple-app-site-association` and Android `.well-known/assetlinks.json` configuration files directly from your root domain to support OS-level native integration (disabled by default, managed via Settings).
 - **Central Retargeting Pixel Registry** — Introduced a premium Many-to-Many pixel management registry. Define pixels centrally (Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, Pinterest Tag) and easily associate them with short links via the Filament panel or the REST API.
+- **Standalone Settings Page** — Relocated the Settings interface from a resource header sub-action to a standalone sidebar navigation page under the default plugin group.
 - **Backward-Compatible REST API** — The API now exposes the `pixels` relationship list, while fully retaining backward-compatible support for legacy single-pixel parameters (`pixel_meta_id`, `pixel_google_id`, `pixel_linkedin_id`).
 - **Enhanced Browser Language Redirection** — Robust double-pass language targeting logic matching exact locales first (e.g. `en-US`, `zh-CN`) and falling back to base language codes (e.g. `en`, `zh`).
+- **Full Localization & WhatsApp Favicon Fix** — Added friendly translation strings in English and Polish across the entire app-linking preview and redirect interfaces, and adjusted domains order to restore the WhatsApp favicon.
+- **Custom Branded Expiry Pages** — Replaced raw 410 HTTP errors with a beautiful, fully localized, dark-mode compatible HTML expiry page displaying the Site Name, expired link details, and a homepage button.
 
 ### v2.0.0
 - **Interactive QR Code Designer Branding Logo** — Upload custom brand logos inside the QR designer canvas in Filament. Configure logo sizing, margins, shapes (square/circle), and toggle dot backing removal to prevent dots overlapping with the logo.

@@ -3,7 +3,6 @@
 namespace Bjanczak\FilamentShortUrl\Filament\Resources;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ListShortUrls;
-use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ShortUrlSettingsPage;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ViewShortUrlLogs;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ViewShortUrlStats;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\ShortUrlForm;
@@ -113,7 +112,6 @@ class ShortUrlResource extends Resource
             'index' => ListShortUrls::route('/'),
             'stats' => ViewShortUrlStats::route('/{record}/stats'),
             'stats.logs' => ViewShortUrlLogs::route('/{record}/stats/logs'),
-            'settings' => ShortUrlSettingsPage::route('/settings'),
         ];
     }
 }

@@ -9,6 +9,16 @@ return [
     'tab_link' => 'Link Details',
     'tab_tracking' => 'Tracking Settings',
     'tab_qr_design' => 'QR Code Design',
+    'tab_app_linking' => 'App Linking',
+
+    // App Linking
+    'form_section_app_linking' => 'App Linking / Deep Links',
+    'auto_open_app_mobile' => 'Auto open app on mobile',
+    'auto_open_app_mobile_helper' => 'Enable this if you want your link to automatically open as an app when accessed on mobile.',
+    'supported_operating_systems' => 'Supported Operating Systems',
+    'supported_apps' => 'Supported Apps',
+    'supported_apps_helper' => 'If you do not find your app here, you can use the Targeting feature to redirect the user to your app with your custom deep link.',
+    'matched' => 'Matched',
 
     // Link Form Fields
     'destination_url' => 'Destination URL',
@@ -466,4 +476,39 @@ return [
     'pixel_type' => 'Provider',
     'pixel_id_label' => 'Pixel ID / Tag ID',
     'pixel_status_active' => 'Active',
+    'settings_tab_deep_linking' => 'Deep Linking',
+    'settings_section_deep_linking' => 'Universal Links & App Links Association Files',
+    'settings_deep_linking_enabled' => 'Enable Deep Linking Files',
+    'settings_deep_linking_enabled_helper' => 'When enabled, the plugin serves AASA and AssetLinks configuration files from your root domain.',
+    'settings_aasa_json' => 'apple-app-site-association (iOS)',
+    'settings_aasa_json_helper' => 'Specify the valid JSON configuration for Apple App Site Association. Do not include wrapping script tags.',
+    'settings_assetlinks_json' => 'assetlinks.json (Android)',
+    'settings_assetlinks_json_helper' => 'Specify the valid JSON array configuration for Android Digital Asset Links.',
+    'validation_invalid_json' => 'The entered text is not a valid JSON string.',
+
+    // App Linking Preview
+    'app_linking_supported_os' => 'Supported Operating Systems:',
+    'app_linking_supported_apps' => 'Supported Apps',
+    'app_linking_supported_apps_helper' => 'If you do not find your app here, you can use the Targeting feature to redirect the user to your app with your custom deep link.',
+    'app_linking_matched' => 'Matched',
+    'app_linking_preconfigured_count' => ':count apps pre-configured for automatic redirection.',
+    'app_linking_redirect_active' => 'Opens directly inside :app',
+    'app_linking_auto_open' => 'Auto-Open',
+    'app_linking_matched_description' => 'When clicked on a mobile device, this link will open immediately inside the native <strong>:app</strong> application instead of the web browser.',
+    'app_linking_deep_link_scheme' => 'Mobile app path (Deep Link): :scheme',
+    'app_linking_standard_redirect' => 'This link will open in a standard mobile browser (no matching mobile app found).',
+
+    // App Redirect Page
+    'app_redirect_title' => 'Opening App...',
+    'app_redirect_opening_in' => 'Opening in :app',
+    'app_redirect_waiting_text' => 'We are redirecting you to the native application. Please wait a moment...',
+    'app_redirect_btn_open' => 'Open Native App',
+    'app_redirect_btn_browser' => 'Open in Browser',
+    'app_redirect_in_app_warning_title' => 'In-App Browser Detected',
+    'app_redirect_in_app_warning_desc' => 'Redirections can be restricted inside Instagram or Facebook. Tap the three dots (•••) in the top-right corner and select "Open in Safari" or "Open in Chrome" to launch the app.',
+
+    // Link Expired Page
+    'expired_title' => 'Link Inactive or Expired',
+    'expired_description' => 'This link is no longer active. It may have reached its click limit, expiration date, or has been deactivated.',
+    'expired_btn_home' => 'Go to Homepage',
 ];

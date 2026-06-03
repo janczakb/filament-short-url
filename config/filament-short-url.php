@@ -217,4 +217,47 @@ return [
         'throttle:120,1',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Deep Linking v2.1
+    |--------------------------------------------------------------------------
+    | Universal Links (iOS) and App Links (Android) configuration.
+    |
+    */
+    'deep_linking' => [
+        'enabled' => env('SHORT_URL_DEEP_LINKING_ENABLED', false),
+        'aasa_json' => env('SHORT_URL_AASA_JSON', <<<'JSON'
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "YOUR_TEAM_ID.com.yourcompany.app",
+                "paths": [
+                    "/s/*"
+                ]
+            }
+        ]
+    }
+}
+JSON),
+        'assetlinks_json' => env('SHORT_URL_ASSETLINKS_JSON', <<<'JSON'
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.yourcompany.app",
+            "sha256_cert_fingerprints": [
+                "14:6D:E9:..."
+            ]
+        }
+    }
+]
+JSON),
+    ],
+
 ];
+

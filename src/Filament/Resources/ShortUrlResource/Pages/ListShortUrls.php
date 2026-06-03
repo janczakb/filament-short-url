@@ -19,14 +19,6 @@ class ListShortUrls extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('settings')
-                ->label(__('filament-short-url::default.settings_nav_label'))
-                ->icon('heroicon-o-adjustments-horizontal')
-                ->color('gray')
-                ->size('sm')
-                ->url(static::getResource()::getUrl('settings'))
-                ->visible(fn () => ShortUrlSettingsPage::canAccess()),
-
             CreateAction::make()
                 ->icon('heroicon-o-plus')
                 ->size('sm')

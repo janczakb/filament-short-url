@@ -46,6 +46,9 @@ class FilamentShortUrlPlugin implements Plugin
             ->resources([
                 ShortUrlResource::class,
                 ShortUrlPixelResource::class,
+            ])
+            ->pages([
+                \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ShortUrlSettingsPage::class,
             ]);
     }
 

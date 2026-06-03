@@ -28,6 +28,7 @@ class ShortUrlForm
             Tabs::make()->tabs([
                 static::linkTab(),
                 static::targetingTab(),
+                static::appLinkingTab(),
                 static::trackingTab(),
                 static::marketingTab(),
                 static::qrDesignTab(),
@@ -569,4 +570,30 @@ class ShortUrlForm
                     ]),
             ]);
     }
+
+    private static function appLinkingTab(): Tab
+    {
+        return Tab::make(__('filament-short-url::default.tab_app_linking') ?? 'App Linking')
+            ->icon('heroicon-o-device-phone-mobile')
+            ->schema([
+                Section::make(__('filament-short-url::default.form_section_app_linking') ?? 'App Linking / Deep Links')
+                    ->schema([
+                        Toggle::make('auto_open_app_mobile')
+                            ->label(__('filament-short-url::default.auto_open_app_mobile') ?? 'Auto open app on mobile')
+                            ->helperText(__('filament-short-url::default.auto_open_app_mobile_helper') ?? 'Enable this if you want your link to automatically open as an app when accessed on mobile.')
+                            ->default(false)
+                            ->inline(false)
+                            ->live(),
+
+                        ViewField::make('app_linking_preview')
+                            ->view('filament-short-url::app-linking-preview')
+                            ->viewData(fn (Get $get) => [
+                                'destinationUrl' => $get('destination_url'),
+                            ])
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => (bool) $get('auto_open_app_mobile')),
+                    ]),
+            ]);
+    }
 }
+
