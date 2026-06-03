@@ -27,37 +27,10 @@ class ShortUrlVisitsRightBreakdown extends Widget
      */
     protected function getViewData(): array
     {
-        $languageNames = [
-            'en' => 'English',
-            'pl' => 'Polish',
-            'de' => 'German',
-            'es' => 'Spanish',
-            'fr' => 'French',
-            'it' => 'Italian',
-            'ru' => 'Russian',
-            'zh' => 'Chinese',
-            'ja' => 'Japanese',
-            'pt' => 'Portuguese',
-            'nl' => 'Dutch',
-            'tr' => 'Turkish',
-            'uk' => 'Ukrainian',
-            'cs' => 'Czech',
-            'sv' => 'Swedish',
-            'no' => 'Norwegian',
-            'da' => 'Danish',
-            'fi' => 'Finnish',
-            'ro' => 'Romanian',
-            'hu' => 'Hungarian',
-            'sk' => 'Slovak',
-            'bg' => 'Bulgarian',
-            'hr' => 'Croatian',
-            'sr' => 'Serbian',
-            'sl' => 'Slovenian',
-            'et' => 'Estonian',
-            'lv' => 'Latvian',
-            'lt' => 'Lithuanian',
-            'el' => 'Greek',
-        ];
+        $languageNames = __('filament-short-url::languages');
+        if (! is_array($languageNames)) {
+            $languageNames = [];
+        }
 
         if (! $this->record) {
             return [
@@ -84,6 +57,14 @@ class ShortUrlVisitsRightBreakdown extends Widget
     public static function getLanguageTranslation(string $langCode): string
     {
         $langCode = strtolower(trim($langCode));
+
+        // 1. Try loading from languages translation file (languages.php)
+        $translatedLanguages = __('filament-short-url::languages');
+        if (is_array($translatedLanguages) && isset($translatedLanguages[$langCode])) {
+            return $translatedLanguages[$langCode];
+        }
+
+        // 2. Try PHP Locale extension
         if (class_exists(\Locale::class)) {
             try {
                 $name = \Locale::getDisplayLanguage($langCode, app()->getLocale());
@@ -95,39 +76,8 @@ class ShortUrlVisitsRightBreakdown extends Widget
             }
         }
 
-        $fallback = [
-            'en' => 'English',
-            'pl' => 'Polish',
-            'de' => 'German',
-            'es' => 'Spanish',
-            'fr' => 'French',
-            'it' => 'Italian',
-            'ru' => 'Russian',
-            'zh' => 'Chinese',
-            'ja' => 'Japanese',
-            'pt' => 'Portuguese',
-            'nl' => 'Dutch',
-            'tr' => 'Turkish',
-            'uk' => 'Ukrainian',
-            'cs' => 'Czech',
-            'sv' => 'Swedish',
-            'no' => 'Norwegian',
-            'da' => 'Danish',
-            'fi' => 'Finnish',
-            'ro' => 'Romanian',
-            'hu' => 'Hungarian',
-            'sk' => 'Slovak',
-            'bg' => 'Bulgarian',
-            'hr' => 'Croatian',
-            'sr' => 'Serbian',
-            'sl' => 'Slovenian',
-            'et' => 'Estonian',
-            'lv' => 'Latvian',
-            'lt' => 'Lithuanian',
-            'el' => 'Greek',
-        ];
-
-        return $fallback[$langCode] ?? strtoupper($langCode);
+        // 3. Simple fallback
+        return strtoupper($langCode);
     }
 
     /**

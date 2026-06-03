@@ -432,6 +432,7 @@ class ShortUrlForm
                                 'none' => __('filament-short-url::default.targeting_type_none'),
                                 'device' => __('filament-short-url::default.targeting_type_device'),
                                 'geo' => __('filament-short-url::default.targeting_type_country'),
+                                'language' => __('filament-short-url::default.targeting_type_language'),
                                 'rotation' => __('filament-short-url::default.targeting_type_rotation'),
                             ])
                             ->default('none')
@@ -486,6 +487,33 @@ class ShortUrlForm
                             ])
                             ->columns(2)
                             ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'geo'),
+
+                        Repeater::make('targeting_rules.language')
+                            ->label(__('filament-short-url::default.language_targeting_rules'))
+                            ->schema([
+                                Select::make('language_code')
+                                    ->label(__('filament-short-url::default.language_code'))
+                                    ->options(function (): array {
+                                        $languages = __('filament-short-url::languages');
+                                        if (is_array($languages)) {
+                                            asort($languages, SORT_LOCALE_STRING);
+
+                                            return $languages;
+                                        }
+
+                                        return [];
+                                    })
+                                    ->searchable()
+                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                    ->required(),
+                                TextInput::make('url')
+                                    ->label(__('filament-short-url::default.destination_url'))
+                                    ->url()
+                                    ->required()
+                                    ->maxLength(2048),
+                            ])
+                            ->columns(2)
+                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'language'),
 
                         Repeater::make('targeting_rules.rotation')
                             ->label(__('filament-short-url::default.rotation_targeting_rules'))

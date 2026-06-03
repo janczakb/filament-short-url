@@ -440,6 +440,43 @@ class ShortUrl extends Model
             }
         }
 
+        if ($type === 'language') {
+            $acceptedLanguages = $request->getLanguages();
+
+            // Pass 1: Exact match (e.g. "en-us" matches "en-us" rule, or "pl" matches "pl" rule)
+            foreach ($acceptedLanguages as $acceptedLanguage) {
+                $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
+                if (empty($acceptedLanguage)) {
+                    continue;
+                }
+
+                foreach ($rules['language'] ?? [] as $rule) {
+                    $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
+                    if ($ruleLang === $acceptedLanguage) {
+                        return $rule['url'] ?? $this->destination_url;
+                    }
+                }
+            }
+
+            // Pass 2: Primary language fallback match (e.g. "en-us" matches general "en" rule)
+            foreach ($acceptedLanguages as $acceptedLanguage) {
+                $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
+                if (empty($acceptedLanguage)) {
+                    continue;
+                }
+
+                $parts = explode('-', $acceptedLanguage);
+                $primaryLang = strtolower(trim($parts[0]));
+
+                foreach ($rules['language'] ?? [] as $rule) {
+                    $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
+                    if ($ruleLang === $primaryLang) {
+                        return $rule['url'] ?? $this->destination_url;
+                    }
+                }
+            }
+        }
+
         if ($type === 'rotation') {
             $items = $rules['rotation'] ?? [];
             if (! empty($items)) {

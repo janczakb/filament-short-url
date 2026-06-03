@@ -363,7 +363,23 @@ $shortUrl->update([
 ]);
 ```
 
-#### 3. A/B Split Rotation
+#### 3. Browser Language-Based Redirects (new in v2.0.5)
+Route visitors to language-specific URLs based on their browser's language preferences (detected from the `Accept-Language` header). Fully supports matching exact regional locales (e.g., `en-US`, `en-GB`) with automatic fallback to base language codes (e.g., `en`, `pl`).
+
+```php
+$shortUrl->update([
+    'targeting_rules' => [
+        'type' => 'language',
+        'language' => [
+            ['language_code' => 'pl', 'url' => 'https://pl.example.com'],
+            ['language_code' => 'en-US', 'url' => 'https://us.example.com'],
+            ['language_code' => 'de', 'url' => 'https://de.example.com'],
+        ],
+    ],
+]);
+```
+
+#### 4. A/B Split Rotation
 Distribute traffic across multiple URLs using weighted random selection. Weights are proportional — they do not need to sum to 100.
 
 ```php
