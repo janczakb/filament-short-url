@@ -2,6 +2,7 @@
 
 namespace Bjanczak\FilamentShortUrl;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlPixelResource;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
@@ -44,6 +45,7 @@ class FilamentShortUrlPlugin implements Plugin
         $panel
             ->resources([
                 ShortUrlResource::class,
+                ShortUrlPixelResource::class,
             ]);
     }
 

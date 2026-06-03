@@ -33,8 +33,16 @@
         }
     </script>
 
+    @php
+        $pixelMetaIds = $pixels->where('type', 'meta')->pluck('pixel_id');
+        $pixelGoogleIds = $pixels->where('type', 'google')->pluck('pixel_id');
+        $pixelLinkedinIds = $pixels->where('type', 'linkedin')->pluck('pixel_id');
+        $pixelTiktokIds = $pixels->where('type', 'tiktok')->pluck('pixel_id');
+        $pixelPinterestIds = $pixels->where('type', 'pinterest')->pluck('pixel_id');
+    @endphp
+
     <!-- Meta / Facebook Pixel -->
-    @if(!empty($pixelMetaId))
+    @if($pixelMetaIds->isNotEmpty())
     <script>
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -44,29 +52,37 @@
     t.src=v;s=b.getElementsByTagName(e)[0];
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '{{ $pixelMetaId }}');
+    @foreach($pixelMetaIds as $id)
+    fbq('init', '{{ $id }}');
     fbq('track', 'PageView');
+    @endforeach
     </script>
-    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={{ $pixelMetaId }}&ev=PageView&noscript=1" /></noscript>
+    @foreach($pixelMetaIds as $id)
+    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={{ $id }}&ev=PageView&noscript=1" /></noscript>
+    @endforeach
     @endif
 
     <!-- Google Analytics / GTM -->
-    @if(!empty($pixelGoogleId))
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ $pixelGoogleId }}"></script>
+    @if($pixelGoogleIds->isNotEmpty())
+    @php $firstGoogleId = $pixelGoogleIds->first(); @endphp
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ $firstGoogleId }}"></script>
     <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', '{{ $pixelGoogleId }}');
+    @foreach($pixelGoogleIds as $id)
+    gtag('config', '{{ $id }}');
+    @endforeach
     </script>
     @endif
 
     <!-- LinkedIn Insight -->
-    @if(!empty($pixelLinkedinId))
+    @if($pixelLinkedinIds->isNotEmpty())
     <script type="text/javascript">
-    _linkedin_data_partner_id = "{{ $pixelLinkedinId }}";
     window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
-    window._linkedin_data_partner_ids.push(_linkedin_data_partner_id);
+    @foreach($pixelLinkedinIds as $id)
+    window._linkedin_data_partner_ids.push("{{ $id }}");
+    @endforeach
     (function(l) {
     if (!l){window.lintrk = function(a,b){window.lintrk.q.push([a,b])};
     window.lintrk.q=[]}
@@ -76,7 +92,36 @@
     b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
     s.parentNode.insertBefore(b, s);})(window.lintrk);
     </script>
-    <noscript><img height="1" width="1" style="display:none;" alt="" src="https://px.ads.linkedin.com/collect/?pid={{ $pixelLinkedinId }}&fmt=gif" /></noscript>
+    @foreach($pixelLinkedinIds as $id)
+    <noscript><img height="1" width="1" style="display:none;" alt="" src="https://px.ads.linkedin.com/collect/?pid={{ $id }}&fmt=gif" /></noscript>
+    @endforeach
+    @endif
+
+    <!-- TikTok Pixel -->
+    @if($pixelTiktokIds->isNotEmpty())
+    <script>
+    !function (w, d, t) {
+      w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.mixpanel;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=o||{};var a=d.createElement("script");a.type="text/javascript",a.async=!0,a.src=r+"?sdkid="+e+"&lib="+t;var c=d.getElementsByTagName("script")[0];c.parentNode.insertBefore(a,c)};
+      @foreach($pixelTiktokIds as $id)
+      ttq.load('{{ $id }}');
+      ttq.page();
+      @endforeach
+    }(window, document, 'ttq');
+    </script>
+    @endif
+
+    <!-- Pinterest Tag -->
+    @if($pixelPinterestIds->isNotEmpty())
+    <script>
+    !function(e,n,t,r,a,s,o){e[r]||(e[r]=function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].q=e[r].q||[],s=n.createElement(t),s.async=!0,s.src="https://s.pntrac.com/tag.js",o=n.getElementsByTagName(t)[0],o.parentNode.insertBefore(s,o))}(window,document,"script","pintrk");
+    @foreach($pixelPinterestIds as $id)
+    pintrk('load', '{{ $id }}');
+    pintrk('page');
+    @endforeach
+    </script>
+    @foreach($pixelPinterestIds as $id)
+    <noscript><img height="1" width="1" style="display:none;" alt="" src="https://ct.pinterest.com/v3/?event=init&tid={{ $id }}&noscript=1" /></noscript>
+    @endforeach
     @endif
 </head>
 <body class="bg-[#FCFCFC] dark:bg-[#0C0C0C] min-h-screen flex flex-col justify-between items-center py-10 px-6 font-sans antialiased">

@@ -1,0 +1,152 @@
+<?php
+
+namespace Bjanczak\FilamentShortUrl\Filament\Resources;
+
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlPixelResource\Pages\ListShortUrlPixels;
+use Bjanczak\FilamentShortUrl\Models\ShortUrlPixel;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Table;
+
+class ShortUrlPixelResource extends Resource
+{
+    protected static ?string $model = ShortUrlPixel::class;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-funnel';
+
+    protected static ?int $navigationSort = 51;
+
+    protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('filament-short-url::default.pixels_navigation_label') ?? 'Retargeting Pixels';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('filament-short-url::default.pixel_resource_title') ?? 'Retargeting Pixel';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('filament-short-url::default.pixels_navigation_label') ?? 'Retargeting Pixels';
+    }
+
+    public static function getNavigationGroup(): string|\UnitEnum|null
+    {
+        try {
+            return ShortUrlResource::getNavigationGroup();
+        } catch (\Throwable) {
+            return __('filament-short-url::default.navigation_group');
+        }
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        try {
+            return ShortUrlResource::getNavigationSort() + 1;
+        } catch (\Throwable) {
+            return static::$navigationSort;
+        }
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('name')
+                    ->label(__('filament-short-url::default.pixel_name') ?? 'Pixel Name')
+                    ->required()
+                    ->maxLength(150)
+                    ->placeholder('e.g. Meta Ads - Yacht Promo'),
+
+                Select::make('type')
+                    ->label(__('filament-short-url::default.pixel_type') ?? 'Provider')
+                    ->options([
+                        'meta' => 'Meta / Facebook Pixel',
+                        'google' => 'Google Tag (GA4 / GTM)',
+                        'linkedin' => 'LinkedIn Insight Tag',
+                        'tiktok' => 'TikTok Pixel',
+                        'pinterest' => 'Pinterest Tag',
+                    ])
+                    ->required()
+                    ->native(false),
+
+                TextInput::make('pixel_id')
+                    ->label(__('filament-short-url::default.pixel_id_label') ?? 'Pixel ID / Tag ID')
+                    ->required()
+                    ->maxLength(100)
+                    ->placeholder('e.g. 1234567890 or G-XXXXXXXXXX'),
+
+                Toggle::make('is_active')
+                    ->label(__('filament-short-url::default.pixel_status_active') ?? 'Active')
+                    ->default(true),
+            ])
+            ->columns(1);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->label(__('filament-short-url::default.pixel_name') ?? 'Pixel Name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+
+                TextColumn::make('type')
+                    ->label(__('filament-short-url::default.pixel_type') ?? 'Provider')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'meta' => 'Meta',
+                        'google' => 'Google',
+                        'linkedin' => 'LinkedIn',
+                        'tiktok' => 'TikTok',
+                        'pinterest' => 'Pinterest',
+                        default => ucfirst($state),
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'meta' => 'info',
+                        'google' => 'warning',
+                        'linkedin' => 'primary',
+                        'tiktok' => 'gray',
+                        'pinterest' => 'danger',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('pixel_id')
+                    ->label(__('filament-short-url::default.pixel_id_label') ?? 'ID')
+                    ->searchable()
+                    ->copyable()
+                    ->fontFamily('mono')
+                    ->color('gray'),
+
+                ToggleColumn::make('is_active')
+                    ->label(__('filament-short-url::default.pixel_status_active') ?? 'Active')
+                    ->sortable(),
+            ])
+            ->filters([])
+            ->actions([
+                EditAction::make()->modalWidth('md'),
+                DeleteAction::make(),
+            ])
+            ->bulkActions([]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListShortUrlPixels::route('/'),
+        ];
+    }
+}

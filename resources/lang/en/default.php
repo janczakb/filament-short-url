@@ -460,4 +460,10 @@ return [
     'badge_expires' => 'Expires: :date',
     'badge_no_expiry' => 'No expiry',
     'badge_redirect' => ':code redirect',
+    'pixels_navigation_label' => 'Retargeting Pixels',
+    'pixel_resource_title' => 'Retargeting Pixel',
+    'pixel_name' => 'Pixel Name',
+    'pixel_type' => 'Provider',
+    'pixel_id_label' => 'Pixel ID / Tag ID',
+    'pixel_status_active' => 'Active',
 ];

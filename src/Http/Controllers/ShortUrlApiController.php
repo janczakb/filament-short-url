@@ -57,18 +57,64 @@ class ShortUrlApiController extends Controller
             'expiration_redirect_url' => 'nullable|url|max:2048',
             'activated_at' => 'nullable|date',
             'expires_at' => 'nullable|date',
-            'pixel_meta_id' => 'nullable|string|max:100',
-            'pixel_google_id' => 'nullable|string|max:100',
-            'pixel_linkedin_id' => 'nullable|string|max:100',
             'webhook_url' => 'nullable|url|max:2048',
             'targeting_rules' => 'nullable|array',
             'password' => 'nullable|string|max:255',
             'show_warning_page' => 'nullable|boolean',
             'track_visits' => 'nullable|boolean',
             'track_browser_language' => 'nullable|boolean',
+            'pixels' => 'nullable|array',
+            'pixels.*' => 'integer|exists:short_url_pixels,id',
+            // Keep for backward compatibility
+            'pixel_meta_id' => 'nullable|string|max:100',
+            'pixel_google_id' => 'nullable|string|max:100',
+            'pixel_linkedin_id' => 'nullable|string|max:100',
         ]);
 
+        $pixelIds = $validated['pixels'] ?? [];
+
+        // Backward compatibility support for old pixel columns
+        if (! empty($validated['pixel_meta_id'])) {
+            $metaPixelId = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::firstOrCreate([
+                'type' => 'meta',
+                'pixel_id' => $validated['pixel_meta_id'],
+            ], [
+                'name' => 'Meta Pixel (' . $validated['pixel_meta_id'] . ')',
+                'is_active' => true,
+            ])->id;
+            $pixelIds[] = $metaPixelId;
+        }
+
+        if (! empty($validated['pixel_google_id'])) {
+            $googlePixelId = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::firstOrCreate([
+                'type' => 'google',
+                'pixel_id' => $validated['pixel_google_id'],
+            ], [
+                'name' => 'Google Tag (' . $validated['pixel_google_id'] . ')',
+                'is_active' => true,
+            ])->id;
+            $pixelIds[] = $googlePixelId;
+        }
+
+        if (! empty($validated['pixel_linkedin_id'])) {
+            $linkedinPixelId = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::firstOrCreate([
+                'type' => 'linkedin',
+                'pixel_id' => $validated['pixel_linkedin_id'],
+            ], [
+                'name' => 'LinkedIn Insight (' . $validated['pixel_linkedin_id'] . ')',
+                'is_active' => true,
+            ])->id;
+            $pixelIds[] = $linkedinPixelId;
+        }
+
+        // Clean up parameters that shouldn't be mass assigned
+        unset($validated['pixel_meta_id'], $validated['pixel_google_id'], $validated['pixel_linkedin_id'], $validated['pixels']);
+
         $shortUrl = $this->service->create($validated);
+
+        if (! empty($pixelIds)) {
+            $shortUrl->pixels()->sync($pixelIds);
+        }
 
         // Fire 'created' webhook if active
         $this->dispatchCreatedWebhook($shortUrl);
@@ -97,6 +143,8 @@ class ShortUrlApiController extends Controller
      */
     private function transformLink(ShortUrl $link): array
     {
+        $pixels = $link->relationLoaded('pixels') ? $link->pixels : $link->pixels()->get();
+
         return [
             'id' => $link->id,
             'destination_url' => $link->destination_url,
@@ -109,15 +157,22 @@ class ShortUrlApiController extends Controller
             'max_visits' => $link->max_visits ? (int) $link->max_visits : null,
             'activated_at' => $link->activated_at ? $link->activated_at->toIso8601String() : null,
             'expires_at' => $link->expires_at ? $link->expires_at->toIso8601String() : null,
-            'pixel_meta_id' => $link->pixel_meta_id,
-            'pixel_google_id' => $link->pixel_google_id,
-            'pixel_linkedin_id' => $link->pixel_linkedin_id,
+            'pixel_meta_id' => $pixels->where('type', 'meta')->first()?->pixel_id,
+            'pixel_google_id' => $pixels->where('type', 'google')->first()?->pixel_id,
+            'pixel_linkedin_id' => $pixels->where('type', 'linkedin')->first()?->pixel_id,
             'webhook_url' => $link->webhook_url,
             'targeting_rules' => $link->targeting_rules,
             'password' => $link->password,
             'show_warning_page' => (bool) $link->show_warning_page,
             'track_visits' => (bool) $link->track_visits,
             'track_browser_language' => (bool) $link->track_browser_language,
+            'pixels' => $pixels->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'type' => $p->type,
+                'pixel_id' => $p->pixel_id,
+                'is_active' => (bool) $p->is_active,
+            ])->toArray(),
             'notes' => $link->notes,
             'created_at' => $link->created_at->toIso8601String(),
         ];

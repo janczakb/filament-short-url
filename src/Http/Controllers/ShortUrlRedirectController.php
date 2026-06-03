@@ -162,12 +162,12 @@ class ShortUrlRedirectController extends Controller
             cache()->forget("filament-short-url:{$shortUrl->url_key}");
         }
 
-        if (! empty($shortUrl->pixel_meta_id) || ! empty($shortUrl->pixel_google_id) || ! empty($shortUrl->pixel_linkedin_id)) {
+        $activePixels = $shortUrl->pixels()->where('is_active', true)->get();
+
+        if ($activePixels->isNotEmpty()) {
             return response(view('filament-short-url::pixel-loading', [
                 'destination' => $destination,
-                'pixelMetaId' => $shortUrl->pixel_meta_id,
-                'pixelGoogleId' => $shortUrl->pixel_google_id,
-                'pixelLinkedinId' => $shortUrl->pixel_linkedin_id,
+                'pixels' => $activePixels,
             ]))->header('Content-Type', 'text/html');
         }
 

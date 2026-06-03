@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -82,9 +83,6 @@ class ShortUrl extends Model
         'unique_visits',
         'max_visits',
         'expiration_redirect_url',
-        'pixel_meta_id',
-        'pixel_google_id',
-        'pixel_linkedin_id',
         'webhook_url',
         'qr_logo',
         'qr_scans',
@@ -124,6 +122,11 @@ class ShortUrl extends Model
     public function dailyStats(): HasMany
     {
         return $this->hasMany(ShortUrlDailyStats::class, 'short_url_id');
+    }
+
+    public function pixels(): BelongsToMany
+    {
+        return $this->belongsToMany(ShortUrlPixel::class, 'short_url_pixel', 'short_url_id', 'pixel_id');
     }
 
     // ─── Scopes ──────────────────────────────────────────────────────────────
@@ -198,15 +201,6 @@ class ShortUrl extends Model
                 $m->expiration_redirect_url = null;
             }
 
-            if (empty($m->pixel_meta_id)) {
-                $m->pixel_meta_id = null;
-            }
-            if (empty($m->pixel_google_id)) {
-                $m->pixel_google_id = null;
-            }
-            if (empty($m->pixel_linkedin_id)) {
-                $m->pixel_linkedin_id = null;
-            }
             if (empty($m->webhook_url)) {
                 $m->webhook_url = null;
             }

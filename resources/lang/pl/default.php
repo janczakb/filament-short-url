@@ -461,4 +461,10 @@ return [
     'badge_expires' => 'Wygasa: :date',
     'badge_no_expiry' => 'Bez wygasania',
     'badge_redirect' => 'Przekierowanie :code',
+    'pixels_navigation_label' => 'Piksele retargetingowe',
+    'pixel_resource_title' => 'Piksel retargetingowy',
+    'pixel_name' => 'Nazwa piksela',
+    'pixel_type' => 'Dostawca',
+    'pixel_id_label' => 'ID Piksela / Tagu',
+    'pixel_status_active' => 'Aktywny',
 ];

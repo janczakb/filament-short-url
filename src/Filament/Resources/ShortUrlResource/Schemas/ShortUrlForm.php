@@ -547,22 +547,14 @@ class ShortUrlForm
                 Section::make(__('filament-short-url::default.marketing_pixels_title'))
                     ->description(__('filament-short-url::default.marketing_pixels_desc'))
                     ->schema([
-                        TextInput::make('pixel_meta_id')
-                            ->label(__('filament-short-url::default.pixel_meta'))
-                            ->placeholder('e.g., 1234567890')
-                            ->maxLength(100)
-                            ->nullable(),
-                        TextInput::make('pixel_google_id')
-                            ->label(__('filament-short-url::default.pixel_google'))
-                            ->placeholder('e.g., G-XXXXXXXXXX or AW-XXXXXXXXXX')
-                            ->maxLength(100)
-                            ->nullable(),
-                        TextInput::make('pixel_linkedin_id')
-                            ->label(__('filament-short-url::default.pixel_linkedin'))
-                            ->placeholder('e.g., 1234567')
-                            ->maxLength(100)
-                            ->nullable(),
-                    ])->columns(3),
+                        Select::make('pixels')
+                            ->label(__('filament-short-url::default.pixels_navigation_label') ?? 'Retargeting Pixels')
+                            ->multiple()
+                            ->relationship('pixels', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true))
+                            ->preload()
+                            ->searchable()
+                            ->columnSpanFull(),
+                    ]),
 
                 Section::make(__('filament-short-url::default.marketing_webhooks_title'))
                     ->description(__('filament-short-url::default.marketing_webhooks_desc'))
