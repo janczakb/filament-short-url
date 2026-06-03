@@ -146,7 +146,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->label(__('filament-short-url::default.settings_route_prefix'))
                                             ->helperText(__('filament-short-url::default.settings_route_prefix_helper'))
                                             ->prefix(new HtmlString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -3px; width: 15px; height: 15px;" class="text-emerald-600 dark:text-emerald-500"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v7a2 2 0 00 2 2h10a2 2 0 00 2-2v-7a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 00 10 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>https://'.request()->getHost().'/'))
-                                            ->required()
+                                            ->nullable()
                                             ->alphaDash()
                                             ->maxLength(20),
 
