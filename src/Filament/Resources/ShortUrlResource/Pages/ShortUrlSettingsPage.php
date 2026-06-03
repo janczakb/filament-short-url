@@ -152,6 +152,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
 
                                         Select::make('redirect_status_code')
                                             ->label(__('filament-short-url::default.redirect_code'))
+                                            ->helperText(__('filament-short-url::default.settings_redirect_code_helper'))
                                             ->options([
                                                 302 => __('filament-short-url::default.redirect_code_302'),
                                                 301 => __('filament-short-url::default.redirect_code_301'),
