@@ -407,92 +407,197 @@ class ShortUrl extends Model
             return $this->destination_url;
         }
 
-        $type = $rules['type'] ?? 'none';
+        // Backward compatibility check: legacy type-based strategy
+        if (is_array($rules) && isset($rules['type'])) {
+            $type = $rules['type'] ?? 'none';
 
-        if ($type === 'device') {
-            $parser = app(UserAgentParser::class);
-            $deviceType = $parser->parse($request->userAgent() ?? '')['device_type'];
+            if ($type === 'device') {
+                $parser = app(UserAgentParser::class);
+                $deviceType = $parser->getDeviceType($request->userAgent() ?? '');
 
-            if ($deviceType === 'mobile') {
-                return $rules['device']['mobile'] ?? $rules['device']['ios'] ?? $this->destination_url;
-            }
-            if ($deviceType === 'tablet') {
-                return $rules['device']['tablet'] ?? $rules['device']['android'] ?? $this->destination_url;
-            }
-
-            return $rules['device']['desktop'] ?? $this->destination_url;
-        }
-
-        if ($type === 'geo') {
-            $countryCode = ClientIpExtractor::getCountryCode($request);
-            if (! $countryCode) {
-                // Try resolving via GeoIpService
-                $ip = ClientIpExtractor::getIp($request);
-                $geo = app(GeoIpService::class)->resolve($ip);
-                $countryCode = $geo['country_code'] ?? null;
-            }
-
-            if ($countryCode) {
-                $countryCode = strtoupper(trim($countryCode));
-                foreach ($rules['geo'] ?? [] as $rule) {
-                    if (strtoupper($rule['country_code'] ?? '') === $countryCode) {
-                        return $rule['url'] ?? $this->destination_url;
-                    }
+                if ($deviceType === 'mobile') {
+                    return $rules['device']['mobile'] ?? $rules['device']['ios'] ?? $this->destination_url;
                 }
-            }
-        }
-
-        if ($type === 'language') {
-            $acceptedLanguages = $request->getLanguages();
-
-            // Pass 1: Exact match (e.g. "en-us" matches "en-us" rule, or "pl" matches "pl" rule)
-            foreach ($acceptedLanguages as $acceptedLanguage) {
-                $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
-                if (empty($acceptedLanguage)) {
-                    continue;
+                if ($deviceType === 'tablet') {
+                    return $rules['device']['tablet'] ?? $rules['device']['android'] ?? $this->destination_url;
                 }
 
-                foreach ($rules['language'] ?? [] as $rule) {
-                    $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
-                    if ($ruleLang === $acceptedLanguage) {
-                        return $rule['url'] ?? $this->destination_url;
-                    }
-                }
+                return $rules['device']['desktop'] ?? $this->destination_url;
             }
 
-            // Pass 2: Primary language fallback match (e.g. "en-us" matches general "en" rule)
-            foreach ($acceptedLanguages as $acceptedLanguage) {
-                $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
-                if (empty($acceptedLanguage)) {
-                    continue;
+            if ($type === 'geo') {
+                $countryCode = ClientIpExtractor::getCountryCode($request);
+                if (! $countryCode) {
+                    $ip = ClientIpExtractor::getIp($request);
+                    $geo = app(GeoIpService::class)->resolve($ip);
+                    $countryCode = $geo['country_code'] ?? null;
                 }
 
-                $parts = explode('-', $acceptedLanguage);
-                $primaryLang = strtolower(trim($parts[0]));
-
-                foreach ($rules['language'] ?? [] as $rule) {
-                    $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
-                    if ($ruleLang === $primaryLang) {
-                        return $rule['url'] ?? $this->destination_url;
-                    }
-                }
-            }
-        }
-
-        if ($type === 'rotation') {
-            $items = $rules['rotation'] ?? [];
-            if (! empty($items)) {
-                $totalWeight = array_sum(array_column($items, 'weight'));
-                if ($totalWeight > 0) {
-                    $rand = mt_rand(1, $totalWeight);
-                    $currentWeight = 0;
-                    foreach ($items as $item) {
-                        $currentWeight += (int) ($item['weight'] ?? 0);
-                        if ($rand <= $currentWeight) {
-                            return $item['url'] ?? $this->destination_url;
+                if ($countryCode) {
+                    $countryCode = strtoupper(trim($countryCode));
+                    foreach ($rules['geo'] ?? [] as $rule) {
+                        if (strtoupper($rule['country_code'] ?? '') === $countryCode) {
+                            return $rule['url'] ?? $this->destination_url;
                         }
                     }
                 }
+            }
+
+            if ($type === 'language') {
+                $acceptedLanguages = $request->getLanguages();
+
+                foreach ($acceptedLanguages as $acceptedLanguage) {
+                    $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
+                    if (empty($acceptedLanguage)) {
+                        continue;
+                    }
+
+                    foreach ($rules['language'] ?? [] as $rule) {
+                        $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
+                        if ($ruleLang === $acceptedLanguage) {
+                            return $rule['url'] ?? $this->destination_url;
+                        }
+                    }
+                }
+
+                foreach ($acceptedLanguages as $acceptedLanguage) {
+                    $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
+                    if (empty($acceptedLanguage)) {
+                        continue;
+                    }
+
+                    $parts = explode('-', $acceptedLanguage);
+                    $primaryLang = strtolower(trim($parts[0]));
+
+                    foreach ($rules['language'] ?? [] as $rule) {
+                        $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
+                        if ($ruleLang === $primaryLang) {
+                            return $rule['url'] ?? $this->destination_url;
+                        }
+                    }
+                }
+            }
+
+            if ($type === 'rotation') {
+                $items = $rules['rotation'] ?? [];
+                if (! empty($items)) {
+                    $totalWeight = array_sum(array_column($items, 'weight'));
+                    if ($totalWeight > 0) {
+                        $rand = mt_rand(1, $totalWeight);
+                        $currentWeight = 0;
+                        foreach ($items as $item) {
+                            $currentWeight += (int) ($item['weight'] ?? 0);
+                            if ($rand <= $currentWeight) {
+                                return $item['url'] ?? $this->destination_url;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $this->destination_url;
+        }
+
+        // Evaluate new multi-filter rule engine
+        if (! is_array($rules)) {
+            return $this->destination_url;
+        }
+
+        // Lazy-loaded request properties for maximum performance
+        $parsedUserAgent = null;
+        $deviceType = null;
+        $platformOs = null;
+        $countryCode = null;
+        $browserLanguages = null;
+
+        foreach ($rules as $rule) {
+            $filters = $rule['filters'] ?? [];
+            if (empty($filters)) {
+                continue;
+            }
+
+            $matchType = $rule['match'] ?? 'or';
+            $ruleMatches = $matchType === 'and'; // 'and' defaults to true (requires all matching), 'or' defaults to false
+
+            foreach ($filters as $filter) {
+                $filterType = $filter['type'] ?? '';
+                $filterData = $filter['data'] ?? [];
+                $filterMatches = false;
+
+                if ($filterType === 'device') {
+                    if ($deviceType === null) {
+                        $deviceType = app(UserAgentParser::class)->getDeviceType($request->userAgent() ?? '');
+                    }
+                    $filterMatches = in_array($deviceType, $filterData['devices'] ?? []);
+                } elseif ($filterType === 'platform') {
+                    if ($platformOs === null) {
+                        $rawOs = app(UserAgentParser::class)->getOs($request->userAgent() ?? '') ?? '';
+                        $platformOs = match (true) {
+                            stripos($rawOs, 'Windows') !== false => 'windows',
+                            stripos($rawOs, 'Fire OS') !== false => 'fire_os',
+                            stripos($rawOs, 'iOS') !== false || stripos($rawOs, 'iPad') !== false => 'ios',
+                            stripos($rawOs, 'Mac') !== false => 'mac',
+                            stripos($rawOs, 'Android') !== false => 'android',
+                            stripos($rawOs, 'Linux') !== false => 'linux',
+                            default => strtolower($rawOs),
+                        };
+                    }
+                    $filterMatches = in_array($platformOs, $filterData['platforms'] ?? []);
+                } elseif ($filterType === 'country') {
+                    if ($countryCode === null) {
+                        $countryCode = ClientIpExtractor::getCountryCode($request);
+                        if (! $countryCode) {
+                            $ip = ClientIpExtractor::getIp($request);
+                            $geo = app(GeoIpService::class)->resolve($ip);
+                            $countryCode = $geo['country_code'] ?? '';
+                        }
+                        $countryCode = strtoupper(trim($countryCode));
+                    }
+                    $filterMatches = in_array($countryCode, array_map('strtoupper', $filterData['countries'] ?? []));
+                } elseif ($filterType === 'language') {
+                    if ($browserLanguages === null) {
+                        $browserLanguages = array_map(function ($lang) {
+                            return strtolower(trim(str_replace('_', '-', $lang)));
+                        }, $request->getLanguages());
+                    }
+
+                    $filterLangs = array_map('strtolower', $filterData['languages'] ?? []);
+
+                    // Pass 1: Exact match
+                    foreach ($browserLanguages as $browserLang) {
+                        if (in_array($browserLang, $filterLangs)) {
+                            $filterMatches = true;
+                            break;
+                        }
+                    }
+
+                    // Pass 2: Fallback prefix match
+                    if (! $filterMatches) {
+                        foreach ($browserLanguages as $browserLang) {
+                            $primaryLang = explode('-', $browserLang)[0];
+                            if (in_array($primaryLang, $filterLangs)) {
+                                $filterMatches = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($matchType === 'and') {
+                    if (! $filterMatches) {
+                        $ruleMatches = false;
+                        break; // fail fast
+                    }
+                } else { // 'or'
+                    if ($filterMatches) {
+                        $ruleMatches = true;
+                        break; // succeed fast
+                    }
+                }
+            }
+
+            if ($ruleMatches && ! empty($rule['url'])) {
+                return $rule['url'];
             }
         }
 

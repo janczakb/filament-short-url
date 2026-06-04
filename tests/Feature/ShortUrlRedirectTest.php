@@ -703,3 +703,134 @@ it('renders custom branded expired view on deactivated URL', function () {
     $response->assertSee('Link Inactive or Expired');
     $response->assertSee('Go to Homepage');
 });
+
+it('evaluates new multi-filter targeting rules with OR match logic', function () {
+    config(['filament-short-url.trust_cdn_headers' => true]);
+
+    createShortUrl([
+        'url_key' => 'or-multi',
+        'track_visits' => false,
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://matched-or.example.com',
+                'filters' => [
+                    [
+                        'type' => 'country',
+                        'data' => ['countries' => ['PL', 'DE']],
+                    ],
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['mobile']],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    // Matches Country (PL) -> redirects
+    $this->get('/s/or-multi', ['CF-IPCountry' => 'PL'])
+        ->assertRedirect('https://matched-or.example.com');
+
+    // Matches Device (mobile) but different Country -> redirects
+    $this->get('/s/or-multi', [
+        'CF-IPCountry' => 'US',
+        'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    ])->assertRedirect('https://matched-or.example.com');
+
+    // Matches neither -> falls back to default destination_url
+    $this->get('/s/or-multi', [
+        'CF-IPCountry' => 'US',
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    ])->assertRedirect('https://example.com');
+});
+
+it('evaluates new multi-filter targeting rules with AND match logic', function () {
+    config(['filament-short-url.trust_cdn_headers' => true]);
+
+    createShortUrl([
+        'url_key' => 'and-multi',
+        'track_visits' => false,
+        'targeting_rules' => [
+            [
+                'match' => 'and',
+                'url' => 'https://matched-and.example.com',
+                'filters' => [
+                    [
+                        'type' => 'country',
+                        'data' => ['countries' => ['PL']],
+                    ],
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['mobile']],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    // Matches both -> redirects
+    $this->get('/s/and-multi', [
+        'CF-IPCountry' => 'PL',
+        'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    ])->assertRedirect('https://matched-and.example.com');
+
+    // Matches only Country -> falls back
+    $this->get('/s/and-multi', [
+        'CF-IPCountry' => 'PL',
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    ])->assertRedirect('https://example.com');
+
+    // Matches only Device -> falls back
+    $this->get('/s/and-multi', [
+        'CF-IPCountry' => 'US',
+        'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    ])->assertRedirect('https://example.com');
+});
+
+it('evaluates platform and browser language filters in new rule engine', function () {
+    createShortUrl([
+        'url_key' => 'platform-lang',
+        'track_visits' => false,
+        'targeting_rules' => [
+            [
+                'match' => 'and',
+                'url' => 'https://matched-platform-lang.example.com',
+                'filters' => [
+                    [
+                        'type' => 'platform',
+                        'data' => ['platforms' => ['ios', 'android']],
+                    ],
+                    [
+                        'type' => 'language',
+                        'data' => ['languages' => ['pl', 'de']],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    // iOS + pl -> redirects
+    $this->get('/s/platform-lang', [
+        'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+        'Accept-Language' => 'pl-PL,pl;q=0.9',
+    ])->assertRedirect('https://matched-platform-lang.example.com');
+
+    // Android + de -> redirects
+    $this->get('/s/platform-lang', [
+        'User-Agent' => 'Mozilla/5.0 (Linux; Android 13)',
+        'Accept-Language' => 'de-DE,de;q=0.9',
+    ])->assertRedirect('https://matched-platform-lang.example.com');
+
+    // iOS + en -> falls back
+    $this->get('/s/platform-lang', [
+        'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ])->assertRedirect('https://example.com');
+
+    // Windows + pl -> falls back
+    $this->get('/s/platform-lang', [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept-Language' => 'pl-PL,pl;q=0.9',
+    ])->assertRedirect('https://example.com');
+});

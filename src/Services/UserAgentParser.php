@@ -38,6 +38,16 @@ class UserAgentParser
         ];
     }
 
+    public function getDeviceType(string $userAgent): string
+    {
+        return $this->parseDeviceType($userAgent);
+    }
+
+    public function getOs(string $userAgent): ?string
+    {
+        return $this->parseOs($userAgent);
+    }
+
     private function parseBrowser(string $ua): ?string
     {
         // Order matters — check specific first, generic last
@@ -103,6 +113,7 @@ class UserAgentParser
     private function parseOs(string $ua): ?string
     {
         return match (true) {
+            (stripos($ua, 'Silk/') !== false || stripos($ua, 'Kindle') !== false) => 'Fire OS',
             stripos($ua, 'Windows') !== false => 'Windows',
             stripos($ua, 'iPad') !== false => 'iPadOS',
             stripos($ua, 'iPhone') !== false => 'iOS',

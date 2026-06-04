@@ -333,6 +333,25 @@ return [
     'rotation_weight' => 'Traffic Weight',
     'rotation_weight_helper' => 'Percentage of traffic to route to this URL (e.g. 50 for 50%). Weights are balanced proportionally.',
 
+    // New Advanced Targeting Builder
+    'targeting_rules' => 'Targeting Rules',
+    'add_filter' => 'Add a filter',
+    'match' => 'Match',
+    'match_or' => 'Any of the following filters (OR)',
+    'match_and' => 'All the following filters (AND)',
+    'filter_device' => 'Device',
+    'filter_platform' => 'Platform',
+    'filter_country' => 'Country',
+    'filter_language' => 'Browser Language',
+    'direct_to_url' => 'Direct to URL',
+    'select_devices' => 'Select devices',
+    'select_platforms' => 'Select operating systems',
+    'select_countries' => 'Select countries',
+    'select_languages' => 'Select browser languages',
+    'device_desktop_label' => 'Desktop',
+    'device_mobile_label' => 'Smartphone',
+    'device_tablet_label' => 'Tablet',
+
     // New Settings Page Fields
     'settings_tab_advanced' => 'Performance & Security',
     'settings_section_aggregation' => 'High-Traffic Log Management',

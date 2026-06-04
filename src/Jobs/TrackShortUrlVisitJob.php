@@ -38,7 +38,7 @@ class TrackShortUrlVisitJob implements ShouldQueue
         public readonly ShortUrl $shortUrl,
         public readonly string $ipAddress,
         public readonly string $userAgent,
-        public readonly ?string $refererUrl,
+        public readonly ?string $refererUrl = null,
         public readonly ?string $countryCode = null,
         public readonly ?string $city = null,
         public readonly ?string $utmSource = null,

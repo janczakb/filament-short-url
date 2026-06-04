@@ -113,9 +113,9 @@ class ShortUrlRedirectController extends Controller
         // App Linking / Deep Links Auto-Open Check
         if ($shortUrl->auto_open_app_mobile) {
             $uaParser = app(UserAgentParser::class);
-            $parsedUa = $uaParser->parse($request->userAgent() ?? '');
+            $deviceType = $uaParser->getDeviceType($request->userAgent() ?? '');
 
-            if ($parsedUa['device_type'] === 'mobile' || $parsedUa['device_type'] === 'tablet') {
+            if ($deviceType === 'mobile' || $deviceType === 'tablet') {
                 $matchedApp = AppLinkingEngine::matchApp($destination);
                 if ($matchedApp !== null) {
                     $deepLink = AppLinkingEngine::convertToScheme($destination, $matchedApp);

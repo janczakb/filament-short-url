@@ -330,6 +330,25 @@ return [
     'rotation_weight' => 'Waga ruchu',
     'rotation_weight_helper' => 'Procent ruchu kierowany na ten URL (np. 50 dla 50%). Wagi są bilansowane proporcjonalnie.',
 
+    // New Advanced Targeting Builder
+    'targeting_rules' => 'Reguły targetowania',
+    'add_filter' => 'Dodaj filtr',
+    'match' => 'Warunek dopasowania',
+    'match_or' => 'Dowolny z poniższych filtrów (OR)',
+    'match_and' => 'Wszystkie poniższe filtry (AND)',
+    'filter_device' => 'Urządzenie',
+    'filter_platform' => 'Platforma (System operacyjny)',
+    'filter_country' => 'Kraj',
+    'filter_language' => 'Język przeglądarki',
+    'direct_to_url' => 'Przekieruj na URL',
+    'select_devices' => 'Wybierz urządzenia',
+    'select_platforms' => 'Wybierz systemy operacyjne',
+    'select_countries' => 'Wybierz kraje',
+    'select_languages' => 'Wybierz języki przeglądarki',
+    'device_desktop_label' => 'Komputer stacjonarny',
+    'device_mobile_label' => 'Smartfon',
+    'device_tablet_label' => 'Tablet',
+
     // New Settings Page Fields
     'settings_tab_advanced' => 'Wydajność i bezpieczeństwo',
     'settings_section_aggregation' => 'Zarządzanie logami o dużym natężeniu ruchu',

@@ -107,4 +107,23 @@ class ShortUrlVisitsRightBreakdown extends Widget
 
         return $englishName;
     }
+
+    public static function getCountryCode(string $englishName): ?string
+    {
+        $englishName = trim($englishName);
+
+        try {
+            $enCountries = trans('filament-short-url::countries', [], 'en');
+            if (is_array($enCountries)) {
+                $flipped = array_change_key_case(array_flip($enCountries), CASE_LOWER);
+                $lookupKey = strtolower($englishName);
+
+                return $flipped[$lookupKey] ?? null;
+            }
+        } catch (\Throwable) {
+            // Ignore
+        }
+
+        return null;
+    }
 }

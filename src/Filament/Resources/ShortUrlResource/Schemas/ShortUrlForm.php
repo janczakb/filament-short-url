@@ -2,18 +2,23 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas;
 
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Builder;
+use Filament\Forms\Components\Builder\Block;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -23,7 +28,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
-use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 
 class ShortUrlForm
 {
@@ -432,9 +436,9 @@ class ShortUrlForm
                             Placeholder::make('password_status')
                                 ->label(__('filament-short-url::default.password'))
                                 ->content(new HtmlString(
-                                    '<div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">' .
-                                    '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>' .
-                                    '<span>' . (__('filament-short-url::default.password_status_active') ?? 'Password protection is enabled.') . '</span>' .
+                                    '<div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">'.
+                                    '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>'.
+                                    '<span>'.(__('filament-short-url::default.password_status_active') ?? 'Password protection is enabled.').'</span>'.
                                     '</div>'
                                 ))
                                 ->columnSpan(1),
@@ -466,11 +470,11 @@ class ShortUrlForm
                                         }
                                     }),
                             ])
-                            ->columnSpan(1),
+                                ->columnSpan(1),
                         ])
-                        ->columns(2)
-                        ->columnSpanFull()
-                        ->visible(fn (Get $get): bool => (bool) $get('password_active_flag')),
+                            ->columns(2)
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => (bool) $get('password_active_flag')),
 
                         // State 2: No Password, Setup Button Group (password_active_flag is false, is_entering_password is false)
                         Group::make([
@@ -483,10 +487,10 @@ class ShortUrlForm
                                         $set('is_entering_password', true);
                                     }),
                             ])
-                            ->columnSpanFull(),
+                                ->columnSpanFull(),
                         ])
-                        ->columnSpanFull()
-                        ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password')),
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password')),
 
                         // State 3: Entering Password Group (password_active_flag is false, is_entering_password is true)
                         Group::make([
@@ -511,8 +515,8 @@ class ShortUrlForm
                                     ->required(fn (Get $get): bool => ! empty($get('new_password_input')))
                                     ->columnSpan(1),
                             ])
-                            ->columns(2)
-                            ->columnSpanFull(),
+                                ->columns(2)
+                                ->columnSpanFull(),
 
                             Actions::make([
                                 Action::make('confirm_password')
@@ -523,17 +527,19 @@ class ShortUrlForm
                                         $password = $get('new_password_input');
                                         $confirm = $get('new_password_confirmation_input');
                                         if (empty($password)) {
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title(__('filament-short-url::default.password_required_error') ?? 'Password is required.')
                                                 ->danger()
                                                 ->send();
+
                                             return;
                                         }
                                         if ($password !== $confirm) {
-                                            \Filament\Notifications\Notification::make()
+                                            Notification::make()
                                                 ->title(__('filament-short-url::default.password_mismatch_error') ?? 'Passwords do not match.')
                                                 ->danger()
                                                 ->send();
+
                                             return;
                                         }
                                         $set('password', $password);
@@ -556,10 +562,10 @@ class ShortUrlForm
                                         $set('new_password_confirmation_input', null);
                                     }),
                             ])
-                            ->columnSpanFull(),
+                                ->columnSpanFull(),
                         ])
-                        ->columnSpanFull()
-                        ->visible(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password')),
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password')),
 
                         Toggle::make('show_warning_page')
                             ->label(__('filament-short-url::default.show_warning_page'))
@@ -568,117 +574,265 @@ class ShortUrlForm
                             ->inline(false),
                     ])->columns(2),
 
-                Section::make(__('filament-short-url::default.targeting_type'))
+                Section::make(__('filament-short-url::default.targeting_rules'))
+                    ->compact()
                     ->schema([
-                        Select::make('targeting_rules.type')
-                            ->label(__('filament-short-url::default.targeting_type'))
-                            ->options([
-                                'none' => __('filament-short-url::default.targeting_type_none'),
-                                'device' => __('filament-short-url::default.targeting_type_device'),
-                                'geo' => __('filament-short-url::default.targeting_type_country'),
-                                'language' => __('filament-short-url::default.targeting_type_language'),
-                                'rotation' => __('filament-short-url::default.targeting_type_rotation'),
-                            ])
-                            ->default('none')
-                            ->live()
-                            ->required(),
+                        Repeater::make('targeting_rules')
+                            ->label(__('filament-short-url::default.targeting_rules'))
+                            ->hiddenLabel()
+                            ->defaultItems(0)
+                            ->reorderable(false)
+                            ->collapsible()
+                            ->collapsed()
+                            ->itemLabel(fn (array $state): ?string => filled($state['url'] ?? null) ? __('filament-short-url::default.direct_to_url').': '.$state['url'] : null)
+                            ->columns(12)
+                            ->afterStateHydrated(function (Repeater $component, $state) {
+                                if (! is_array($state)) {
+                                    $component->state([]);
 
-                        Section::make(__('filament-short-url::default.device_targeting_rules'))
-                            ->schema([
-                                TextInput::make('targeting_rules.device.mobile')
-                                    ->label(__('filament-short-url::default.device_mobile'))
-                                    ->url()
-                                    ->nullable()
-                                    ->maxLength(2048),
-                                TextInput::make('targeting_rules.device.tablet')
-                                    ->label(__('filament-short-url::default.device_tablet'))
-                                    ->url()
-                                    ->nullable()
-                                    ->maxLength(2048),
-                                TextInput::make('targeting_rules.device.desktop')
-                                    ->label(__('filament-short-url::default.device_desktop'))
-                                    ->url()
-                                    ->nullable()
-                                    ->maxLength(2048),
-                            ])
-                            ->columns(1)
-                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'device'),
+                                    return;
+                                }
 
-                        Repeater::make('targeting_rules.geo')
-                            ->label(__('filament-short-url::default.country_targeting_rules'))
-                            ->schema([
-                                Select::make('country_code')
-                                    ->label(__('filament-short-url::default.country_code'))
-                                    ->options(function (): array {
-                                        $countries = __('filament-short-url::countries');
-                                        if (is_array($countries)) {
-                                            asort($countries, SORT_LOCALE_STRING);
+                                // If it is legacy format (has 'type' key)
+                                if (isset($state['type'])) {
+                                    $type = $state['type'];
+                                    $newRules = [];
 
-                                            return $countries;
+                                    if ($type === 'device') {
+                                        $devices = $state['device'] ?? [];
+                                        $mobileUrl = $devices['mobile'] ?? $devices['ios'] ?? null;
+                                        if ($mobileUrl) {
+                                            $newRules[] = [
+                                                'match' => 'or',
+                                                'url' => $mobileUrl,
+                                                'filters' => [
+                                                    [
+                                                        'type' => 'device',
+                                                        'data' => ['devices' => ['mobile']],
+                                                    ],
+                                                ],
+                                            ];
                                         }
-
-                                        return [];
-                                    })
-                                    ->searchable()
-                                    ->optionsLimit(300)
-                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                    ->required(),
-                                TextInput::make('url')
-                                    ->label(__('filament-short-url::default.destination_url'))
-                                    ->url()
-                                    ->required()
-                                    ->maxLength(2048),
-                            ])
-                            ->columns(2)
-                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'geo'),
-
-                        Repeater::make('targeting_rules.language')
-                            ->label(__('filament-short-url::default.language_targeting_rules'))
-                            ->schema([
-                                Select::make('language_code')
-                                    ->label(__('filament-short-url::default.language_code'))
-                                    ->options(function (): array {
-                                        $languages = __('filament-short-url::languages');
-                                        if (is_array($languages)) {
-                                            asort($languages, SORT_LOCALE_STRING);
-
-                                            return $languages;
+                                        $tabletUrl = $devices['tablet'] ?? $devices['android'] ?? null;
+                                        if ($tabletUrl) {
+                                            $newRules[] = [
+                                                'match' => 'or',
+                                                'url' => $tabletUrl,
+                                                'filters' => [
+                                                    [
+                                                        'type' => 'device',
+                                                        'data' => ['devices' => ['tablet']],
+                                                    ],
+                                                ],
+                                            ];
                                         }
+                                        $desktopUrl = $devices['desktop'] ?? null;
+                                        if ($desktopUrl) {
+                                            $newRules[] = [
+                                                'match' => 'or',
+                                                'url' => $desktopUrl,
+                                                'filters' => [
+                                                    [
+                                                        'type' => 'device',
+                                                        'data' => ['devices' => ['desktop']],
+                                                    ],
+                                                ],
+                                            ];
+                                        }
+                                    } elseif ($type === 'geo') {
+                                        foreach ($state['geo'] ?? [] as $geoRule) {
+                                            if (! empty($geoRule['url']) && ! empty($geoRule['country_code'])) {
+                                                $newRules[] = [
+                                                    'match' => 'or',
+                                                    'url' => $geoRule['url'],
+                                                    'filters' => [
+                                                        [
+                                                            'type' => 'country',
+                                                            'data' => ['countries' => [strtoupper($geoRule['country_code'])]],
+                                                        ],
+                                                    ],
+                                                ];
+                                            }
+                                        }
+                                    } elseif ($type === 'language') {
+                                        foreach ($state['language'] ?? [] as $langRule) {
+                                            if (! empty($langRule['url']) && ! empty($langRule['language_code'])) {
+                                                $newRules[] = [
+                                                    'match' => 'or',
+                                                    'url' => $langRule['url'],
+                                                    'filters' => [
+                                                        [
+                                                            'type' => 'language',
+                                                            'data' => ['languages' => [strtolower($langRule['language_code'])]],
+                                                        ],
+                                                    ],
+                                                ];
+                                            }
+                                        }
+                                    }
 
-                                        return [];
-                                    })
-                                    ->searchable()
-                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                    ->required(),
-                                TextInput::make('url')
-                                    ->label(__('filament-short-url::default.destination_url'))
-                                    ->url()
-                                    ->required()
-                                    ->maxLength(2048),
-                            ])
-                            ->columns(2)
-                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'language'),
+                                    $component->state($newRules);
 
-                        Repeater::make('targeting_rules.rotation')
-                            ->label(__('filament-short-url::default.rotation_targeting_rules'))
+                                    return;
+                                }
+
+                                if (! array_is_list($state)) {
+                                    $component->state([]);
+
+                                    return;
+                                }
+
+                                $component->state($state);
+                            })
                             ->schema([
+                                Select::make('match')
+                                    ->label(__('filament-short-url::default.match'))
+                                    ->options([
+                                        'or' => __('filament-short-url::default.match_or'),
+                                        'and' => __('filament-short-url::default.match_and'),
+                                    ])
+                                    ->default('or')
+                                    ->required()
+                                    ->columnSpan(3),
+
                                 TextInput::make('url')
-                                    ->label(__('filament-short-url::default.rotation_url'))
+                                    ->label(__('filament-short-url::default.direct_to_url'))
                                     ->url()
                                     ->required()
-                                    ->maxLength(2048),
-                                TextInput::make('weight')
-                                    ->label(__('filament-short-url::default.rotation_weight'))
-                                    ->helperText(__('filament-short-url::default.rotation_weight_helper'))
-                                    ->numeric()
-                                    ->integer()
-                                    ->minValue(1)
-                                    ->maxValue(1000)
-                                    ->required()
-                                    ->default(50),
+                                    ->maxLength(2048)
+                                    ->columnSpan(9),
+
+                                Builder::make('filters')
+                                    ->label(__('filament-short-url::default.add_filter'))
+                                    ->hiddenLabel()
+                                    ->addActionLabel(__('filament-short-url::default.add_filter'))
+                                    ->reorderable(false)
+                                    ->collapsible()
+                                    ->blockNumbers(false)
+                                    ->addBetweenAction(fn ($action) => $action->hidden())
+                                    ->minItems(1)
+                                    ->blocks([
+                                        Block::make('device')
+                                            ->label(fn (?array $state) => $state === null
+                                                ? __('filament-short-url::default.filter_device')
+                                                : new HtmlString(__('filament-short-url::default.select_devices').' <sup class="text-danger-600 dark:text-danger-400 fi-fo-field-label-required-mark" style="color: rgb(220, 38, 38) !important;">*</sup>')
+                                            )
+                                            ->icon('heroicon-o-device-phone-mobile')
+                                            ->schema([
+                                                CheckboxList::make('devices')
+                                                    ->label(__('filament-short-url::default.select_devices'))
+                                                    ->hiddenLabel()
+                                                    ->options([
+                                                        'desktop' => __('filament-short-url::default.device_desktop_label'),
+                                                        'mobile' => __('filament-short-url::default.device_mobile_label'),
+                                                        'tablet' => __('filament-short-url::default.device_tablet_label'),
+                                                    ])
+                                                    ->required()
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->maxItems(1),
+                                        Block::make('platform')
+                                            ->label(fn (?array $state) => $state === null
+                                                ? __('filament-short-url::default.filter_platform')
+                                                : new HtmlString(__('filament-short-url::default.select_platforms').' <sup class="text-danger-600 dark:text-danger-400 fi-fo-field-label-required-mark" style="color: rgb(220, 38, 38) !important;">*</sup>')
+                                            )
+                                            ->icon('heroicon-o-computer-desktop')
+                                            ->schema([
+                                                CheckboxList::make('platforms')
+                                                    ->label(__('filament-short-url::default.select_platforms'))
+                                                    ->hiddenLabel()
+                                                    ->options([
+                                                        'android' => 'Android',
+                                                        'fire_os' => 'Fire OS',
+                                                        'ios' => 'iOS / iPadOS',
+                                                        'linux' => 'Linux',
+                                                        'mac' => 'macOS',
+                                                        'windows' => 'Windows',
+                                                    ])
+                                                    ->required()
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->maxItems(1),
+                                        Block::make('country')
+                                            ->label(fn (?array $state) => $state === null
+                                                ? __('filament-short-url::default.filter_country')
+                                                : new HtmlString(__('filament-short-url::default.select_countries').' <sup class="text-danger-600 dark:text-danger-400 fi-fo-field-label-required-mark" style="color: rgb(220, 38, 38) !important;">*</sup>')
+                                            )
+                                            ->icon('heroicon-o-globe-alt')
+                                            ->schema([
+                                                Select::make('countries')
+                                                    ->label(__('filament-short-url::default.select_countries'))
+                                                    ->hiddenLabel()
+                                                    ->multiple()
+                                                    ->searchable()
+                                                    ->allowHtml()
+                                                    ->options(function (): array {
+                                                        $countries = __('filament-short-url::countries');
+                                                        if (is_array($countries)) {
+                                                            asort($countries, SORT_LOCALE_STRING);
+
+                                                            $htmlOptions = [];
+                                                            foreach ($countries as $code => $name) {
+                                                                $lowerCode = strtolower($code);
+                                                                $htmlOptions[$code] = "<span class=\"flex items-center gap-2\"><img src=\"https://flagcdn.com/h20/{$lowerCode}.webp\" class=\"w-5 h-auto rounded-sm inline-block mr-2\" alt=\"{$name}\" style=\"vertical-align: middle;\" /><span>{$name}</span></span>";
+                                                            }
+
+                                                            return $htmlOptions;
+                                                        }
+
+                                                        return [];
+                                                    })
+                                                    ->optionsLimit(300)
+                                                    ->required()
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->maxItems(1),
+                                        Block::make('language')
+                                            ->label(fn (?array $state) => $state === null
+                                                ? __('filament-short-url::default.filter_language')
+                                                : new HtmlString(__('filament-short-url::default.select_languages').' <sup class="text-danger-600 dark:text-danger-400 fi-fo-field-label-required-mark" style="color: rgb(220, 38, 38) !important;">*</sup>')
+                                            )
+                                            ->icon('heroicon-o-language')
+                                            ->schema([
+                                                Select::make('languages')
+                                                    ->label(__('filament-short-url::default.select_languages'))
+                                                    ->hiddenLabel()
+                                                    ->multiple()
+                                                    ->searchable()
+                                                    ->options(function (): array {
+                                                        $languages = __('filament-short-url::languages');
+                                                        if (is_array($languages)) {
+                                                            asort($languages, SORT_LOCALE_STRING);
+
+                                                            return $languages;
+                                                        }
+
+                                                        return [];
+                                                    })
+                                                    ->required()
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->maxItems(1),
+                                    ])
+                                    ->rules([
+                                        function () {
+                                            return function (string $attribute, $value, \Closure $fail) {
+                                                if (! is_array($value)) {
+                                                    return;
+                                                }
+                                                $types = collect($value)->pluck('type');
+                                                if ($types->duplicates()->isNotEmpty()) {
+                                                    $fail('Each filter type (Device, Platform, Country, Language) can only be added once.');
+                                                }
+                                            };
+                                        },
+                                    ])
+                                    ->columnSpanFull(),
                             ])
-                            ->columns(2)
-                            ->visible(fn (Get $get): bool => $get('targeting_rules.type') === 'rotation'),
+                            ->columnSpanFull()
+                            ->default([]),
                     ]),
             ]);
     }
@@ -706,17 +860,17 @@ class ShortUrlForm
                         Placeholder::make('webhook_info')
                             ->hiddenLabel()
                             ->content(new HtmlString(
-                                '<div class="callout my-4 px-5 py-4 overflow-hidden rounded-2xl flex gap-3 border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-white/10" data-callout-type="info">' .
-                                '<div class="mt-0.5 w-4" data-component-part="callout-icon">' .
-                                '<svg viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" class="flex-none size-5 text-neutral-800 dark:text-neutral-300" aria-label="Info">' .
-                                '<path d="M8 0C3.58125 0 0 3.58125 0 8C0 12.4187 3.58125 16 8 16C12.4187 16 16 12.4187 16 8C16 3.58125 12.4187 0 8 0ZM8 14.5C4.41563 14.5 1.5 11.5841 1.5 8C1.5 4.41594 4.41563 1.5 8 1.5C11.5844 1.5 14.5 4.41594 14.5 8C14.5 11.5841 11.5844 14.5 8 14.5ZM9.25 10.5H8.75V7.75C8.75 7.3375 8.41563 7 8 7H7C6.5875 7 6.25 7.3375 6.25 7.75C6.25 8.1625 6.5875 8.5 7 8.5H7.25V10.5H6.75C6.3375 10.5 6 10.8375 6 11.25C6 11.6625 6.3375 12 6.75 12H9.25C9.66406 12 10 11.25C10 10.8359 9.66563 10.5 9.25 10.5ZM8 6C8.55219 6 9 5.55219 9 5C9 4.44781 8.55219 4 8 4C7.44781 4 7 4.44687 7 5C7 5.55313 7.44687 6 8 6Z"></path>' .
-                                '</svg>' .
-                                '</div>' .
-                                '<div class="text-sm prose dark:prose-invert min-w-0 w-full text-neutral-800 dark:text-neutral-300" data-component-part="callout-content">' .
-                                '<span data-as="p">' .
-                                (__('filament-short-url::default.webhook_helper_alert') ?? 'Once configured, each visit to this short link triggers a real-time HTTP POST request to this URL. The payload contains detailed click metadata in JSON format (including URL key, IP address, country, browser, operating system, referrer, and UTM parameters).') .
-                                '</span>' .
-                                '</div>' .
+                                '<div class="callout my-4 px-5 py-4 overflow-hidden rounded-2xl flex gap-3 border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-white/10" data-callout-type="info">'.
+                                '<div class="mt-0.5 w-4" data-component-part="callout-icon">'.
+                                '<svg viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" class="flex-none size-5 text-neutral-800 dark:text-neutral-300" aria-label="Info">'.
+                                '<path d="M8 0C3.58125 0 0 3.58125 0 8C0 12.4187 3.58125 16 8 16C12.4187 16 16 12.4187 16 8C16 3.58125 12.4187 0 8 0ZM8 14.5C4.41563 14.5 1.5 11.5841 1.5 8C1.5 4.41594 4.41563 1.5 8 1.5C11.5844 1.5 14.5 4.41594 14.5 8C14.5 11.5841 11.5844 14.5 8 14.5ZM9.25 10.5H8.75V7.75C8.75 7.3375 8.41563 7 8 7H7C6.5875 7 6.25 7.3375 6.25 7.75C6.25 8.1625 6.5875 8.5 7 8.5H7.25V10.5H6.75C6.3375 10.5 6 10.8375 6 11.25C6 11.6625 6.3375 12 6.75 12H9.25C9.66406 12 10 11.25C10 10.8359 9.66563 10.5 9.25 10.5ZM8 6C8.55219 6 9 5.55219 9 5C9 4.44781 8.55219 4 8 4C7.44781 4 7 4.44687 7 5C7 5.55313 7.44687 6 8 6Z"></path>'.
+                                '</svg>'.
+                                '</div>'.
+                                '<div class="text-sm prose dark:prose-invert min-w-0 w-full text-neutral-800 dark:text-neutral-300" data-component-part="callout-content">'.
+                                '<span data-as="p">'.
+                                (__('filament-short-url::default.webhook_helper_alert') ?? 'Once configured, each visit to this short link triggers a real-time HTTP POST request to this URL. The payload contains detailed click metadata in JSON format (including URL key, IP address, country, browser, operating system, referrer, and UTM parameters).').
+                                '</span>'.
+                                '</div>'.
                                 '</div>'
                             ))
                             ->columnSpanFull(),

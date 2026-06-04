@@ -322,6 +322,26 @@ This feature is useful for NSFW links, external partner links, or any URL that l
 
 ---
 
+## Security & Anti-Fraud v2.0 (new in v1.6.0)
+
+Protect your application redirection routes and visitor data from malicious activities and automated scrapers.
+
+### 1. VPN & Proxy Detection
+Filter out anonymous proxy, VPN, or Tor connections to ensure clean analytics and prevent abuse.
+* **Driver Selection**: Choose between the free **IP-API** service (default) or the premium **VPNAPI.io** service (requires setting an API key).
+* **Configurable Action**:
+  * **Flag Only**: Flags VPN/Proxy visits in database statistics for inspection but allows the redirection to continue.
+  * **Block Traffic**: Actively blocks the request, serving a `403 Forbidden` response to the client.
+* **Verify Key**: An interactive "Verify connection" action is available in settings to check your API credentials.
+
+### 2. Google Safe Browsing URL Verification
+Scan and verify all user-provided target URLs against Google's safe browsing lookup API on creation and edit.
+* **Protection**: Blocks malware, phishing, and social engineering domains.
+* **Filament UI**: Displays a clean status badge and blocks form saving if the target URL is flagged as unsafe.
+* **Verify Key**: Includes a "Test API Connection" action on the settings dashboard to validate your Safe Browsing API credentials.
+
+---
+
 ## Custom Branded Expiry Pages (new in v3.0.0)
 
 When a short URL is expired, deactivated, or has reached its maximum visit limit, it needs to handle the redirect gracefully:
@@ -334,83 +354,69 @@ When a short URL is expired, deactivated, or has reached its maximum visit limit
 
 ---
 
-## Smart Link Targeting (new in v1.2.0)
+## Smart Link Targeting (updated in v3.3.0)
 
 The **Targeting & Security** tab exposes a powerful rule engine that lets you route different visitors to different destinations — all from a single short URL.
 
-### Available Strategies
+You can configure multiple rules evaluated sequentially from top to bottom. Each rule contains:
+- A **Target URL** (the redirect destination if rule matches).
+- A **Match Strategy**: `AND` (all filters must match) or `OR` (any filter can match).
+- A list of **Filters**:
+  - **Device**: Filter by `desktop`, `mobile`, `tablet`.
+  - **Platform**: Filter by `windows`, `mac`, `linux`, `ios`, `android`, `fire_os`.
+  - **Country**: Filter by country codes (e.g. `PL`, `US`, `DE`) with flags display.
+  - **Language**: Filter by preferred browser language codes (e.g. `pl`, `en`, `de`).
 
-#### 1. Device-Based Redirects
-Route visitors to different URLs based on their device type (detected from User-Agent):
+### Multi-Filter JSON Schema (v3.3.0+)
 
-| Device | Detected by User-Agent containing |
-|--------|-----------------------------------|
-| iOS (Mobile) | `iphone`, `ipad`, `ipod` |
-| Android | `android` |
-| Desktop | Everything else |
-
-```php
-// Programmatic example
-$shortUrl->update([
-    'targeting_rules' => [
-        'type' => 'device',
-        'device' => [
-            'ios'     => 'https://apps.apple.com/your-app',
-            'android' => 'https://play.google.com/your-app',
-            'desktop' => 'https://example.com/download',
-        ],
-    ],
-]);
-```
-
-#### 2. Country-Based (Geo-IP) Redirects
-Route visitors to country-specific URLs. Requires Geo-IP to be enabled in settings. Falls back to the default `destination_url` for unlisted countries.
+For programmatic or REST API updates, pass an array of rules to `targeting_rules`:
 
 ```php
 $shortUrl->update([
     'targeting_rules' => [
-        'type' => 'geo',
-        'geo' => [
-            ['country_code' => 'PL', 'url' => 'https://pl.example.com'],
-            ['country_code' => 'US', 'url' => 'https://us.example.com'],
-            ['country_code' => 'DE', 'url' => 'https://de.example.com'],
+        [
+            'match' => 'and',
+            'url' => 'https://ios-pl.example.com',
+            'filters' => [
+                [
+                    'type' => 'platform',
+                    'data' => ['platforms' => ['ios']]
+                ],
+                [
+                    'type' => 'language',
+                    'data' => ['languages' => ['pl']]
+                ]
+            ]
         ],
-    ],
+        [
+            'match' => 'or',
+            'url' => 'https://fallback-mobile.example.com',
+            'filters' => [
+                [
+                    'type' => 'device',
+                    'data' => ['devices' => ['mobile', 'tablet']]
+                ]
+            ]
+        ]
+    ]
 ]);
 ```
 
-#### 3. Browser Language-Based Redirects (new in v2.0.5)
-Route visitors to language-specific URLs based on their browser's language preferences (detected from the `Accept-Language` header). Fully supports matching exact regional locales (e.g., `en-US`, `en-GB`) with automatic fallback to base language codes (e.g., `en`, `pl`).
+### Supported Filter Options & Formats
 
-```php
-$shortUrl->update([
-    'targeting_rules' => [
-        'type' => 'language',
-        'language' => [
-            ['language_code' => 'pl', 'url' => 'https://pl.example.com'],
-            ['language_code' => 'en-US', 'url' => 'https://us.example.com'],
-            ['language_code' => 'de', 'url' => 'https://de.example.com'],
-        ],
-    ],
-]);
-```
+| Filter Type | Data Key | Allowed Values |
+|-------------|----------|----------------|
+| `device` | `devices` | `desktop`, `mobile`, `tablet` |
+| `platform` | `platforms` | `windows`, `mac`, `linux`, `ios`, `android`, `fire_os` |
+| `country` | `countries` | ISO-3166 2-letter country codes (e.g. `PL`, `US`, `DE`), case-insensitive |
+| `language` | `languages` | ISO-639-1 language codes (e.g. `pl`, `en`, `de`), case-insensitive |
 
-#### 4. A/B Split Rotation
-Distribute traffic across multiple URLs using weighted random selection. Weights are proportional — they do not need to sum to 100.
+### Legacy Strategies (v1.2.0 - v2.x)
 
-```php
-$shortUrl->update([
-    'targeting_rules' => [
-        'type' => 'rotation',
-        'rotation' => [
-            ['url' => 'https://variant-a.example.com', 'weight' => 70],
-            ['url' => 'https://variant-b.example.com', 'weight' => 30],
-        ],
-    ],
-]);
-```
-
-> All targeting strategies fall back gracefully to the link's primary `destination_url` if no rule matches.
+If your database contains legacy single-strategy rules (e.g. `'type' => 'device'` or `'type' => 'geo'`), the plugin handles them automatically:
+* **Redirection Engine**: The redirect system detects the legacy structure and processes it on-the-fly using the legacy strategy.
+* **Filament UI**: When loading a link with legacy rules, the Filament Form automatically upgrades and hydrates them to equivalent new multi-filter rules.
+* **A/B Split Rotation**: The legacy rotation strategy is still supported backward-compatibly in redirect logic, but cannot be newly configured through the Filament v3.3.0 form.
 
 ---
 
@@ -760,7 +766,7 @@ curl -X PATCH https://yourdomain.com/api/short-url/links/promo26 \
 | `expires_at` | datetime | ❌ | Expiration timestamp (must be after or equal to `activated_at`) |
 | `pixels` | array of integers | ❌ | List of registered retargeting pixel IDs to associate with the link |
 | `webhook_url` | string (URL) | ❌ | Per-link webhook URL for immediate event notifications |
-| `targeting_rules` | array | ❌ | Targeting rules JSON schema (device, geo, rotation, language) |
+| `targeting_rules` | array | ❌ | Advanced Multi-Filter Targeting Rules JSON schema (see [Smart Link Targeting](#smart-link-targeting-updated-in-v330) for schema details) |
 | `password` | string | ❌ | Password to protect the short URL |
 | `show_warning_page` | boolean | ❌ | Toggle redirect warning interstitial page |
 | `auto_open_app_mobile` | boolean | ❌ | Auto open deep link in native application on mobile devices |
@@ -1000,11 +1006,13 @@ You can also pre-configure all parameters via your `.env` file:
 | Environment Variable | Config Path | Default | Description |
 |---|---|---|---|
 | `SHORT_URL_PREFIX` | `route_prefix` | `'s'` | URL prefix for short URL redirects. |
+| `SHORT_URL_SITE_NAME` | `site_name` | `null` | Brand/Site name override for warning/interstitial pages. |
 | `SHORT_URL_GEO_IP` | `geo_ip.enabled` | `true` | Globally enable/disable Geo-IP tracking. |
 | `SHORT_URL_GEO_IP_DRIVER` | `geo_ip.driver` | `'headers'` | Geo-IP resolver driver (`headers`, `maxmind`, `ip-api`). |
 | `SHORT_URL_MAXMIND_DB` | `geo_ip.maxmind.database_path` | `storage_path('geoip/GeoLite2-Country.mmdb')` | Path to local MaxMind db. |
 | `SHORT_URL_STATS_CACHE_TTL` | `geo_ip.stats_cache_ttl` | `300` | Caching TTL in seconds for dashboard charts. |
 | `SHORT_URL_QUEUE` | `queue_connection` | `'sync'` | Queue connection for recording visits. |
+| `SHORT_URL_QUEUE_NAME` | `queue_name` | `'default'` | Queue name to which visit tracking jobs are dispatched. |
 | `SHORT_URL_CACHE_TTL` | `cache_ttl` | `3600` | Redirection model caching TTL (set to `0` to disable). |
 | `GA4_API_SECRET` | `ga4.api_secret` | `null` | Google Analytics 4 Measurement Protocol API Secret. |
 | `FIREBASE_APP_ID` | `ga4.firebase_app_id` | `null` | Google Analytics 4 Firebase App ID (or uses Measurement ID). |
@@ -1015,6 +1023,10 @@ You can also pre-configure all parameters via your `.env` file:
 | `SHORT_URL_RATE_LIMITING` | `rate_limiting.enabled` | `false` | Enable per-IP redirect rate limiting. |
 | `SHORT_URL_RATE_LIMIT_MAX` | `rate_limiting.max_attempts` | `60` | Max redirect requests within the decay window. |
 | `SHORT_URL_RATE_LIMIT_DECAY` | `rate_limiting.decay_seconds` | `60` | Rate limiter rolling window in seconds. |
+| `SHORT_URL_DEEP_LINKING_ENABLED` | `deep_linking.enabled` | `false` | Enable serving domain association files for deep linking. |
+
+> [!TIP]
+> **Database Configuration Preferred**: Avoid configuring large, multi-line JSON blocks (such as `apple-app-site-association` and `assetlinks.json`) via `.env` file environment variables as it is error-prone and can cause parsing issues. The recommended approach is to configure them dynamically via the **Filament Settings Panel**, which stores them securely in the database with real-time JSON validation.
 
 ---
 
@@ -1158,6 +1170,13 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v3.3.0
+- **Advanced Multi-Filter Targeting Engine** — Replaced the legacy single-strategy selection panel with a highly flexible rule engine supporting custom `AND` / `OR` logic matching.
+- **Granular Filter Categories** — Added support for filtering by devices (Desktop, Mobile, Tablet), platform operating systems (Windows, macOS, Linux, iOS, Android, Fire OS), countries (multiselect with search), and browser languages (multiselect with search).
+- **Client-Side Flag Icons** — Integrated high-quality country flag icons dynamically loaded from a trusted CDN (`flagcdn.com`) inside both the Filament form targeting dropdown and the analytics country statistics widget.
+- **Redirection Performance Boost** — Bypassed full user agent parsing (which involves regular expression scanning for versions) during redirections by introducing specialized fast-path `getDeviceType` and `getOs` helper functions.
+- **Dynamic Legacy Data Adapter** — Added automatic on-the-fly hydration and upgrade of legacy database records to the new rule format when loaded in the Filament form.
 
 ### v3.2.0
 - **Expanded Developer REST API** — Added new endpoints to inspect single short URLs (`GET /api/short-url/links/{idOrKey}`), fetch real-time click metrics (`GET /api/short-url/links/{idOrKey}/stats`), and fully update links programmatically (`PUT/PATCH /api/short-url/links/{idOrKey}`). Enabled flexible lookup dynamically by ID or URL key.

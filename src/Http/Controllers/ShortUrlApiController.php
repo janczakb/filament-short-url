@@ -189,7 +189,132 @@ class ShortUrlApiController extends Controller
             $uniqueKeyRule .= ','.$model->id;
         }
 
-        return [
+        $isLegacyRules = is_array($request->input('targeting_rules')) && isset($request->input('targeting_rules')['type']);
+
+        $targetingRules = [];
+        if ($isLegacyRules) {
+            $targetingRules = [
+                'targeting_rules' => 'nullable|array',
+                'targeting_rules.type' => 'required_with:targeting_rules|string|in:none,device,geo,language,rotation',
+                'targeting_rules.device' => 'nullable|array',
+                'targeting_rules.device.mobile' => 'nullable|url|max:2048',
+                'targeting_rules.device.tablet' => 'nullable|url|max:2048',
+                'targeting_rules.device.desktop' => 'nullable|url|max:2048',
+                'targeting_rules.device.ios' => 'nullable|url|max:2048',
+                'targeting_rules.device.android' => 'nullable|url|max:2048',
+                'targeting_rules.geo' => 'nullable|array',
+                'targeting_rules.geo.*.country_code' => 'required_with:targeting_rules.geo|distinct:ignore_case|'.$countryRule,
+                'targeting_rules.geo.*.url' => 'required_with:targeting_rules.geo|url|max:2048',
+                'targeting_rules.language' => 'nullable|array',
+                'targeting_rules.language.*.language_code' => 'required_with:targeting_rules.language|distinct:ignore_case|'.$languageRule,
+                'targeting_rules.language.*.url' => 'required_with:targeting_rules.language|url|max:2048',
+                'targeting_rules.rotation' => 'nullable|array',
+                'targeting_rules.rotation.*.url' => 'required_with:targeting_rules.rotation|url|max:2048',
+                'targeting_rules.rotation.*.weight' => 'required_with:targeting_rules.rotation|integer|min:1|max:1000',
+            ];
+        } else {
+            $targetingRules = [
+                'targeting_rules' => [
+                    'nullable',
+                    'array',
+                    function (string $attribute, $value, \Closure $fail) {
+                        if (! is_array($value)) {
+                            return;
+                        }
+                        foreach ($value as $index => $rule) {
+                            if (! is_array($rule)) {
+                                $fail("Targeting rule at index {$index} must be an array.");
+
+                                continue;
+                            }
+                            $allowedKeys = ['match', 'url', 'filters'];
+                            $invalidKeys = array_diff(array_keys($rule), $allowedKeys);
+                            if (! empty($invalidKeys)) {
+                                $fail("Invalid keys in targeting rule at index {$index}: ".implode(', ', $invalidKeys));
+                            }
+                        }
+                    },
+                ],
+                'targeting_rules.*.match' => 'required_with:targeting_rules|string|in:or,and',
+                'targeting_rules.*.url' => 'required_with:targeting_rules|url|max:2048',
+                'targeting_rules.*.filters' => [
+                    'required_with:targeting_rules',
+                    'array',
+                    'min:1',
+                    function (string $attribute, $value, \Closure $fail) {
+                        if (! is_array($value)) {
+                            return;
+                        }
+                        $types = collect($value)->pluck('type');
+                        if ($types->duplicates()->isNotEmpty()) {
+                            $fail('Each filter type (device, platform, country, language) can only be added once.');
+                        }
+
+                        foreach ($value as $index => $filter) {
+                            if (! is_array($filter)) {
+                                $fail("Filter at index {$index} must be an array.");
+
+                                continue;
+                            }
+
+                            $allowedFilterKeys = ['type', 'data'];
+                            $invalidFilterKeys = array_diff(array_keys($filter), $allowedFilterKeys);
+                            if (! empty($invalidFilterKeys)) {
+                                $fail("Invalid keys in filter at index {$index}: ".implode(', ', $invalidFilterKeys));
+
+                                continue;
+                            }
+
+                            $type = $filter['type'] ?? null;
+                            $data = $filter['data'] ?? null;
+
+                            if (! in_array($type, ['device', 'platform', 'country', 'language'])) {
+                                continue;
+                            }
+
+                            if (! is_array($data)) {
+                                $fail("Filter data for type '{$type}' must be an array.");
+
+                                continue;
+                            }
+
+                            $allowedKeys = match ($type) {
+                                'device' => ['devices'],
+                                'platform' => ['platforms'],
+                                'country' => ['countries'],
+                                'language' => ['languages'],
+                            };
+
+                            $invalidKeys = array_diff(array_keys($data), $allowedKeys);
+                            if (! empty($invalidKeys)) {
+                                $fail("Invalid keys in data for filter '{$type}': ".implode(', ', $invalidKeys));
+
+                                continue;
+                            }
+
+                            $mainKey = $allowedKeys[0];
+                            if (! isset($data[$mainKey]) || ! is_array($data[$mainKey]) || empty($data[$mainKey])) {
+                                $fail("Filter '{$type}' requires a non-empty array named '{$mainKey}'.");
+
+                                continue;
+                            }
+                        }
+                    },
+                ],
+                'targeting_rules.*.filters.*.type' => 'required_with:targeting_rules|string|in:device,platform,country,language',
+                'targeting_rules.*.filters.*.data' => 'required_with:targeting_rules|array',
+                'targeting_rules.*.filters.*.data.devices' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.devices.*' => 'string|in:desktop,mobile,tablet',
+                'targeting_rules.*.filters.*.data.platforms' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.platforms.*' => 'string|in:android,fire_os,ios,linux,mac,windows',
+                'targeting_rules.*.filters.*.data.countries' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.countries.*' => 'string|'.$countryRule,
+                'targeting_rules.*.filters.*.data.languages' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.languages.*' => 'string|'.$languageRule,
+            ];
+        }
+
+        $rules = [
             'destination_url' => ($isUpdate ? 'sometimes|' : '').'required|url|max:2048',
             'url_key' => ($isUpdate ? 'sometimes|' : '').'nullable|string|alpha_dash|max:32|'.$uniqueKeyRule,
             'notes' => 'nullable|string|max:1000',
@@ -202,23 +327,11 @@ class ShortUrlApiController extends Controller
             'activated_at' => $activatedAtRule,
             'expires_at' => 'nullable|date|after_or_equal:activated_at',
             'webhook_url' => 'nullable|url|max:2048',
-            'targeting_rules' => 'nullable|array',
-            'targeting_rules.type' => 'required_with:targeting_rules|string|in:none,device,geo,language,rotation',
-            'targeting_rules.device' => 'nullable|array',
-            'targeting_rules.device.mobile' => 'nullable|url|max:2048',
-            'targeting_rules.device.tablet' => 'nullable|url|max:2048',
-            'targeting_rules.device.desktop' => 'nullable|url|max:2048',
-            'targeting_rules.device.ios' => 'nullable|url|max:2048',
-            'targeting_rules.device.android' => 'nullable|url|max:2048',
-            'targeting_rules.geo' => 'nullable|array',
-            'targeting_rules.geo.*.country_code' => 'required_with:targeting_rules.geo|distinct:ignore_case|'.$countryRule,
-            'targeting_rules.geo.*.url' => 'required_with:targeting_rules.geo|url|max:2048',
-            'targeting_rules.language' => 'nullable|array',
-            'targeting_rules.language.*.language_code' => 'required_with:targeting_rules.language|distinct:ignore_case|'.$languageRule,
-            'targeting_rules.language.*.url' => 'required_with:targeting_rules.language|url|max:2048',
-            'targeting_rules.rotation' => 'nullable|array',
-            'targeting_rules.rotation.*.url' => 'required_with:targeting_rules.rotation|url|max:2048',
-            'targeting_rules.rotation.*.weight' => 'required_with:targeting_rules.rotation|integer|min:1|max:1000',
+        ];
+
+        $rules = array_merge($rules, $targetingRules);
+
+        $rules = array_merge($rules, [
             'password' => 'nullable|string|max:255',
             'show_warning_page' => 'nullable|boolean',
             'auto_open_app_mobile' => 'nullable|boolean',
@@ -234,7 +347,9 @@ class ShortUrlApiController extends Controller
             'track_browser_language' => 'nullable|boolean',
             'pixels' => 'nullable|array',
             'pixels.*' => 'integer|exists:short_url_pixels,id',
-        ];
+        ]);
+
+        return $rules;
     }
 
     /**
@@ -316,5 +431,4 @@ class ShortUrlApiController extends Controller
             }
         }
     }
-
 }

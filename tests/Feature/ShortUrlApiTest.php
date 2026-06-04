@@ -2,6 +2,7 @@
 
 use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Models\ShortUrlPixel;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Illuminate\Support\Facades\Queue;
 
@@ -74,7 +75,7 @@ it('allows API requests with a valid key', function () {
 it('allows creating a short link programmatically via POST', function () {
     Queue::fake([SendWebhookJob::class]);
 
-    $pixel = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::create([
+    $pixel = ShortUrlPixel::create([
         'name' => 'Meta Pixel Test',
         'type' => 'meta',
         'pixel_id' => '12345',
@@ -174,7 +175,7 @@ it('allows showing a single short link via GET by ID or key', function () {
         ->assertJsonFragment(['url_key' => 'showkey']);
 
     // Show by Key
-    $responseKey = $this->getJson("/api/short-url/links/showkey", [
+    $responseKey = $this->getJson('/api/short-url/links/showkey', [
         'X-Api-Key' => 'sh_key_active_token',
     ]);
 
@@ -203,4 +204,146 @@ it('allows fetching link statistics via GET', function () {
         ]);
 });
 
+it('validates new targeting rules in API payload', function () {
+    // 1. Empty filters array validation
+    $responseEmpty = $this->postJson('/api/short-url/links', [
+        'destination_url' => 'https://google.com',
+        'url_key' => 'rule_empty',
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://mobile.com',
+                'filters' => [], // Empty filters array, should fail
+            ],
+        ],
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
 
+    $responseEmpty->assertStatus(422)
+        ->assertJsonValidationErrors(['targeting_rules.0.filters']);
+
+    // 2. Duplicate filter type validation
+    $responseDuplicate = $this->postJson('/api/short-url/links', [
+        'destination_url' => 'https://google.com',
+        'url_key' => 'rule_dup',
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://mobile.com',
+                'filters' => [
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['mobile']],
+                    ],
+                    [
+                        'type' => 'device', // Duplicate filter type, should fail
+                        'data' => ['devices' => ['desktop']],
+                    ],
+                ],
+            ],
+        ],
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $responseDuplicate->assertStatus(422)
+        ->assertJsonValidationErrors(['targeting_rules.0.filters']);
+
+    // 3. Valid rules should succeed
+    $responseValid = $this->postJson('/api/short-url/links', [
+        'destination_url' => 'https://google.com',
+        'url_key' => 'rule_valid',
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://mobile.com',
+                'filters' => [
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['mobile']],
+                    ],
+                    [
+                        'type' => 'platform',
+                        'data' => ['platforms' => ['ios']],
+                    ],
+                ],
+            ],
+        ],
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $responseValid->assertStatus(201);
+
+    // 4. Extraneous key in targeting rules validation
+    $responseExtraRuleKey = $this->postJson('/api/short-url/links', [
+        'destination_url' => 'https://google.com',
+        'url_key' => 'rule_extra_key',
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://mobile.com',
+                'random_junk_key' => 'garbage', // extraneous key, should fail
+                'filters' => [
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['mobile']],
+                    ],
+                ],
+            ],
+        ],
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $responseExtraRuleKey->assertStatus(422)
+        ->assertJsonValidationErrors(['targeting_rules']);
+
+    // 5. Extraneous key in filters validation
+    $responseExtraFilterKey = $this->postJson('/api/short-url/links', [
+        'destination_url' => 'https://google.com',
+        'url_key' => 'filter_extra_key',
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://mobile.com',
+                'filters' => [
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['mobile']],
+                        'random_junk_key' => 'garbage', // extraneous key, should fail
+                    ],
+                ],
+            ],
+        ],
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $responseExtraFilterKey->assertStatus(422)
+        ->assertJsonValidationErrors(['targeting_rules.0.filters']);
+
+    // 6. Invalid values in targeting rules (e.g. invalid country code and invalid device)
+    $responseInvalidValues = $this->postJson('/api/short-url/links', [
+        'destination_url' => 'https://google.com',
+        'url_key' => 'rule_invalid_values',
+        'targeting_rules' => [
+            [
+                'match' => 'or',
+                'url' => 'https://mobile.com',
+                'filters' => [
+                    [
+                        'type' => 'device',
+                        'data' => ['devices' => ['microwave']], // invalid device type
+                    ],
+                ],
+            ],
+        ],
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $responseInvalidValues->assertStatus(422)
+        ->assertJsonValidationErrors(['targeting_rules.0.filters.0.data.devices.0']);
+});

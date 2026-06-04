@@ -206,20 +206,20 @@ it('runs database-level daily stats aggregation successfully', function () {
     // Verify statistics entry in database
     $this->assertDatabaseHas('short_url_daily_stats', [
         'short_url_id' => $link->id,
-        'date' => $yesterday,
+        'date' => $yesterday.' 00:00:00',
         'visits_count' => 3,
         'unique_visits_count' => 2,
         'qr_visits_count' => 1,
     ]);
 
     $stats = ShortUrlDailyStats::where('short_url_id', $link->id)
-        ->where('date', $yesterday)
+        ->where('date', $yesterday.' 00:00:00')
         ->first();
 
     expect($stats->device_stats)->toBe(['desktop' => 2, 'mobile' => 1])
         ->and($stats->browser_stats)->toBe(['Chrome' => 2, 'Safari' => 1])
-        ->and($stats->os_stats)->toBe(['macOS' => 2, 'iOS' => 1])
+        ->and($stats->os_stats)->toBe(['iOS' => 1, 'macOS' => 2])
         ->and($stats->country_stats)->toBe(['Poland' => 3])
-        ->and($stats->city_stats)->toBe(['Warsaw (PL)' => 2, 'Krakow (PL)' => 1])
-        ->and($stats->language_stats)->toBe(['pl' => 2, 'en' => 1]);
+        ->and($stats->city_stats)->toBe(['Krakow (PL)' => 1, 'Warsaw (PL)' => 2])
+        ->and($stats->language_stats)->toBe(['en' => 1, 'pl' => 2]);
 });

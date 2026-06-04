@@ -14,10 +14,16 @@
                     @php 
                         $pct = $totalVisits > 0 ? round($count / $totalVisits * 100) : 0;
                         $translatedCountry = \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsRightBreakdown::getCountryTranslation($country);
+                        $code = \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlVisitsRightBreakdown::getCountryCode($country);
                     @endphp
                     <div>
                         <div class="flex items-center justify-between text-sm">
-                            <span class="font-medium text-gray-700 dark:text-gray-300">{{ $translatedCountry }}</span>
+                            <span class="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
+                                @if ($code)
+                                    <img src="https://flagcdn.com/h20/{{ strtolower($code) }}.webp" class="w-5 h-auto rounded-sm inline-block" alt="{{ $translatedCountry }}" />
+                                @endif
+                                <span>{{ $translatedCountry }}</span>
+                            </span>
                             <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white">{{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span></span>
                         </div>
                         <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
