@@ -183,13 +183,13 @@ class ShortUrl extends Model
         $ttl = config('filament-short-url.cache_ttl', 3600);
 
         if ($ttl <= 0) {
-            return static::where('url_key', $key)->first();
+            return static::where('url_key', $key)->with('pixels')->first();
         }
 
         return cache()->remember(
             "filament-short-url:{$key}",
             $ttl,
-            fn () => static::where('url_key', $key)->first()
+            fn () => static::where('url_key', $key)->with('pixels')->first()
         );
     }
 
@@ -240,6 +240,7 @@ class ShortUrl extends Model
 
         static::saved(function (self $m) {
             cache()->forget("filament-short-url:{$m->url_key}");
+            cache()->forget("filament-short-url:visits:{$m->id}");
 
             if ($m->wasChanged('url_key')) {
                 $oldKey = $m->getOriginal('url_key');
@@ -250,6 +251,7 @@ class ShortUrl extends Model
         });
         static::deleted(function (self $m) {
             cache()->forget("filament-short-url:{$m->url_key}");
+            cache()->forget("filament-short-url:visits:{$m->id}");
             cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY);
 
             if (! empty($m->qr_logo)) {
@@ -279,21 +281,15 @@ class ShortUrl extends Model
 
     public function getRealTimeTotalVisits(): int
     {
-        $buffered = 0;
         if (config('filament-short-url.counter_buffering.enabled', false)) {
             $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
             $buffered = (int) cache()->get("{$prefix}total:{$this->id}", 0);
+            return $this->total_visits + $buffered;
         }
 
-        if ($this->max_visits !== null) {
-            $dbVal = (int) DB::table($this->table)
-                ->where('id', $this->id)
-                ->value('total_visits');
-
-            return $dbVal + $buffered;
-        }
-
-        return $this->total_visits + $buffered;
+        // Use real-time visit count in cache to keep the cached model instance updated
+        $cacheKey = "filament-short-url:visits:{$this->id}";
+        return (int) cache()->remember($cacheKey, 3600, fn () => $this->total_visits);
     }
 
     public function isActive(): bool
@@ -561,6 +557,18 @@ class ShortUrl extends Model
         $this->newQuery()
             ->where('id', $this->id)
             ->increment('total_visits', 1, $updates);
+
+        // Keep the real-time cache count incremented
+        $cacheKey = "filament-short-url:visits:{$this->id}";
+        try {
+            if (cache()->has($cacheKey)) {
+                cache()->increment($cacheKey);
+            } else {
+                cache()->put($cacheKey, $this->total_visits + 1, 3600);
+            }
+        } catch (\Throwable $e) {
+            // Ignore cache errors in increment to never disrupt redirection
+        }
     }
 
     /**

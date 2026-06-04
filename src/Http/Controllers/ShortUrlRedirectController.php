@@ -73,12 +73,26 @@ class ShortUrlRedirectController extends Controller
             $sessionKey = "short-url-auth-{$shortUrl->id}";
             if (! session()->get($sessionKey)) {
                 if ($request->isMethod('POST')) {
+                    // Password brute force protection
+                    $ipAddress = ClientIpExtractor::getIp($request);
+                    $passwordLimiterKey = "short_url_password_limit:{$key}:".$ipAddress;
+
+                    if (RateLimiter::tooManyAttempts($passwordLimiterKey, 5)) { // Max 5 attempts
+                        $retryAfter = RateLimiter::availableIn($passwordLimiterKey);
+                        abort(429, 'Too many incorrect password attempts. Please try again in '.$retryAfter.' seconds.', [
+                            'Retry-After' => $retryAfter,
+                        ]);
+                    }
+
                     $submitted = $request->input('password');
                     if ($submitted === $shortUrl->password) {
                         session()->put($sessionKey, true);
+                        RateLimiter::clear($passwordLimiterKey);
 
                         return redirect()->to($request->fullUrl());
                     }
+
+                    RateLimiter::hit($passwordLimiterKey, 60); // 1 minute decay
 
                     $errors = new MessageBag([
                         'password' => __('filament-short-url::default.password_error') ?? 'Incorrect password.',
@@ -105,7 +119,7 @@ class ShortUrlRedirectController extends Controller
                 $matchedApp = AppLinkingEngine::matchApp($destination);
                 if ($matchedApp !== null) {
                     $deepLink = AppLinkingEngine::convertToScheme($destination, $matchedApp);
-                    $activePixels = $shortUrl->pixels()->where('is_active', true)->get();
+                    $activePixels = $shortUrl->pixels->where('is_active', true);
 
                     return response(view('filament-short-url::app-redirect', [
                         'destination' => $destination,
@@ -189,7 +203,7 @@ class ShortUrlRedirectController extends Controller
             cache()->forget("filament-short-url:{$shortUrl->url_key}");
         }
 
-        $activePixels = $shortUrl->pixels()->where('is_active', true)->get();
+        $activePixels = $shortUrl->pixels->where('is_active', true);
 
         if ($activePixels->isNotEmpty()) {
             return response(view('filament-short-url::pixel-loading', [

@@ -348,6 +348,25 @@ it('requires password to redirect when protected', function () {
     $this->get('/s/password123')->assertRedirect('https://example.com');
 });
 
+it('applies rate limiting on password attempts when protected', function () {
+    $shortUrl = createShortUrl([
+        'url_key' => 'password-ratelimit',
+        'password' => 'secret-combination',
+        'track_visits' => false,
+    ]);
+
+    // First 5 incorrect attempts should return 200 (renders password prompt again)
+    for ($i = 0; $i < 5; $i++) {
+        $this->post('/s/password-ratelimit', ['password' => 'wrong-pass'])
+            ->assertStatus(200)
+            ->assertSee('Incorrect password');
+    }
+
+    // 6th incorrect attempt should be rate limited (429)
+    $this->post('/s/password-ratelimit', ['password' => 'wrong-pass'])
+        ->assertStatus(429);
+});
+
 it('shows warning page before redirecting when enabled', function () {
     $shortUrl = createShortUrl([
         'url_key' => 'warn1',
