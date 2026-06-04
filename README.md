@@ -6,7 +6,7 @@
 
 <p align="center">
     <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/v/janczakb/filament-short-url.svg?style=flat-square" alt="Latest Version"></a>
-    <a href="https://github.com/janczakb/filament-short-url/blob/main/LICENSE"><img src="https://img.shields.io/github/license/janczakb/filament-short-url.svg?style=flat-square" alt="License"></a>
+    <a href="https://github.com/janczakb/filament-short-url/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-proprietary-red.svg?style=flat-square" alt="License"></a>
     <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/dt/janczakb/filament-short-url.svg?style=flat-square" alt="Total Downloads"></a>
     <a href="https://github.com/janczakb/filament-short-url/stargazers"><img src="https://img.shields.io/github/stars/janczakb/filament-short-url.svg?style=flat-square" alt="GitHub Stars"></a>
     <a href="https://github.com/janczakb/filament-short-url/issues"><img src="https://img.shields.io/github/issues/janczakb/filament-short-url.svg?style=flat-square" alt="GitHub Issues"></a>
@@ -642,9 +642,6 @@ curl https://yourdomain.com/api/short-url/links \
       "max_visits": null,
       "activated_at": null,
       "expires_at": null,
-      "pixel_meta_id": null,
-      "pixel_google_id": null,
-      "pixel_linkedin_id": null,
       "webhook_url": null,
       "targeting_rules": null,
       "password": null,
@@ -678,7 +675,7 @@ curl -X POST https://yourdomain.com/api/short-url/links \
     "notes": "Summer campaign",
     "single_use": false,
     "max_visits": 1000,
-    "pixel_meta_id": "1234567890",
+    "pixels": [1, 2],
     "webhook_url": "https://api.mycrm.com/clicks"
   }'
 ```
@@ -698,9 +695,6 @@ curl -X POST https://yourdomain.com/api/short-url/links \
 | `expiration_redirect_url` | string (URL) | ❌ | Fallback URL on expiry |
 | `activated_at` | datetime | ❌ | Activation timestamp |
 | `expires_at` | datetime | ❌ | Expiration timestamp |
-| `pixel_meta_id` | string | ❌ | Meta Pixel ID (Legacy support) |
-| `pixel_google_id` | string | ❌ | Google Tag / GA4 ID (Legacy support) |
-| `pixel_linkedin_id` | string | ❌ | LinkedIn Partner ID (Legacy support) |
 | `pixels` | array of integers | ❌ | List of pixel registry IDs to associate with the link |
 | `webhook_url` | string (URL) | ❌ | Per-link webhook endpoint |
 | `targeting_rules` | array | ❌ | JSON targeting rules (device, geo, rotation, language) |
@@ -1046,4 +1040,4 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 
 ## License
 
-MIT
+Custom Source-Available License. Please see the [LICENSE](LICENSE) file for the full text.

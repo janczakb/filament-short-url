@@ -4,11 +4,11 @@
     "description": "A professional Short URL manager plugin for Filament v5 with QR code design, visit tracking, geo-IP detection, and analytics.",
     "keywords": ["filament", "short-url", "qr-code", "analytics", "tracking", "laravel"],
     "homepage": "https://github.com/janczakb/filament-short-url",
-    "license": "MIT",
+    "license": "proprietary",
     "authors": [
         {
             "name": "Bartek Janczak",
-            "email": "hello@bjanczak.dev",
+            "email": "barek122@gmail.com",
             "role": "Developer"
         }
     ],
