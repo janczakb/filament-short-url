@@ -42,97 +42,102 @@ class AggregateAndPruneVisitsCommand extends Command
             foreach ($dates as $date) {
                 // Wrap date aggregation in a database transaction for data integrity
                 DB::transaction(function () use ($date): void {
-                    // Accumulate stats per short_url_id using chunked reads — avoids loading
-                    // potentially millions of rows into PHP memory at once.
-                    $statsByUrl = [];
                     $nextDate = Carbon::parse($date)->addDay()->toDateString();
+                    $start = $date.' 00:00:00';
+                    $end = $nextDate.' 00:00:00';
 
-                    DB::table('short_url_visits')
-                        ->where('visited_at', '>=', $date.' 00:00:00')
-                        ->where('visited_at', '<', $nextDate.' 00:00:00')
+                    // 1. Get totals and uniques per short_url_id
+                    $totals = DB::table('short_url_visits')
+                        ->where('visited_at', '>=', $start)
+                        ->where('visited_at', '<', $end)
                         ->select([
                             'short_url_id',
-                            'is_qr_scan',
-                            'ip_hash',
-                            'device_type',
-                            'browser',
-                            'operating_system',
-                            'country',
-                            'country_code',
-                            'utm_source',
-                            'utm_medium',
-                            'utm_campaign',
-                            'browser_language',
-                            'city',
-                            'referer_host',
+                            DB::raw('count(*) as total'),
+                            DB::raw('count(distinct ip_hash) as uniques'),
+                            DB::raw("count(case when is_qr_scan = 1 or is_qr_scan = true or is_qr_scan = '1' then 1 end) as qr_scans"),
                         ])
-                        ->orderBy('id')
-                        ->chunk(1000, function ($chunk) use (&$statsByUrl): void {
-                            foreach ($chunk as $visit) {
-                                $urlId = $visit->short_url_id;
+                        ->groupBy('short_url_id')
+                        ->get();
 
-                                if (! isset($statsByUrl[$urlId])) {
-                                    $statsByUrl[$urlId] = [
-                                        'total' => 0,
-                                        'ip_hashes' => [],
-                                        'device_stats' => [],
-                                        'browser_stats' => [],
-                                        'os_stats' => [],
-                                        'country_stats' => [],
-                                        'city_stats' => [],
-                                        'referer_stats' => [],
-                                        'utm_source_stats' => [],
-                                        'utm_medium_stats' => [],
-                                        'utm_campaign_stats' => [],
-                                        'qr_scans' => 0,
-                                        'language_stats' => [],
-                                    ];
-                                }
+                    if ($totals->isEmpty()) {
+                        return;
+                    }
 
-                                $s = &$statsByUrl[$urlId];
-                                $s['total']++;
+                    $statsByUrl = [];
+                    foreach ($totals as $row) {
+                        $statsByUrl[$row->short_url_id] = [
+                            'total' => (int) $row->total,
+                            'uniques' => (int) $row->uniques,
+                            'qr_scans' => (int) $row->qr_scans,
+                            'device_stats' => [],
+                            'browser_stats' => [],
+                            'os_stats' => [],
+                            'country_stats' => [],
+                            'city_stats' => [],
+                            'referer_stats' => [],
+                            'utm_source_stats' => [],
+                            'utm_medium_stats' => [],
+                            'utm_campaign_stats' => [],
+                            'language_stats' => [],
+                        ];
+                    }
 
-                                if ($visit->is_qr_scan) {
-                                    $s['qr_scans']++;
-                                }
+                    // Helper to fetch and populate category stats
+                    $populateStats = function (string $column, string $statsKey) use ($start, $end, &$statsByUrl): void {
+                        $query = DB::table('short_url_visits')
+                            ->where('visited_at', '>=', $start)
+                            ->where('visited_at', '<', $end)
+                            ->whereNotNull($column)
+                            ->where($column, '<>', '');
 
-                                if ($visit->ip_hash) {
-                                    $s['ip_hashes'][$visit->ip_hash] = true;
-                                }
+                        if ($statsKey === 'city_stats') {
+                            $query->select(['short_url_id', 'city', 'country_code', DB::raw('count(*) as count')])
+                                ->groupBy(['short_url_id', 'city', 'country_code']);
+                        } else {
+                            $query->select(['short_url_id', $column, DB::raw('count(*) as count')])
+                                ->groupBy(['short_url_id', $column]);
+                        }
 
-                                $inc = function (?string $value, string $key) use (&$s): void {
-                                    if ($value) {
-                                        $s[$key][$value] = ($s[$key][$value] ?? 0) + 1;
-                                    }
-                                };
+                        $rows = $query->get();
 
-                                $inc($visit->device_type, 'device_stats');
-                                $inc($visit->browser, 'browser_stats');
-                                $inc($visit->operating_system, 'os_stats');
-                                $inc($visit->country, 'country_stats');
-                                $inc($visit->utm_source, 'utm_source_stats');
-                                $inc($visit->utm_medium, 'utm_medium_stats');
-                                $inc($visit->utm_campaign, 'utm_campaign_stats');
-                                $inc($visit->browser_language, 'language_stats');
-
-                                if ($visit->city) {
-                                    $cityKey = "{$visit->city} ({$visit->country_code})";
-                                    $s['city_stats'][$cityKey] = ($s['city_stats'][$cityKey] ?? 0) + 1;
-                                }
-
-                                if ($visit->referer_host) {
-                                    $s['referer_stats'][$visit->referer_host] = ($s['referer_stats'][$visit->referer_host] ?? 0) + 1;
-                                }
+                        foreach ($rows as $row) {
+                            $urlId = $row->short_url_id;
+                            if (! isset($statsByUrl[$urlId])) {
+                                continue;
                             }
-                        });
 
+                            if ($statsKey === 'city_stats') {
+                                $cityVal = $row->city;
+                                $countryCode = $row->country_code;
+                                $val = $countryCode ? "{$cityVal} ({$countryCode})" : $cityVal;
+                            } else {
+                                $val = $row->$column;
+                            }
+
+                            $statsByUrl[$urlId][$statsKey][$val] = (int) $row->count;
+                        }
+                    };
+
+                    // Populate all categories via 10 quick indexed database aggregations
+                    $populateStats('device_type', 'device_stats');
+                    $populateStats('browser', 'browser_stats');
+                    $populateStats('operating_system', 'os_stats');
+                    $populateStats('country', 'country_stats');
+                    $populateStats('city', 'city_stats');
+                    $populateStats('referer_host', 'referer_stats');
+                    $populateStats('utm_source', 'utm_source_stats');
+                    $populateStats('utm_medium', 'utm_medium_stats');
+                    $populateStats('utm_campaign', 'utm_campaign_stats');
+                    $populateStats('browser_language', 'language_stats');
+
+                    // Write aggregated stats to ShortUrlDailyStats
                     foreach ($statsByUrl as $urlId => $s) {
                         ShortUrlDailyStats::updateOrCreate([
                             'short_url_id' => $urlId,
                             'date' => $date,
                         ], [
                             'visits_count' => $s['total'],
-                            'unique_visits_count' => count($s['ip_hashes']),
+                            'unique_visits_count' => $s['uniques'],
                             'device_stats' => $s['device_stats'],
                             'browser_stats' => $s['browser_stats'],
                             'os_stats' => $s['os_stats'],

@@ -4,6 +4,7 @@ namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 
 use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Models\ShortUrlPixel;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,50 +66,12 @@ class ShortUrlApiController extends Controller
             'track_browser_language' => 'nullable|boolean',
             'pixels' => 'nullable|array',
             'pixels.*' => 'integer|exists:short_url_pixels,id',
-            // Keep for backward compatibility
-            'pixel_meta_id' => 'nullable|string|max:100',
-            'pixel_google_id' => 'nullable|string|max:100',
-            'pixel_linkedin_id' => 'nullable|string|max:100',
         ]);
 
         $pixelIds = $validated['pixels'] ?? [];
 
-        // Backward compatibility support for old pixel columns
-        if (! empty($validated['pixel_meta_id'])) {
-            $metaPixelId = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::firstOrCreate([
-                'type' => 'meta',
-                'pixel_id' => $validated['pixel_meta_id'],
-            ], [
-                'name' => 'Meta Pixel (' . $validated['pixel_meta_id'] . ')',
-                'is_active' => true,
-            ])->id;
-            $pixelIds[] = $metaPixelId;
-        }
-
-        if (! empty($validated['pixel_google_id'])) {
-            $googlePixelId = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::firstOrCreate([
-                'type' => 'google',
-                'pixel_id' => $validated['pixel_google_id'],
-            ], [
-                'name' => 'Google Tag (' . $validated['pixel_google_id'] . ')',
-                'is_active' => true,
-            ])->id;
-            $pixelIds[] = $googlePixelId;
-        }
-
-        if (! empty($validated['pixel_linkedin_id'])) {
-            $linkedinPixelId = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::firstOrCreate([
-                'type' => 'linkedin',
-                'pixel_id' => $validated['pixel_linkedin_id'],
-            ], [
-                'name' => 'LinkedIn Insight (' . $validated['pixel_linkedin_id'] . ')',
-                'is_active' => true,
-            ])->id;
-            $pixelIds[] = $linkedinPixelId;
-        }
-
         // Clean up parameters that shouldn't be mass assigned
-        unset($validated['pixel_meta_id'], $validated['pixel_google_id'], $validated['pixel_linkedin_id'], $validated['pixels']);
+        unset($validated['pixels']);
 
         $shortUrl = $this->service->create($validated);
 
@@ -157,9 +120,6 @@ class ShortUrlApiController extends Controller
             'max_visits' => $link->max_visits ? (int) $link->max_visits : null,
             'activated_at' => $link->activated_at ? $link->activated_at->toIso8601String() : null,
             'expires_at' => $link->expires_at ? $link->expires_at->toIso8601String() : null,
-            'pixel_meta_id' => $pixels->where('type', 'meta')->first()?->pixel_id,
-            'pixel_google_id' => $pixels->where('type', 'google')->first()?->pixel_id,
-            'pixel_linkedin_id' => $pixels->where('type', 'linkedin')->first()?->pixel_id,
             'webhook_url' => $link->webhook_url,
             'targeting_rules' => $link->targeting_rules,
             'password' => $link->password,

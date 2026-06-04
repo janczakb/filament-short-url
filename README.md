@@ -242,7 +242,7 @@ protected $policies = [
 
 The package comes with a built-in admin settings dashboard. It is accessible directly from your sidebar menu under the same navigation group as your links.
 
-Settings are stored dynamically in `storage/app/filament-short-url-settings.json` and immediately override config defaults.
+Settings are stored dynamically in the database (`short_url_settings` table), cached indefinitely, and immediately override config defaults. Legacy settings from `filament-short-url-settings.json` are automatically imported on first load.
 
 The settings panel allows you to configure:
 
@@ -577,16 +577,7 @@ $shortUrl = ShortUrl::find($id);
 $shortUrl->pixels()->sync([$pixelId1, $pixelId2]);
 ```
 
-For backward compatibility, assigning individual attributes directly on the model still works and will automatically find or create a pixel registry entry:
 
-```php
-// Programmatically via model attributes (automatically handles registration under the hood)
-$shortUrl->update([
-    'pixel_meta_id'     => '1234567890',
-    'pixel_google_id'   => 'G-XXXXXXXXXX',
-    'pixel_linkedin_id' => '1234567',
-]);
-```
 
 > **Privacy/GDPR Note:** You are responsible for ensuring that firing these pixels complies with applicable privacy regulations and your cookie consent mechanism.
 
@@ -613,6 +604,8 @@ Authorization: Bearer sh_key_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **Managing API Keys:** Go to **Settings → API & Webhooks → Developer API Keys** and add named keys. Each key can be individually activated or deactivated without deleting it.
+
+For security, new API keys are hashed using SHA-256 and stored securely in the database. The plain key is displayed only once during generation via a persistent warning notification in the Filament UI. All keys are authenticated using constant-time string comparisons (`hash_equals()`) to prevent timing attacks.
 
 > If the API is disabled globally, all endpoints return `503 Service Unavailable` regardless of the key provided.
 
@@ -703,7 +696,49 @@ curl -X POST https://yourdomain.com/api/short-url/links \
 | `track_visits` | boolean | ❌ | Track visitor clicks and logs |
 | `track_browser_language` | boolean | ❌ | Track visitor browser language locale |
 
-**Response:** `201 Created` with the created link object.
+**Response:** `201 Created` with a wrapper message and the created link data:
+```json
+{
+  "message": "Short URL created successfully.",
+  "data": {
+    "id": 2,
+    "destination_url": "https://example.com/product",
+    "url_key": "promo26",
+    "short_url": "https://yourdomain.com/s/promo26",
+    "is_enabled": true,
+    "redirect_status_code": 302,
+    "total_visits": 0,
+    "unique_visits": 0,
+    "max_visits": 1000,
+    "activated_at": null,
+    "expires_at": null,
+    "webhook_url": "https://api.mycrm.com/clicks",
+    "targeting_rules": null,
+    "password": null,
+    "show_warning_page": false,
+    "track_visits": true,
+    "track_browser_language": true,
+    "pixels": [
+      {
+        "id": 1,
+        "name": "Meta Pixel (1234567890)",
+        "type": "meta",
+        "pixel_id": "1234567890",
+        "is_active": true
+      },
+      {
+        "id": 2,
+        "name": "Google Tag (G-XXXXXXXXXX)",
+        "type": "google",
+        "pixel_id": "G-XXXXXXXXXX",
+        "is_active": true
+      }
+    ],
+    "notes": "Summer campaign",
+    "created_at": "2026-06-04T12:00:00+00:00"
+  }
+}
+```
 
 #### `DELETE /api/short-url/links/{id}`
 Permanently delete a short URL by its ID.
@@ -755,6 +790,13 @@ Webhooks can be configured at two levels:
 | `limit_reached` | A link reaches its `max_visits` click limit |
 
 Select which events to monitor in **Settings → API & Webhooks → Monitored Webhook Events**.
+
+### Webhook Signature Verification
+
+Outgoing webhooks can be cryptographically signed using an HMAC-SHA256 signature to verify that the request originated from your system:
+1. Configure a **Webhook Signing Secret** in your Settings panel under **API & Webhooks**.
+2. When configured, outgoing HTTP POST payloads will include the signature in the `X-ShortUrl-Signature` header, which is calculated as `hash_hmac('sha256', $payloadJson, $secret)`.
+3. The receiver can verify the signature by re-calculating the HMAC of the raw request payload using the shared secret and comparing it using `hash_equals()`.
 
 ### Payload Format
 
@@ -973,12 +1015,21 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 
 ## Changelog
 
+### v3.1.0
+- **Database-Backed & Cached Settings** — Relocated user configuration from local JSON files to the database (`short_url_settings` table) with automatic caching and zero-downtime migration of legacy settings.
+- **High-Performance Aggregations** — Completely refactored the statistics aggregator command to run optimized GROUP BY queries directly in the database, reducing memory usage (OOM protection) to near zero.
+- **Secure Hashed API Keys** — API keys are now stored securely as SHA-256 hashes, verified using constant-time comparisons (`hash_equals()`), and displayed only once upon generation.
+- **HMAC Signed Webhooks** — Webhook payloads are now optionally signed with a configured secret key and verified via the `X-ShortUrl-Signature` header.
+- **Privacy-Safe GA4 Client IDs** — Replaced random UUIDs with deterministic client IDs based on hashed visitor IP and User Agent, ensuring session integrity in Google Analytics without storing raw visitor data.
+- **Browser Cache Prevention for Limited Links** — Force temporary `302` redirects automatically for single-use, max-visit, or expiring links to prevent browsers from caching redirects and bypassing tracking logic.
+- **Proxy Detection Optimization** — Implemented an aggressive 800ms timeout for external proxy checkers and reduced cache time for transient rate-limit failures to 60 seconds.
+
 ### v3.0.0
 - **Native App Linking (Mobile Auto-Open)** — Automatically match and redirect mobile visitors directly inside 24+ native mobile apps (such as WhatsApp, YouTube, TikTok, Instagram, Spotify, etc.) using custom schemes, complete with a glassmorphic redirect page and a live interactive matching preview widget.
 - **Global Deep Linking (Universal Links & App Links)** — Easily serve iOS `apple-app-site-association` and Android `.well-known/assetlinks.json` configuration files directly from your root domain to support OS-level native integration (disabled by default, managed via Settings).
 - **Central Retargeting Pixel Registry** — Introduced a premium Many-to-Many pixel management registry. Define pixels centrally (Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, Pinterest Tag) and easily associate them with short links via the Filament panel or the REST API.
 - **Standalone Settings Page** — Relocated the Settings interface from a resource header sub-action to a standalone sidebar navigation page under the default plugin group.
-- **Backward-Compatible REST API** — The API now exposes the `pixels` relationship list, while fully retaining backward-compatible support for legacy single-pixel parameters (`pixel_meta_id`, `pixel_google_id`, `pixel_linkedin_id`).
+- **Retargeting Pixel API** — The REST API now fully exposes the `pixels` relationship array parameter for registering and linking retargeting pixels programmatically.
 - **Enhanced Browser Language Redirection** — Robust double-pass language targeting logic matching exact locales first (e.g. `en-US`, `zh-CN`) and falling back to base language codes (e.g. `en`, `zh`).
 - **Full Localization & WhatsApp Favicon Fix** — Added friendly translation strings in English and Polish across the entire app-linking preview and redirect interfaces, and adjusted domains order to restore the WhatsApp favicon.
 - **Custom Branded Expiry Pages** — Replaced raw 410 HTTP errors with a beautiful, fully localized, dark-mode compatible HTML expiry page displaying the Site Name, expired link details, and a homepage button.

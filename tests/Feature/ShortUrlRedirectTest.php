@@ -703,4 +703,3 @@ it('renders custom branded expired view on deactivated URL', function () {
     $response->assertSee('Link Inactive or Expired');
     $response->assertSee('Go to Homepage');
 });
-

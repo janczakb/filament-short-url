@@ -153,7 +153,7 @@ return [
     'success_modal_helper' => 'Skopiuj i udostępnij ręcznie lub wybierz platformę.',
     'open_link' => 'Otwórz link',
     'close_button' => 'Zamknij',
-    'dont_show_again' => "Nie pokazuj opcji udostępniania po utworzeniu linku",
+    'dont_show_again' => 'Nie pokazuj opcji udostępniania po utworzeniu linku',
 
     // Stats Page
     'stats_title' => 'Statystyki',

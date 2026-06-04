@@ -74,12 +74,19 @@ it('allows API requests with a valid key', function () {
 it('allows creating a short link programmatically via POST', function () {
     Queue::fake([SendWebhookJob::class]);
 
+    $pixel = \Bjanczak\FilamentShortUrl\Models\ShortUrlPixel::create([
+        'name' => 'Meta Pixel Test',
+        'type' => 'meta',
+        'pixel_id' => '12345',
+        'is_active' => true,
+    ]);
+
     $response = $this->postJson('/api/short-url/links', [
         'destination_url' => 'https://google.com',
         'url_key' => 'googleapi',
         'notes' => 'API Generated link',
         'single_use' => true,
-        'pixel_meta_id' => '12345',
+        'pixels' => [$pixel->id],
         'webhook_url' => 'https://webhook.site/test',
     ], [
         'X-Api-Key' => 'sh_key_active_token',
@@ -95,9 +102,10 @@ it('allows creating a short link programmatically via POST', function () {
         'webhook_url' => 'https://webhook.site/test',
     ]);
 
-    $this->assertDatabaseHas('short_url_pixels', [
-        'type' => 'meta',
-        'pixel_id' => '12345',
+    $shortUrl = ShortUrl::where('url_key', 'googleapi')->first();
+    $this->assertDatabaseHas('short_url_pixel', [
+        'short_url_id' => $shortUrl->id,
+        'pixel_id' => $pixel->id,
     ]);
 
     // SendWebhookJob should be dispatched for 'created' event since custom webhook_url is set

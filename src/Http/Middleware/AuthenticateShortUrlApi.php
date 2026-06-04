@@ -38,10 +38,26 @@ class AuthenticateShortUrlApi
         $keys = $mgr->get('api_keys', []);
 
         $valid = false;
+        $hashedInput = hash('sha256', $apiKey);
+
         foreach ($keys as $keyObj) {
-            if (($keyObj['key'] ?? '') === $apiKey && (bool) ($keyObj['is_active'] ?? false)) {
-                $valid = true;
-                break;
+            if (! (bool) ($keyObj['is_active'] ?? false)) {
+                continue;
+            }
+
+            // Check hashed key (new format) or fall back to plaintext key (legacy format)
+            $storedHash = $keyObj['hashed_key'] ?? null;
+            if ($storedHash) {
+                if (hash_equals($storedHash, $hashedInput)) {
+                    $valid = true;
+                    break;
+                }
+            } else {
+                $storedPlain = $keyObj['key'] ?? '';
+                if ($storedPlain !== '' && hash_equals($storedPlain, $apiKey)) {
+                    $valid = true;
+                    break;
+                }
             }
         }
 

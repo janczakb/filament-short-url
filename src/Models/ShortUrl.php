@@ -1,7 +1,6 @@
 <?php
 
 /**
- * @package    janczakb/filament-short-url
  * @author     Bartek Janczak <barek122@gmail.com>
  * @copyright  2026 Bartek Janczak
  * @license    Custom Source-Available License (see LICENSE file)
@@ -201,9 +200,11 @@ class ShortUrl extends Model
     protected static function booted(): void
     {
         static::saving(function (self $m) {
-            if ($m->single_use) {
-                $m->max_visits = null;
-                $m->redirect_status_code = 302; // Force temporary redirect to prevent browser caching of single-use URLs
+            if ($m->single_use || $m->max_visits !== null || $m->expires_at !== null) {
+                if ($m->single_use) {
+                    $m->max_visits = null;
+                }
+                $m->redirect_status_code = 302; // Force temporary redirect to prevent browser caching of limited/expiring URLs
             }
 
             if ($m->activated_at === null && $m->expires_at === null) {
@@ -284,11 +285,13 @@ class ShortUrl extends Model
         if (config('filament-short-url.counter_buffering.enabled', false)) {
             $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
             $buffered = (int) cache()->get("{$prefix}total:{$this->id}", 0);
+
             return $this->total_visits + $buffered;
         }
 
         // Use real-time visit count in cache to keep the cached model instance updated
         $cacheKey = "filament-short-url:visits:{$this->id}";
+
         return (int) cache()->remember($cacheKey, 3600, fn () => $this->total_visits);
     }
 

@@ -32,25 +32,35 @@ class ProxyDetectionService
         }
 
         $cacheKey = "short-url:proxy-check:{$ip}";
-        $cacheTtl = (int) config('filament-short-url.vpn_detection.cache_ttl', 86400);
 
-        return Cache::remember($cacheKey, $cacheTtl, function () use ($ip) {
-            $driver = config('filament-short-url.vpn_detection.driver', 'ip-api');
-            $timeout = (int) config('filament-short-url.vpn_detection.timeout', 2);
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
 
-            try {
-                if ($driver === 'vpnapi') {
-                    return $this->queryVpnApi($ip, $timeout);
-                }
+        $driver = config('filament-short-url.vpn_detection.driver', 'ip-api');
+        // Aggressive 800ms timeout to avoid hanging the redirect thread on API lag
+        $timeout = 0.8;
 
-                // Default to ip-api
-                return $this->queryIpApi($ip, $timeout);
-            } catch (\Throwable $e) {
-                Log::warning("Proxy detection failed for IP: {$ip}. Error: ".$e->getMessage());
-
-                return ['is_proxy' => false, 'is_bot' => false];
+        try {
+            if ($driver === 'vpnapi') {
+                $result = $this->queryVpnApi($ip, $timeout);
+            } else {
+                $result = $this->queryIpApi($ip, $timeout);
             }
-        });
+
+            $cacheTtl = (int) config('filament-short-url.vpn_detection.cache_ttl', 86400);
+            Cache::put($cacheKey, $result, $cacheTtl);
+
+            return $result;
+        } catch (\Throwable $e) {
+            Log::warning("Proxy detection failed or timed out for IP: {$ip}. Error: ".$e->getMessage());
+
+            // Temporary cache for failure (60 seconds) to allow retry and prevent whitelisting IPs long-term
+            $failResult = ['is_proxy' => false, 'is_bot' => false];
+            Cache::put($cacheKey, $failResult, 60);
+
+            return $failResult;
+        }
     }
 
     /**
@@ -58,14 +68,18 @@ class ProxyDetectionService
      *
      * @return array{is_proxy: bool, is_bot: bool}
      */
-    private function queryIpApi(string $ip, int $timeout): array
+    private function queryIpApi(string $ip, float|int $timeout): array
     {
         $url = "http://ip-api.com/json/{$ip}?fields=status,message,proxy,hosting";
 
         $response = Http::timeout($timeout)->get($url);
 
-        if ($response->failed() || $response->json('status') === 'fail') {
-            return ['is_proxy' => false, 'is_bot' => false];
+        if ($response->failed()) {
+            throw new \RuntimeException('HTTP request failed with status: '.$response->status());
+        }
+
+        if ($response->json('status') === 'fail') {
+            throw new \RuntimeException('API returned failure: '.$response->json('message'));
         }
 
         $isProxy = (bool) $response->json('proxy', false);
@@ -82,12 +96,12 @@ class ProxyDetectionService
      *
      * @return array{is_proxy: bool, is_bot: bool}
      */
-    private function queryVpnApi(string $ip, int $timeout): array
+    private function queryVpnApi(string $ip, float|int $timeout): array
     {
         $key = config('filament-short-url.vpn_detection.vpnapi_key');
 
         if (empty($key)) {
-            return ['is_proxy' => false, 'is_bot' => false];
+            throw new \RuntimeException('vpnapi.io API key is empty.');
         }
 
         $url = "https://vpnapi.io/api/{$ip}?key={$key}";
@@ -95,7 +109,7 @@ class ProxyDetectionService
         $response = Http::timeout($timeout)->get($url);
 
         if ($response->failed()) {
-            return ['is_proxy' => false, 'is_bot' => false];
+            throw new \RuntimeException('HTTP request failed with status: '.$response->status());
         }
 
         $security = $response->json('security', []);

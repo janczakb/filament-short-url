@@ -1,7 +1,6 @@
 <?php
 
 /**
- * @package    janczakb/filament-short-url
  * @author     Bartek Janczak <barek122@gmail.com>
  * @copyright  2026 Bartek Janczak
  * @license    Custom Source-Available License (see LICENSE file)
@@ -244,6 +243,6 @@ class AppLinkingEngine
             }
         }
 
-        return $scheme . $urlWithoutProtocol;
+        return $scheme.$urlWithoutProtocol;
     }
 }

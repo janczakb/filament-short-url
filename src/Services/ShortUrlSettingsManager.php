@@ -1,7 +1,6 @@
 <?php
 
 /**
- * @package    janczakb/filament-short-url
  * @author     Bartek Janczak <barek122@gmail.com>
  * @copyright  2026 Bartek Janczak
  * @license    Custom Source-Available License (see LICENSE file)
@@ -10,7 +9,9 @@
 namespace Bjanczak\FilamentShortUrl\Services;
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class ShortUrlSettingsManager
 {
@@ -32,22 +33,63 @@ class ShortUrlSettingsManager
             return $this->cache;
         }
 
-        $readFromFile = function () {
-            $path = $this->getSettingsPath();
-            if (File::exists($path)) {
-                try {
-                    return json_decode(File::get($path), true) ?: [];
-                } catch (\Throwable) {
-                    // Fallback to empty if json is corrupt
+        $readFromDb = function () {
+            try {
+                // Ensure table exists before querying to avoid exception on unmigrated db
+                if (! Schema::hasTable('short_url_settings')) {
+                    return [];
                 }
-            }
 
-            return [];
+                $settings = DB::table('short_url_settings')
+                    ->pluck('value', 'key')
+                    ->toArray();
+
+                $decoded = [];
+                foreach ($settings as $key => $val) {
+                    $decoded[$key] = json_decode($val, true);
+                }
+
+                // If DB is empty, check if we can import legacy settings from JSON file
+                if (empty($decoded)) {
+                    $legacyPath = $this->getSettingsPath();
+                    if (File::exists($legacyPath)) {
+                        try {
+                            $legacyContent = File::get($legacyPath);
+                            $legacySettings = json_decode($legacyContent, true) ?: [];
+
+                            // Import each legacy setting to database
+                            foreach ($legacySettings as $k => $v) {
+                                DB::table('short_url_settings')->updateOrInsert(
+                                    ['key' => $k],
+                                    ['value' => json_encode($v), 'updated_at' => now(), 'created_at' => now()]
+                                );
+                            }
+
+                            // Rename the legacy file to avoid re-importing
+                            File::move($legacyPath, $legacyPath.'.bak');
+
+                            return $legacySettings;
+                        } catch (\Throwable $e) {
+                            // Suppress import failures to prevent boot crash
+                        }
+                    }
+                }
+
+                return $decoded;
+            } catch (\Throwable $e) {
+                // Fallback to empty if DB query fails during boot/installation
+                return [];
+            }
         };
 
+        // Cache the settings indefinitely (31536000 seconds = 1 year) in multi-server environments
         $stored = app()->bound('cache')
-            ? cache()->remember('filament-short-url:settings', 86400, $readFromFile)
-            : $readFromFile();
+            ? cache()->remember('filament-short-url:settings', 31536000, $readFromDb)
+            : $readFromDb();
+
+        if (! is_array($stored)) {
+            $stored = [];
+        }
 
         // Merge stored settings with default values from config()
         $this->cache = array_merge([
@@ -107,6 +149,8 @@ class ShortUrlSettingsManager
             'deep_linking_enabled' => config('filament-short-url.deep_linking.enabled', false),
             'aasa_json' => config('filament-short-url.deep_linking.aasa_json'),
             'assetlinks_json' => config('filament-short-url.deep_linking.assetlinks_json'),
+            // Webhook signing secret
+            'webhook_signing_secret' => null,
         ], $stored);
 
         return $this->cache;
@@ -118,19 +162,12 @@ class ShortUrlSettingsManager
     }
 
     /**
-     * Persist settings to JSON file.
+     * Persist settings to the database.
      *
      * @param  array<string, mixed>  $data
      */
     public function set(array $data): void
     {
-        $path = $this->getSettingsPath();
-        $dir = dirname($path);
-
-        if (! File::isDirectory($dir)) {
-            File::makeDirectory($dir, 0755, true);
-        }
-
         $oldPrefix = $this->get('route_prefix');
 
         // Keep only supported settings keys to prevent bloat
@@ -191,6 +228,8 @@ class ShortUrlSettingsManager
             'deep_linking_enabled',
             'aasa_json',
             'assetlinks_json',
+            // Webhook signing secret
+            'webhook_signing_secret',
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
@@ -294,8 +333,53 @@ class ShortUrlSettingsManager
             $filtered['deep_linking_enabled'] = (bool) $filtered['deep_linking_enabled'];
         }
 
-        File::put($path, json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        cache()->forget('filament-short-url:settings');
+        $newKeys = [];
+        if (isset($filtered['api_keys']) && is_array($filtered['api_keys'])) {
+            foreach ($filtered['api_keys'] as &$keyObj) {
+                $key = $keyObj['key'] ?? '';
+                if (str_starts_with($key, 'sh_key_')) {
+                    $plainKey = $key;
+                    $hashed = hash('sha256', $plainKey);
+                    $masked = substr($plainKey, 0, 11).'••••'.substr($plainKey, -4);
+
+                    $keyObj['hashed_key'] = $hashed;
+                    $keyObj['key'] = $masked;
+
+                    $newKeys[] = [
+                        'name' => $keyObj['name'] ?? 'API Key',
+                        'plain' => $plainKey,
+                    ];
+                }
+            }
+            if (! empty($newKeys)) {
+                session()->flash('fsu_new_api_keys', $newKeys);
+            }
+        }
+
+        try {
+            if (Schema::hasTable('short_url_settings')) {
+                DB::transaction(function () use ($filtered) {
+                    // Update or insert each key
+                    foreach ($filtered as $key => $val) {
+                        DB::table('short_url_settings')->updateOrInsert(
+                            ['key' => $key],
+                            ['value' => json_encode($val), 'updated_at' => now()]
+                        );
+                    }
+
+                    // Delete settings from the database that are no longer in keys (e.g. removed features)
+                    DB::table('short_url_settings')
+                        ->whereNotIn('key', array_keys($filtered))
+                        ->delete();
+                });
+            }
+        } catch (\Throwable $e) {
+            // Ignore / log database persist errors
+        }
+
+        if (app()->bound('cache')) {
+            cache()->forget('filament-short-url:settings');
+        }
         $this->cache = null;
 
         // Apply immediately to current request config
@@ -378,6 +462,8 @@ class ShortUrlSettingsManager
             'filament-short-url.deep_linking.enabled' => (bool) ($settings['deep_linking_enabled'] ?? false),
             'filament-short-url.deep_linking.aasa_json' => $settings['aasa_json'] ?? null,
             'filament-short-url.deep_linking.assetlinks_json' => $settings['assetlinks_json'] ?? null,
+            // Webhook signing secret
+            'filament-short-url.webhook_signing_secret' => $settings['webhook_signing_secret'] ?? null,
         ]);
     }
 }

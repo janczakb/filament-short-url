@@ -14,7 +14,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Queued job for recording short URL visits.
@@ -170,8 +169,17 @@ class TrackShortUrlVisitJob implements ShouldQueue
         $apiSecret = config('filament-short-url.ga4.api_secret');
         $firebaseAppId = config('filament-short-url.ga4.firebase_app_id');
 
-        // GA4 Measurement Protocol requires a client_id
-        $clientId = Str::uuid()->toString();
+        // GA4 Measurement Protocol requires a client_id. We generate a deterministic UUID
+        // based on the visitor IP and User Agent to allow sessions/retention tracking
+        // without violating privacy (the IP and UA are hashed and cannot be reversed).
+        $hash = md5($this->ipAddress.'|'.$this->userAgent);
+        $clientId = sprintf('%08s-%04s-%04s-%04s-%12s',
+            substr($hash, 0, 8),
+            substr($hash, 8, 4),
+            substr($hash, 12, 4),
+            substr($hash, 16, 4),
+            substr($hash, 20, 12)
+        );
 
         $payload = [
             'client_id' => $clientId,

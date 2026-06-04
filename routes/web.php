@@ -23,7 +23,6 @@ Route::match(
     ->where('key', '[a-zA-Z0-9_-]+')
     ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
 
-
 Route::prefix('api/short-url')
     ->middleware([AuthenticateShortUrlApi::class])
     ->group(function () {

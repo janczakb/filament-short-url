@@ -1,6 +1,7 @@
 <?php
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ShortUrlSettingsPage;
+use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -129,7 +130,7 @@ it('clears deep linking cache when settings page save is triggered', function ()
 });
 
 it('redirects to the intermediate app-redirect page when auto_open_app_mobile is enabled and visited from mobile', function () {
-    $shortUrl = app(\Bjanczak\FilamentShortUrl\Services\ShortUrlService::class)->create([
+    $shortUrl = app(ShortUrlService::class)->create([
         'destination_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         'url_key' => 'ytmobile',
         'auto_open_app_mobile' => true,

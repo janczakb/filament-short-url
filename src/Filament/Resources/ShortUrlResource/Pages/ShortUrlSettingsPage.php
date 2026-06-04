@@ -163,6 +163,8 @@ class ShortUrlSettingsPage extends Page implements HasForms
             'deep_linking_enabled' => $mgr->get('deep_linking_enabled', false),
             'aasa_json' => $aasa,
             'assetlinks_json' => $assetlinks,
+            // Webhook signing secret
+            'webhook_signing_secret' => $mgr->get('webhook_signing_secret'),
         ]);
     }
 
@@ -843,6 +845,7 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                                 if (! $state) {
                                                     $set('global_webhook_url', null);
                                                     $set('webhook_events', ['visited']);
+                                                    $set('webhook_signing_secret', null);
                                                 }
                                             }),
 
@@ -851,6 +854,15 @@ class ShortUrlSettingsPage extends Page implements HasForms
                                             ->helperText(__('filament-short-url::default.settings_global_webhook_url_helper'))
                                             ->url()
                                             ->nullable()
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
+
+                                        TextInput::make('webhook_signing_secret')
+                                            ->label('Webhook Signing Secret')
+                                            ->helperText('If configured, outgoing webhook requests will include the HMAC signature in X-ShortUrl-Signature.')
+                                            ->password()
+                                            ->revealable()
+                                            ->placeholder('••••••••••••••••••••')
                                             ->columnSpanFull()
                                             ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
 
@@ -947,6 +959,20 @@ class ShortUrlSettingsPage extends Page implements HasForms
             ->title(__('filament-short-url::default.settings_saved'))
             ->success()
             ->send();
+
+        if ($newKeys = session()->get('fsu_new_api_keys')) {
+            foreach ($newKeys as $newKey) {
+                Notification::make()
+                    ->title(__('filament-short-url::default.api_key_generated') ?? 'API Key Generated')
+                    ->body(new HtmlString('<strong>'.$newKey['name'].'</strong>: '.(__('filament-short-url::default.api_key_warning') ?? "Please copy this key now. You won't be able to see it again!")."<br/><code style='background:#e4e4e7;color:#18181b;padding:6px;border-radius:4px;user-select:all;display:block;margin-top:6px;font-family:monospace;font-weight:bold;'>".$newKey['plain'].'</code>'))
+                    ->warning()
+                    ->persistent()
+                    ->send();
+            }
+
+            // Re-mount settings form state to reflect the new masked key names in the UI
+            $this->mount();
+        }
     }
 
     protected function getHeaderActions(): array

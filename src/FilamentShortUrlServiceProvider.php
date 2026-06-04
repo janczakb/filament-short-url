@@ -1,7 +1,6 @@
 <?php
 
 /**
- * @package    janczakb/filament-short-url
  * @author     Bartek Janczak <barek122@gmail.com>
  * @copyright  2026 Bartek Janczak
  * @license    Custom Source-Available License (see LICENSE file)
@@ -48,6 +47,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2026_06_03_120000_add_track_browser_language_to_short_urls_table',
                 '2026_06_03_150000_create_short_url_pixels_table',
                 '2026_06_03_160000_add_auto_open_app_mobile_to_short_urls_table',
+                '2026_06_04_000000_create_short_url_settings_table',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,

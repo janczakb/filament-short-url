@@ -40,11 +40,19 @@ class SendWebhookJob implements ShouldQueue
     public function handle(): void
     {
         try {
+            $headers = [
+                'Content-Type' => 'application/json',
+                'User-Agent' => 'wYachts-ShortUrl-Webhook/1.5',
+            ];
+
+            $secret = config('filament-short-url.webhook_signing_secret');
+            if (! empty($secret)) {
+                $payloadJson = json_encode($this->payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $headers['X-ShortUrl-Signature'] = hash_hmac('sha256', $payloadJson, $secret);
+            }
+
             $response = Http::timeout(10)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'User-Agent' => 'wYachts-ShortUrl-Webhook/1.5',
-                ])
+                ->withHeaders($headers)
                 ->post($this->url, $this->payload);
 
             if ($response->failed()) {
