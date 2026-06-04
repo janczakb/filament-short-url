@@ -68,7 +68,7 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 - 🛡️ **Throttling & Rate Limiting** — Protect your redirection routes from flood attacks with configurable per-IP rate limits.
 - 📊 **Log Aggregation & Pruning** — Compact millions of raw visit logs into daily summaries automatically to prevent database bloat.
 - 🎯 **Central Retargeting Pixel Registry (new in v3.0.0)** — Register Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, and Pinterest Tag centrally and associate them with links via checkboxes.
-- 🔌 **Developer REST API** — Full programmatical control with secure API Key authentication to create, list, and delete short links externally.
+- 🔌 **Developer REST API (updated in v3.2.0)** — Full programmatical control with secure API Key authentication to create, read, update, list, delete, and inspect analytics for short links externally.
 - 📡 **Real-Time Webhooks** — Asynchronous HTTP POST notifications on `visited`, `created`, `expired`, and `limit_reached` events with a built-in retry policy.
 - 📱 **Mobile App Deep Linking (new in v3.0.0)** — Detect mobile visitors and open links directly in 24+ native apps (Instagram, YouTube, Spotify, TikTok, etc.) using custom URI schemes.
 - 🔗 **Universal Links & App Links (new in v3.0.0)** — Host iOS `apple-app-site-association` and Android `assetlinks.json` domain configuration files directly from your root domain.
@@ -611,6 +611,8 @@ For security, new API keys are hashed using SHA-256 and stored securely in the d
 
 ### Endpoints
 
+All endpoints are prefix-grouped under `/api/short-url/` and are protected by the API Key middleware and rate-limited to **60 requests per minute** (`throttle:60,1`).
+
 #### `GET /api/short-url/links`
 List all short URLs (paginated, 30 per page).
 
@@ -639,7 +641,16 @@ curl https://yourdomain.com/api/short-url/links \
       "targeting_rules": null,
       "password": null,
       "show_warning_page": false,
+      "auto_open_app_mobile": false,
+      "ga_tracking_id": null,
       "track_visits": true,
+      "track_ip_address": true,
+      "track_browser": true,
+      "track_browser_version": true,
+      "track_operating_system": true,
+      "track_operating_system_version": true,
+      "track_device_type": true,
+      "track_referer_url": true,
       "track_browser_language": true,
       "pixels": [],
       "notes": null,
@@ -651,6 +662,51 @@ curl https://yourdomain.com/api/short-url/links \
     "last_page": 3,
     "per_page": 30,
     "total": 72
+  }
+}
+```
+
+#### `GET /api/short-url/links/{idOrKey}`
+Retrieve details for a single short URL using either its database `id` or short `url_key`.
+
+```bash
+curl https://yourdomain.com/api/short-url/links/abc123 \
+  -H "X-Api-Key: sh_key_your_key_here"
+```
+
+**Response:** `200 OK`
+```json
+{
+  "data": {
+    "id": 1,
+    "destination_url": "https://example.com",
+    "url_key": "abc123",
+    "short_url": "https://yourdomain.com/s/abc123",
+    "is_enabled": true,
+    "redirect_status_code": 302,
+    "total_visits": 47,
+    "unique_visits": 31,
+    "max_visits": null,
+    "activated_at": null,
+    "expires_at": null,
+    "webhook_url": null,
+    "targeting_rules": null,
+    "password": null,
+    "show_warning_page": false,
+    "auto_open_app_mobile": false,
+    "ga_tracking_id": null,
+    "track_visits": true,
+    "track_ip_address": true,
+    "track_browser": true,
+    "track_browser_version": true,
+    "track_operating_system": true,
+    "track_operating_system_version": true,
+    "track_device_type": true,
+    "track_referer_url": true,
+    "track_browser_language": true,
+    "pixels": [],
+    "notes": null,
+    "created_at": "2026-06-01T12:00:00+00:00"
   }
 }
 ```
@@ -673,36 +729,59 @@ curl -X POST https://yourdomain.com/api/short-url/links \
   }'
 ```
 
-**Accepted fields:**
+#### `PUT/PATCH /api/short-url/links/{idOrKey}`
+Update an existing short URL (resolved dynamically by either database `id` or short `url_key`).
 
-| Field | Type | Required | Description |
+```bash
+curl -X PATCH https://yourdomain.com/api/short-url/links/promo26 \
+  -H "X-Api-Key: sh_key_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destination_url": "https://example.com/new-product-page",
+    "notes": "Updated summer campaign description",
+    "is_enabled": true
+  }'
+```
+
+**Accepted Fields (for POST & PUT/PATCH requests):**
+
+| Field | Type | Required (POST) | Description |
 |---|---|---|---|
-| `destination_url` | string (URL) | ✅ | Target URL |
-| `url_key` | string | ❌ | Custom slug (auto-generated if omitted) |
-| `notes` | string | ❌ | Internal notes |
+| `destination_url` | string (URL) | ✅ | Target URL (max 2048 chars) |
+| `url_key` | string | ❌ | Custom unique slug/key (max 32 chars, alpha-dash; auto-generated if omitted) |
+| `notes` | string | ❌ | Internal admin notes (max 1000 chars) |
 | `is_enabled` | boolean | ❌ | Active status (default: `true`) |
-| `redirect_status_code` | integer (301/302) | ❌ | HTTP redirect code |
-| `single_use` | boolean | ❌ | Expire after first click |
-| `forward_query_params` | boolean | ❌ | Forward query string to destination |
-| `max_visits` | integer | ❌ | Click limit before expiry |
-| `expiration_redirect_url` | string (URL) | ❌ | Fallback URL on expiry |
-| `activated_at` | datetime | ❌ | Activation timestamp |
-| `expires_at` | datetime | ❌ | Expiration timestamp |
-| `pixels` | array of integers | ❌ | List of pixel registry IDs to associate with the link |
-| `webhook_url` | string (URL) | ❌ | Per-link webhook endpoint |
-| `targeting_rules` | array | ❌ | JSON targeting rules (device, geo, rotation, language) |
-| `password` | string | ❌ | Access protection password |
-| `show_warning_page` | boolean | ❌ | Show safety warning page before redirect |
-| `track_visits` | boolean | ❌ | Track visitor clicks and logs |
-| `track_browser_language` | boolean | ❌ | Track visitor browser language locale |
+| `redirect_status_code` | integer (301/302) | ❌ | HTTP redirect status code |
+| `single_use` | boolean | ❌ | Expire the short link immediately after the first visit |
+| `forward_query_params` | boolean | ❌ | Forward visitor query parameters to target destination |
+| `max_visits` | integer | ❌ | Maximum click threshold limit |
+| `expiration_redirect_url` | string (URL) | ❌ | Fallback URL to redirect to upon link expiration |
+| `activated_at` | datetime | ❌ | Activation timestamp (must be after or equal to today) |
+| `expires_at` | datetime | ❌ | Expiration timestamp (must be after or equal to `activated_at`) |
+| `pixels` | array of integers | ❌ | List of registered retargeting pixel IDs to associate with the link |
+| `webhook_url` | string (URL) | ❌ | Per-link webhook URL for immediate event notifications |
+| `targeting_rules` | array | ❌ | Targeting rules JSON schema (device, geo, rotation, language) |
+| `password` | string | ❌ | Password to protect the short URL |
+| `show_warning_page` | boolean | ❌ | Toggle redirect warning interstitial page |
+| `auto_open_app_mobile` | boolean | ❌ | Auto open deep link in native application on mobile devices |
+| `ga_tracking_id` | string | ❌ | Custom Google Analytics 4 Measurement ID for this link (`G-XXXXXXXXXX`) |
+| `track_visits` | boolean | ❌ | Toggle tracking/analytics logging for this link (default: `true`) |
+| `track_ip_address` | boolean | ❌ | Track client IP address (default: `true`) |
+| `track_browser` | boolean | ❌ | Track client browser name (default: `true`) |
+| `track_browser_version` | boolean | ❌ | Track client browser version (default: `true`) |
+| `track_operating_system` | boolean | ❌ | Track client OS (default: `true`) |
+| `track_operating_system_version` | boolean | ❌ | Track client OS version (default: `true`) |
+| `track_device_type` | boolean | ❌ | Track client device type (default: `true`) |
+| `track_referer_url` | boolean | ❌ | Track visitor referrer URL (default: `true`) |
+| `track_browser_language` | boolean | ❌ | Track visitor preferred browser language (default: `true`) |
 
-**Response:** `201 Created` with a wrapper message and the created link data:
+**Response (POST & PUT/PATCH success):** `200 OK` (or `201 Created` for POST) containing:
 ```json
 {
-  "message": "Short URL created successfully.",
+  "message": "Short URL updated successfully.",
   "data": {
     "id": 2,
-    "destination_url": "https://example.com/product",
+    "destination_url": "https://example.com/new-product-page",
     "url_key": "promo26",
     "short_url": "https://yourdomain.com/s/promo26",
     "is_enabled": true,
@@ -716,41 +795,105 @@ curl -X POST https://yourdomain.com/api/short-url/links \
     "targeting_rules": null,
     "password": null,
     "show_warning_page": false,
+    "auto_open_app_mobile": false,
+    "ga_tracking_id": null,
     "track_visits": true,
+    "track_ip_address": true,
+    "track_browser": true,
+    "track_browser_version": true,
+    "track_operating_system": true,
+    "track_operating_system_version": true,
+    "track_device_type": true,
+    "track_referer_url": true,
     "track_browser_language": true,
-    "pixels": [
-      {
-        "id": 1,
-        "name": "Meta Pixel (1234567890)",
-        "type": "meta",
-        "pixel_id": "1234567890",
-        "is_active": true
-      },
-      {
-        "id": 2,
-        "name": "Google Tag (G-XXXXXXXXXX)",
-        "type": "google",
-        "pixel_id": "G-XXXXXXXXXX",
-        "is_active": true
-      }
-    ],
-    "notes": "Summer campaign",
+    "pixels": [],
+    "notes": "Updated summer campaign description",
     "created_at": "2026-06-04T12:00:00+00:00"
   }
 }
 ```
 
-#### `DELETE /api/short-url/links/{id}`
-Permanently delete a short URL by its ID.
+#### `GET /api/short-url/links/{idOrKey}/stats`
+Retrieve visit analytics statistics for a single short URL.
 
 ```bash
-curl -X DELETE https://yourdomain.com/api/short-url/links/42 \
+curl https://yourdomain.com/api/short-url/links/promo26/stats \
+  -H "X-Api-Key: sh_key_your_key_here"
+```
+
+**Optional Query Parameters:**
+* `date_from` (string): Filter stats starting from date (e.g. `YYYY-MM-DD`).
+* `date_to` (string): Filter stats up to date (e.g. `YYYY-MM-DD`).
+
+**Response:** `200 OK`
+```json
+{
+  "data": {
+    "totalVisits": 156,
+    "uniqueVisits": 98,
+    "visitsToday": 14,
+    "visitsThisWeek": 114,
+    "visitsThisMonth": 156,
+    "visitsByDay": {
+      "2026-06-01": 42,
+      "2026-06-02": 50
+    },
+    "visitsByCountry": {
+      "Poland": 100,
+      "United States": 50
+    },
+    "visitsByCity": {
+      "Warsaw (PL)": 80,
+      "Krakow (PL)": 20
+    },
+    "visitsByDevice": {
+      "desktop": 90,
+      "mobile": 66
+    },
+    "visitsByBrowser": {
+      "Chrome": 110,
+      "Safari": 46
+    },
+    "visitsByOs": {
+      "Windows": 70,
+      "macOS": 60
+    },
+    "visitsByReferer": {
+      "linkedin.com": 80,
+      "twitter.com": 40
+    },
+    "utmSources": {
+      "linkedin": 80,
+      "twitter": 40
+    },
+    "utmMediums": {
+      "social": 120
+    },
+    "utmCampaigns": {
+      "spring_sale": 120
+    },
+    "qrScans": 12,
+    "visitsByLanguage": {
+      "pl": 100,
+      "en": 56
+    }
+  }
+}
+```
+
+#### `DELETE /api/short-url/links/{idOrKey}`
+Permanently delete a short URL by its database `id` or short `url_key`.
+
+```bash
+curl -X DELETE https://yourdomain.com/api/short-url/links/promo26 \
   -H "X-Api-Key: sh_key_your_key_here"
 ```
 
 **Response:** `200 OK`
 ```json
-{ "message": "Short URL deleted successfully." }
+{
+  "message": "Short URL deleted successfully."
+}
 ```
 
 ### Error Responses
@@ -758,6 +901,7 @@ curl -X DELETE https://yourdomain.com/api/short-url/links/42 \
 | HTTP Code | Reason |
 |---|---|
 | `401 Unauthorized` | Missing or invalid API key |
+| `404 Not Found` | Short URL not found |
 | `422 Unprocessable Entity` | Validation error (see `errors` field in response) |
 | `503 Service Unavailable` | REST API is disabled in Settings |
 
@@ -1014,6 +1158,13 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v3.2.0
+- **Expanded Developer REST API** — Added new endpoints to inspect single short URLs (`GET /api/short-url/links/{idOrKey}`), fetch real-time click metrics (`GET /api/short-url/links/{idOrKey}/stats`), and fully update links programmatically (`PUT/PATCH /api/short-url/links/{idOrKey}`). Enabled flexible lookup dynamically by ID or URL key.
+- **REST API Throttling & Rate Limiting** — Configured built-in route middleware to rate limit the Developer REST API to 60 requests per minute (`throttle:60,1`) to protect from abuse.
+- **Unified Validation System** — Cleaned up and unified API and admin panel form validation, supporting advanced fields like granular logging parameters (`track_visits`, `track_browser_language`, etc.), custom GA4 tracking IDs (`ga_tracking_id`), and auto-open deep linking options (`auto_open_app_mobile`).
+- **Media Controller Separation** — Refactored internal logo uploads and serving routes out of the public REST API controller into a dedicated `ShortUrlLogoController` (Single Responsibility compliance).
+- **Alpine.js Webhook Payload Preview** — Replaced the Filament package CodeEditor component with a custom, high-reliability dark-mode HTML/CSS component featuring live code highlighting and copy-to-clipboard functionality powered by Alpine.js.
 
 ### v3.1.0
 - **Database-Backed & Cached Settings** — Relocated user configuration from local JSON files to the database (`short_url_settings` table) with automatic caching and zero-downtime migration of legacy settings.

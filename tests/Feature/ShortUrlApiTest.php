@@ -131,3 +131,76 @@ it('allows deleting a short link via DELETE', function () {
         'id' => $link->id,
     ]);
 });
+
+it('allows updating a short link via PUT', function () {
+    $link = ShortUrl::create([
+        'destination_url' => 'https://initial-destination.com',
+        'url_key' => 'initkey',
+        'notes' => 'Initial notes',
+    ]);
+
+    $response = $this->putJson("/api/short-url/links/{$link->id}", [
+        'destination_url' => 'https://updated-destination.com',
+        'notes' => 'Updated notes',
+    ], [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonFragment(['destination_url' => 'https://updated-destination.com'])
+        ->assertJsonFragment(['notes' => 'Updated notes'])
+        ->assertJsonFragment(['url_key' => 'initkey']);
+
+    $this->assertDatabaseHas('short_urls', [
+        'id' => $link->id,
+        'destination_url' => 'https://updated-destination.com',
+        'notes' => 'Updated notes',
+        'url_key' => 'initkey',
+    ]);
+});
+
+it('allows showing a single short link via GET by ID or key', function () {
+    $link = ShortUrl::create([
+        'destination_url' => 'https://single-show.com',
+        'url_key' => 'showkey',
+    ]);
+
+    // Show by ID
+    $response = $this->getJson("/api/short-url/links/{$link->id}", [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonFragment(['url_key' => 'showkey']);
+
+    // Show by Key
+    $responseKey = $this->getJson("/api/short-url/links/showkey", [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $responseKey->assertStatus(200)
+        ->assertJsonFragment(['id' => $link->id]);
+});
+
+it('allows fetching link statistics via GET', function () {
+    $link = ShortUrl::create([
+        'destination_url' => 'https://stats-test.com',
+        'url_key' => 'statskey',
+    ]);
+
+    $response = $this->getJson("/api/short-url/links/{$link->id}/stats", [
+        'X-Api-Key' => 'sh_key_active_token',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonStructure([
+            'data' => [
+                'totalVisits',
+                'uniqueVisits',
+                'visitsToday',
+                'visitsByDay',
+            ],
+        ]);
+});
+
+

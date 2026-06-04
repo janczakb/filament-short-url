@@ -1,6 +1,7 @@
 <?php
 
 use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlApiController;
+use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlLogoController;
 use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlRedirectController;
 use Bjanczak\FilamentShortUrl\Http\Middleware\AuthenticateShortUrlApi;
 use Illuminate\Http\Request;
@@ -24,14 +25,20 @@ Route::match(
     ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
 
 Route::prefix('api/short-url')
-    ->middleware([AuthenticateShortUrlApi::class])
+    ->middleware([
+        AuthenticateShortUrlApi::class,
+        'throttle:60,1',
+    ])
     ->group(function () {
         Route::get('links', [ShortUrlApiController::class, 'index']);
         Route::post('links', [ShortUrlApiController::class, 'store']);
-        Route::delete('links/{id}', [ShortUrlApiController::class, 'destroy']);
+        Route::get('links/{idOrKey}', [ShortUrlApiController::class, 'show']);
+        Route::get('links/{idOrKey}/stats', [ShortUrlApiController::class, 'stats']);
+        Route::match(['PUT', 'PATCH'], 'links/{idOrKey}', [ShortUrlApiController::class, 'update']);
+        Route::delete('links/{idOrKey}', [ShortUrlApiController::class, 'destroy']);
     });
 
-Route::post('admin/short-url/upload-logo', [ShortUrlApiController::class, 'uploadLogo'])
+Route::post('admin/short-url/upload-logo', [ShortUrlLogoController::class, 'uploadLogo'])
     ->name('short-url.upload-logo')
     ->middleware(['web']);
 
@@ -41,5 +48,5 @@ Route::post('admin/short-url/log-debug', function (Request $request) {
     return response()->json(['status' => 'ok']);
 })->middleware(['web']);
 
-Route::get('short-url/logo/{filename}', [ShortUrlApiController::class, 'serveLogo'])
+Route::get('short-url/logo/{filename}', [ShortUrlLogoController::class, 'serveLogo'])
     ->name('short-url.logo');

@@ -10,8 +10,11 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ViewField;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -19,6 +22,8 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 
 class ShortUrlForm
 {
@@ -410,13 +415,151 @@ class ShortUrlForm
             ->schema([
                 Section::make(__('filament-short-url::default.security_section_title'))
                     ->schema([
-                        TextInput::make('password')
-                            ->label(__('filament-short-url::default.password'))
-                            ->helperText(__('filament-short-url::default.password_helper'))
-                            ->password()
-                            ->revealable()
-                            ->nullable()
-                            ->maxLength(255),
+                        Hidden::make('password'),
+
+                        Hidden::make('password_active_flag')
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function (Hidden $component, $state, ?ShortUrl $record) {
+                                $component->state($record && ! empty($record->password));
+                            }),
+
+                        Hidden::make('is_entering_password')
+                            ->dehydrated(false)
+                            ->default(false),
+
+                        // State 1: Password is active (password_active_flag is true)
+                        Group::make([
+                            Placeholder::make('password_status')
+                                ->label(__('filament-short-url::default.password'))
+                                ->content(new HtmlString(
+                                    '<div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">' .
+                                    '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>' .
+                                    '<span>' . (__('filament-short-url::default.password_status_active') ?? 'Password protection is enabled.') . '</span>' .
+                                    '</div>'
+                                ))
+                                ->columnSpan(1),
+
+                            Actions::make([
+                                Action::make('change_password')
+                                    ->label(__('filament-short-url::default.change_password'))
+                                    ->icon('heroicon-o-pencil')
+                                    ->color('primary')
+                                    ->action(function (Set $set) {
+                                        $set('password_active_flag', false);
+                                        $set('is_entering_password', true);
+                                        $set('new_password_input', null);
+                                        $set('new_password_confirmation_input', null);
+                                    }),
+                                Action::make('remove_password')
+                                    ->label(__('filament-short-url::default.remove_password'))
+                                    ->icon('heroicon-o-trash')
+                                    ->color('danger')
+                                    ->requiresConfirmation()
+                                    ->action(function (Set $set, ?ShortUrl $record) {
+                                        $set('password', null);
+                                        $set('new_password_input', null);
+                                        $set('new_password_confirmation_input', null);
+                                        $set('password_active_flag', false);
+                                        $set('is_entering_password', false);
+                                        if ($record) {
+                                            $record->password = null;
+                                        }
+                                    }),
+                            ])
+                            ->columnSpan(1),
+                        ])
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => (bool) $get('password_active_flag')),
+
+                        // State 2: No Password, Setup Button Group (password_active_flag is false, is_entering_password is false)
+                        Group::make([
+                            Actions::make([
+                                Action::make('setup_password')
+                                    ->label(__('filament-short-url::default.set_password'))
+                                    ->icon('heroicon-o-key')
+                                    ->color('primary')
+                                    ->action(function (Set $set) {
+                                        $set('is_entering_password', true);
+                                    }),
+                            ])
+                            ->columnSpanFull(),
+                        ])
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password')),
+
+                        // State 3: Entering Password Group (password_active_flag is false, is_entering_password is true)
+                        Group::make([
+                            Group::make([
+                                TextInput::make('new_password_input')
+                                    ->label(__('filament-short-url::default.new_password'))
+                                    ->password()
+                                    ->revealable()
+                                    ->live()
+                                    ->maxLength(255)
+                                    ->dehydrated(false)
+                                    ->required(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password'))
+                                    ->columnSpan(1),
+
+                                TextInput::make('new_password_confirmation_input')
+                                    ->label(__('filament-short-url::default.confirm_password'))
+                                    ->password()
+                                    ->revealable()
+                                    ->same('new_password_input')
+                                    ->maxLength(255)
+                                    ->dehydrated(false)
+                                    ->required(fn (Get $get): bool => ! empty($get('new_password_input')))
+                                    ->columnSpan(1),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
+
+                            Actions::make([
+                                Action::make('confirm_password')
+                                    ->label(__('filament-short-url::default.confirm'))
+                                    ->icon('heroicon-o-check')
+                                    ->color('success')
+                                    ->action(function (Get $get, Set $set) {
+                                        $password = $get('new_password_input');
+                                        $confirm = $get('new_password_confirmation_input');
+                                        if (empty($password)) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->title(__('filament-short-url::default.password_required_error') ?? 'Password is required.')
+                                                ->danger()
+                                                ->send();
+                                            return;
+                                        }
+                                        if ($password !== $confirm) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->title(__('filament-short-url::default.password_mismatch_error') ?? 'Passwords do not match.')
+                                                ->danger()
+                                                ->send();
+                                            return;
+                                        }
+                                        $set('password', $password);
+                                        $set('password_active_flag', true);
+                                        $set('is_entering_password', false);
+                                    }),
+
+                                Action::make('cancel_password')
+                                    ->label(__('filament-short-url::default.cancel'))
+                                    ->icon('heroicon-o-x-mark')
+                                    ->color('gray')
+                                    ->action(function (Get $get, Set $set, ?ShortUrl $record) {
+                                        if ($record && ! empty($record->password)) {
+                                            $set('password_active_flag', true);
+                                        } else {
+                                            $set('password_active_flag', false);
+                                        }
+                                        $set('is_entering_password', false);
+                                        $set('new_password_input', null);
+                                        $set('new_password_confirmation_input', null);
+                                    }),
+                            ])
+                            ->columnSpanFull(),
+                        ])
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password')),
 
                         Toggle::make('show_warning_page')
                             ->label(__('filament-short-url::default.show_warning_page'))
@@ -560,12 +703,33 @@ class ShortUrlForm
                 Section::make(__('filament-short-url::default.marketing_webhooks_title'))
                     ->description(__('filament-short-url::default.marketing_webhooks_desc'))
                     ->schema([
+                        Placeholder::make('webhook_info')
+                            ->hiddenLabel()
+                            ->content(new HtmlString(
+                                '<div class="callout my-4 px-5 py-4 overflow-hidden rounded-2xl flex gap-3 border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-white/10" data-callout-type="info">' .
+                                '<div class="mt-0.5 w-4" data-component-part="callout-icon">' .
+                                '<svg viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" class="flex-none size-5 text-neutral-800 dark:text-neutral-300" aria-label="Info">' .
+                                '<path d="M8 0C3.58125 0 0 3.58125 0 8C0 12.4187 3.58125 16 8 16C12.4187 16 16 12.4187 16 8C16 3.58125 12.4187 0 8 0ZM8 14.5C4.41563 14.5 1.5 11.5841 1.5 8C1.5 4.41594 4.41563 1.5 8 1.5C11.5844 1.5 14.5 4.41594 14.5 8C14.5 11.5841 11.5844 14.5 8 14.5ZM9.25 10.5H8.75V7.75C8.75 7.3375 8.41563 7 8 7H7C6.5875 7 6.25 7.3375 6.25 7.75C6.25 8.1625 6.5875 8.5 7 8.5H7.25V10.5H6.75C6.3375 10.5 6 10.8375 6 11.25C6 11.6625 6.3375 12 6.75 12H9.25C9.66406 12 10 11.25C10 10.8359 9.66563 10.5 9.25 10.5ZM8 6C8.55219 6 9 5.55219 9 5C9 4.44781 8.55219 4 8 4C7.44781 4 7 4.44687 7 5C7 5.55313 7.44687 6 8 6Z"></path>' .
+                                '</svg>' .
+                                '</div>' .
+                                '<div class="text-sm prose dark:prose-invert min-w-0 w-full text-neutral-800 dark:text-neutral-300" data-component-part="callout-content">' .
+                                '<span data-as="p">' .
+                                (__('filament-short-url::default.webhook_helper_alert') ?? 'Once configured, each visit to this short link triggers a real-time HTTP POST request to this URL. The payload contains detailed click metadata in JSON format (including URL key, IP address, country, browser, operating system, referrer, and UTM parameters).') .
+                                '</span>' .
+                                '</div>' .
+                                '</div>'
+                            ))
+                            ->columnSpanFull(),
+
                         TextInput::make('webhook_url')
                             ->label(__('filament-short-url::default.webhook_url'))
                             ->placeholder('https://api.yourcrm.com/webhooks/clicks')
                             ->url()
                             ->maxLength(2048)
                             ->nullable()
+                            ->columnSpanFull(),
+                        ViewField::make('webhook_payload_example')
+                            ->view('filament-short-url::webhook-payload-example')
                             ->columnSpanFull(),
                     ]),
             ]);
