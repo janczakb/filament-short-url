@@ -7,6 +7,14 @@
     position: relative !important;
 }
 
+.short-url-card:hover {
+    z-index: 20 !important;
+}
+
+.short-url-card:focus-within {
+    z-index: 30 !important;
+}
+
 .short-url-card .fi-ta-actions {
     position: absolute !important;
     top: 1.25rem !important;
@@ -14,4 +22,67 @@
     z-index: 10 !important;
     margin: 0 !important;
     padding: 0 !important;
+}
+
+.ab-test-slider {
+    margin-top: 0;
+}
+
+.ab-test-slider .noUi-tooltip {
+    position: absolute;
+    top: -24px;
+    width: 30px;
+    height: 20px;
+    bottom: inherit !important;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 100px;
+    font-size: 12px;
+    background: #ffffff26;
+    backdrop-filter: blur(4px);
+}
+
+/* 3-dot button trigger styling */
+.action-trigger-btn {
+    border: 1px solid transparent !important;
+    background-color: transparent !important;
+    transition: all 0.2s ease-in-out;
+}
+
+/* On card hover, show a subtle border */
+.short-url-card:hover .action-trigger-btn {
+    border-color: #e5e7eb !important;
+    background-color: #f9fafb !important;
+}
+
+.dark .short-url-card:hover .action-trigger-btn {
+    border-color: #374151 !important;
+    background-color: #1f2937 !important;
+}
+
+/* When the dropdown is open (trigger has focus or aria-expanded="true"), show active border */
+.action-trigger-btn[aria-expanded="true"] {
+    border-color: #9ca3af !important;
+    background-color: #f3f4f6 !important;
+    box-shadow: 0 0 0 4px rgba(229, 230, 235, 0.5) !important;
+}
+
+.dark .action-trigger-btn[aria-expanded="true"] {
+    border-color: #4b5563 !important;
+    background-color: #111827 !important;
+    box-shadow: 0 0 0 4px rgba(55, 65, 81, 0.5) !important;
+}
+
+.custom-fused .fi-input-wrp {
+    border: 0 !important;
+}
+
+/* Ukrycie strzałki rozwijania selecta, gdy jest zablokowany */
+select.fi-select-input:disabled,
+.fi-select-input .fi-select-input-btn[disabled],
+.fi-select-input .fi-select-input-btn.fi-disabled {
+    background-image: none !important;
+    padding-right: 0.75rem !important;
 }

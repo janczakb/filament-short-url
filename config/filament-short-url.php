@@ -44,6 +44,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Lock URL Key
+    |--------------------------------------------------------------------------
+    | Globally disable changing the short key after a link is created.
+    |
+    */
+    'lock_url_key' => env('SHORT_URL_LOCK_KEY', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Disable Default Domain
+    |--------------------------------------------------------------------------
+    | Disable the default app domain for short links.
+    |
+    */
+    'disable_default_domain' => env('SHORT_URL_DISABLE_DEFAULT_DOMAIN', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Geo-IP Settings
     |--------------------------------------------------------------------------
     | Country detection from visitor IP addresses.
@@ -70,6 +88,7 @@ return [
     */
     'tracking' => [
         'enabled' => true,
+        'anonymize_ips' => env('SHORT_URL_ANONYMIZE_IPS', false),
         'fields' => [
             'ip_address' => true,
             'browser' => true,
@@ -206,6 +225,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Enable Fallback Route
+    |--------------------------------------------------------------------------
+    | Register a fallback route to catch redirects for custom domains.
+    | Set to false if you wish to define custom domain routing manually.
+    */
+    'enable_fallback_route' => env('SHORT_URL_ENABLE_FALLBACK', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Redirect Route Middleware
     |--------------------------------------------------------------------------
     | The middleware list applied to the short URL redirect route.
@@ -228,4 +256,20 @@ return [
         'enabled' => env('SHORT_URL_DEEP_LINKING_ENABLED', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | User Integration Settings
+    |--------------------------------------------------------------------------
+    | Configure how the package interacts with the User model for showing avatars
+    | and user details (name, email) in the Filament admin panel.
+    |
+    */
+    'user' => [
+        'model' => \App\Models\User::class,
+        'name_column' => 'name',
+        'email_column' => 'email',
+        'avatar_column' => 'avatar_url', // can be attribute/method on model or null to auto-detect HasAvatar
+    ],
+
 ];
+

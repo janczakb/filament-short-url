@@ -32,8 +32,9 @@ class ProxyDetectionService
 
         $cacheKey = "short-url:proxy-check:{$ip}";
 
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
         }
 
         $driver = config('filament-short-url.vpn_detection.driver', 'ip-api');
@@ -54,11 +55,11 @@ class ProxyDetectionService
         } catch (\Throwable $e) {
             Log::warning("Proxy detection failed or timed out for IP: {$ip}. Error: ".$e->getMessage());
 
-            // Temporary cache for failure (60 seconds) to allow retry and prevent whitelisting IPs long-term
-            $failResult = ['is_proxy' => false, 'is_bot' => false];
-            Cache::put($cacheKey, $failResult, 60);
-
-            return $failResult;
+            // Do NOT cache failure results as safe. If we cached 'is_proxy => false' on API
+            // errors, a malicious actor could deliberately trigger API rate-limiting to obtain
+            // a guaranteed bypass window for their IP. Instead we fail-open without caching,
+            // allowing a fresh check on the next request.
+            return ['is_proxy' => false, 'is_bot' => false];
         }
     }
 

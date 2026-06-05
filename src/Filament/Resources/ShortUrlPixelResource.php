@@ -27,17 +27,17 @@ class ShortUrlPixelResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return __('filament-short-url::default.pixels_navigation_label') ?? 'Retargeting Pixels';
+        return __('filament-short-url::default.pixels_navigation_label');
     }
 
     public static function getModelLabel(): string
     {
-        return __('filament-short-url::default.pixel_resource_title') ?? 'Retargeting Pixel';
+        return __('filament-short-url::default.pixel_resource_title');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('filament-short-url::default.pixels_navigation_label') ?? 'Retargeting Pixels';
+        return __('filament-short-url::default.pixels_navigation_label');
     }
 
     public static function getNavigationGroup(): string|\UnitEnum|null
@@ -63,13 +63,13 @@ class ShortUrlPixelResource extends Resource
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->label(__('filament-short-url::default.pixel_name') ?? 'Pixel Name')
+                    ->label(__('filament-short-url::default.pixel_name'))
                     ->required()
                     ->maxLength(150)
                     ->placeholder('e.g. Meta Ads - Yacht Promo'),
 
                 Select::make('type')
-                    ->label(__('filament-short-url::default.pixel_type') ?? 'Provider')
+                    ->label(__('filament-short-url::default.pixel_type'))
                     ->options([
                         'meta' => 'Meta / Facebook Pixel',
                         'google' => 'Google Tag (GA4 / GTM)',
@@ -81,13 +81,13 @@ class ShortUrlPixelResource extends Resource
                     ->native(false),
 
                 TextInput::make('pixel_id')
-                    ->label(__('filament-short-url::default.pixel_id_label') ?? 'Pixel ID / Tag ID')
+                    ->label(__('filament-short-url::default.pixel_id_label'))
                     ->required()
                     ->maxLength(100)
                     ->placeholder('e.g. 1234567890 or G-XXXXXXXXXX'),
 
                 Toggle::make('is_active')
-                    ->label(__('filament-short-url::default.pixel_status_active') ?? 'Active')
+                    ->label(__('filament-short-url::default.pixel_status_active'))
                     ->default(true),
             ])
             ->columns(1);
@@ -98,13 +98,13 @@ class ShortUrlPixelResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label(__('filament-short-url::default.pixel_name') ?? 'Pixel Name')
+                    ->label(__('filament-short-url::default.pixel_name'))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
 
                 TextColumn::make('type')
-                    ->label(__('filament-short-url::default.pixel_type') ?? 'Provider')
+                    ->label(__('filament-short-url::default.pixel_type'))
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'meta' => 'Meta',
@@ -124,14 +124,14 @@ class ShortUrlPixelResource extends Resource
                     }),
 
                 TextColumn::make('pixel_id')
-                    ->label(__('filament-short-url::default.pixel_id_label') ?? 'ID')
+                    ->label(__('filament-short-url::default.pixel_id_label'))
                     ->searchable()
                     ->copyable()
                     ->fontFamily('mono')
                     ->color('gray'),
 
                 ToggleColumn::make('is_active')
-                    ->label(__('filament-short-url::default.pixel_status_active') ?? 'Active')
+                    ->label(__('filament-short-url::default.pixel_status_active'))
                     ->sortable(),
             ])
             ->filters([])
@@ -148,7 +148,9 @@ class ShortUrlPixelResource extends Resource
                     ->iconButton()
                     ->tooltip(__('filament-short-url::default.action_delete')),
             ])
-            ->bulkActions([]);
+            ->bulkActions([])
+            ->defaultSort('created_at', 'desc')
+            ->emptyState(view('filament-short-url::table.empty-state-pixels'));
     }
 
     public static function getPages(): array

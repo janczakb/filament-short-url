@@ -9,8 +9,10 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Filament\Schemas\Schema;
+use Livewire\Attributes\On;
 
 class ViewShortUrlStats extends Page implements HasForms
 {
@@ -27,6 +29,50 @@ class ViewShortUrlStats extends Page implements HasForms
     public int $totalVisits = 0;
 
     public ?array $filterData = [];
+
+    public array $activeFilters = [];
+
+    #[On('set-stats-filter')]
+    public function setStatsFilter(string $key, $value): void
+    {
+        if (count($this->activeFilters) >= 5 && ! isset($this->activeFilters[$key])) {
+            Notification::make()
+                ->title(__('filament-short-url::default.stats_filter_limit_exceeded'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->activeFilters[$key] = $value;
+        $this->totalVisits = $this->record->getCachedStats(
+            $this->filterData['date_from'] ?? null,
+            $this->filterData['date_to'] ?? null,
+            $this->activeFilters
+        )['totalVisits'] ?? 0;
+    }
+
+    #[On('clear-stats-filter')]
+    public function clearStatsFilter(string $key): void
+    {
+        unset($this->activeFilters[$key]);
+        $this->totalVisits = $this->record->getCachedStats(
+            $this->filterData['date_from'] ?? null,
+            $this->filterData['date_to'] ?? null,
+            $this->activeFilters
+        )['totalVisits'] ?? 0;
+    }
+
+    #[On('clear-all-stats-filters')]
+    public function clearAllStatsFilters(): void
+    {
+        $this->activeFilters = [];
+        $this->totalVisits = $this->record->getCachedStats(
+            $this->filterData['date_from'] ?? null,
+            $this->filterData['date_to'] ?? null,
+            $this->activeFilters
+        )['totalVisits'] ?? 0;
+    }
 
     public function mount(ShortUrl $record): void
     {
@@ -46,7 +92,11 @@ class ViewShortUrlStats extends Page implements HasForms
             ];
         }
 
-        $this->totalVisits = $record->getCachedStats($this->filterData['date_from'], $this->filterData['date_to'])['totalVisits'] ?? 0;
+        $this->totalVisits = $record->getCachedStats(
+            $this->filterData['date_from'] ?? null,
+            $this->filterData['date_to'] ?? null,
+            $this->activeFilters
+        )['totalVisits'] ?? 0;
     }
 
     public function form(Schema $schema): Schema
@@ -115,6 +165,25 @@ class ViewShortUrlStats extends Page implements HasForms
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
                 ->url(ShortUrlResource::getUrl()),
+
+            Action::make('refresh')
+                ->label(__('filament-short-url::default.stats_btn_refresh'))
+                ->icon('heroicon-o-arrow-path')
+                ->color('gray')
+                ->action(function () {
+                    $this->record->clearStatsCache(
+                        $this->filterData['date_from'] ?? null,
+                        $this->filterData['date_to'] ?? null,
+                        $this->activeFilters
+                    );
+
+                    $this->dispatch('$refresh');
+
+                    Notification::make()
+                        ->title(__('filament-short-url::default.stats_refresh_success'))
+                        ->success()
+                        ->send();
+                }),
 
             Action::make('copy_url')
                 ->label(__('filament-short-url::default.stats_btn_copy'))

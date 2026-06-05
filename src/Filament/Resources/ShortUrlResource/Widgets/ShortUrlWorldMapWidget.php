@@ -2,6 +2,7 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\Concerns\HasStatsFilters;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Filament\Widgets\Widget;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class ShortUrlWorldMapWidget extends Widget
 {
+    use HasStatsFilters;
+
     public ?ShortUrl $record = null;
 
     public ?string $dateFrom = null;
@@ -40,8 +43,9 @@ class ShortUrlWorldMapWidget extends Widget
         $dateToClean = $this->dateTo ? Carbon::parse($this->dateTo)->toDateString() : null;
         $today = Carbon::today()->toDateString();
 
+        $filtersHash = md5(json_encode($this->filters));
         $cacheTtl = (int) config('filament-short-url.geo_ip.stats_cache_ttl', 300);
-        $cacheKey = "short_url_world_map_{$this->record->id}_".($dateFromClean ?: 'all').'_'.($dateToClean ?: 'all');
+        $cacheKey = "short_url_world_map_{$this->record->id}_".($dateFromClean ?: 'all').'_'.($dateToClean ?: 'all').'_'.$filtersHash;
 
         return cache()->remember($cacheKey, $cacheTtl, function () use ($dateFromClean, $dateToClean) {
             $counts = [];
@@ -60,6 +64,8 @@ class ShortUrlWorldMapWidget extends Widget
             if ($dateToClean) {
                 $query->whereDate('visited_at', '<=', $dateToClean);
             }
+
+            $this->record->applyStatsFilters($query, $this->filters);
 
             foreach ($query->groupBy('country_code')->get() as $row) {
                 $code = strtoupper(trim($row->country_code));

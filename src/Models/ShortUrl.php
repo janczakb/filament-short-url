@@ -8,23 +8,19 @@
 
 namespace Bjanczak\FilamentShortUrl\Models;
 
+use App\Models\User;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlGlobalOverview;
-use Bjanczak\FilamentShortUrl\Jobs\IncrementVisitJob;
-use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
-use Bjanczak\FilamentShortUrl\Services\GeoIpService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlBuilder;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
-use Bjanczak\FilamentShortUrl\Services\UserAgentParser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -56,11 +52,14 @@ use Illuminate\Support\Facades\Storage;
  */
 class ShortUrl extends Model
 {
+    use Concerns\HasStats;
+    use Concerns\HasTargeting;
     use HasFactory;
 
     protected $table = 'short_urls';
 
     protected $fillable = [
+        'user_id',
         'destination_url',
         'url_key',
         'notes',
@@ -93,10 +92,15 @@ class ShortUrl extends Model
         'qr_logo',
         'qr_scans',
         'auto_open_app_mobile',
+        'destination_type',
+        'rotation_variants',
+        'custom_domain_id',
     ];
 
     /** @var array<string, string> */
     protected $casts = [
+        'user_id' => 'integer',
+        'custom_domain_id' => 'integer',
         'is_enabled' => 'boolean',
         'single_use' => 'boolean',
         'forward_query_params' => 'boolean',
@@ -113,6 +117,7 @@ class ShortUrl extends Model
         'qr_options' => 'array',
         'show_warning_page' => 'boolean',
         'targeting_rules' => 'array',
+        'rotation_variants' => 'array',
         'max_visits' => 'integer',
         'activated_at' => 'datetime',
         'deactivated_at' => 'datetime',
@@ -121,6 +126,19 @@ class ShortUrl extends Model
     ];
 
     // ─── Relations ───────────────────────────────────────────────────────────
+
+    public function customDomain(): BelongsTo
+    {
+        return $this->belongsTo(ShortUrlCustomDomain::class, 'custom_domain_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(
+            config('filament-short-url.user.model', User::class),
+            'user_id'
+        );
+    }
 
     public function visits(): HasMany
     {
@@ -177,18 +195,45 @@ class ShortUrl extends Model
      * Find by URL key — cached for ultra-fast redirects.
      * Cache is invalidated automatically via model events on save/delete.
      */
-    public static function findByKey(string $key): ?static
+    public static function findByKey(string $key, ?string $host = null): ?static
     {
+        $host ??= request()?->getHost();
+        $mainDomain = parse_url(config('app.url'), PHP_URL_HOST);
+
         $ttl = config('filament-short-url.cache_ttl', 3600);
 
-        if ($ttl <= 0) {
-            return static::where('url_key', $key)->with('pixels')->first();
+        $query = static::where('url_key', $key)->with(['pixels', 'customDomain']);
+
+        if ($host && strcasecmp($host, $mainDomain) !== 0) {
+            // Shared cache key with ShortUrlRedirectController \u2014 the controller warms this cache
+            // before calling findByKey(), so this lookup is typically a free cache hit.
+            $customDomain = cache()->remember(
+                "filament-short-url:custom-domain:{$host}",
+                300,
+                fn () => ShortUrlCustomDomain::where('domain', $host)
+                    ->where('is_active', true)
+                    ->first()
+            );
+
+            if ($customDomain) {
+                $query->where('custom_domain_id', $customDomain->id);
+            } else {
+                return null;
+            }
+        } else {
+            $query->whereNull('custom_domain_id');
         }
 
+        if ($ttl <= 0) {
+            return $query->first();
+        }
+
+        $cacheKey = "filament-short-url:{$key}:".($host ?? 'default');
+
         return cache()->remember(
-            "filament-short-url:{$key}",
+            $cacheKey,
             $ttl,
-            fn () => static::where('url_key', $key)->with('pixels')->first()
+            fn () => $query->first()
         );
     }
 
@@ -199,6 +244,12 @@ class ShortUrl extends Model
      */
     protected static function booted(): void
     {
+        static::creating(function (self $m) {
+            if (auth()->check() && empty($m->user_id)) {
+                $m->user_id = auth()->id();
+            }
+        });
+
         static::saving(function (self $m) {
             if ($m->single_use || $m->max_visits !== null || $m->expires_at !== null) {
                 if ($m->single_use) {
@@ -207,7 +258,7 @@ class ShortUrl extends Model
                 $m->redirect_status_code = 302; // Force temporary redirect to prevent browser caching of limited/expiring URLs
             }
 
-            if ($m->activated_at === null && $m->expires_at === null) {
+            if ($m->activated_at === null && $m->expires_at === null && $m->deactivated_at === null) {
                 $m->expiration_redirect_url = null;
             }
 
@@ -240,34 +291,82 @@ class ShortUrl extends Model
         });
 
         static::saved(function (self $m) {
-            cache()->forget("filament-short-url:{$m->url_key}");
             cache()->forget("filament-short-url:visits:{$m->id}");
+
+            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+            $hosts = ['default'];
+            if ($appHost) {
+                $hosts[] = $appHost;
+            }
+
+            // Current domain
+            if ($m->custom_domain_id && $m->customDomain) {
+                $hosts[] = $m->customDomain->domain;
+            }
+
+            // If custom domain changed, clear old domain cache too
+            if ($m->wasChanged('custom_domain_id')) {
+                $oldDomainId = $m->getOriginal('custom_domain_id');
+                if ($oldDomainId) {
+                    $oldDomain = ShortUrlCustomDomain::find($oldDomainId);
+                    if ($oldDomain) {
+                        $hosts[] = $oldDomain->domain;
+                    }
+                }
+            }
+
+            // Forget all redirect cache keys for this url_key
+            foreach ($hosts as $host) {
+                cache()->forget("filament-short-url:{$m->url_key}:{$host}");
+            }
 
             if ($m->wasChanged('url_key')) {
                 $oldKey = $m->getOriginal('url_key');
                 if ($oldKey) {
-                    cache()->forget("filament-short-url:{$oldKey}");
+                    foreach ($hosts as $host) {
+                        cache()->forget("filament-short-url:{$oldKey}:{$host}");
+                    }
                 }
             }
+
+            // Bust the forever-cached link count on creation or deletion — count changes only then.
+            // Using wasRecentlyCreated avoids the double-forget that the separate created() event caused.
+            if ($m->wasRecentlyCreated) {
+                cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY);
+            }
         });
+
         static::deleted(function (self $m) {
-            cache()->forget("filament-short-url:{$m->url_key}");
             cache()->forget("filament-short-url:visits:{$m->id}");
             cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY);
+
+            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+            $hosts = ['default'];
+            if ($appHost) {
+                $hosts[] = $appHost;
+            }
+
+            if ($m->custom_domain_id && $m->customDomain) {
+                $hosts[] = $m->customDomain->domain;
+            }
+
+            foreach ($hosts as $host) {
+                cache()->forget("filament-short-url:{$m->url_key}:{$host}");
+            }
 
             if (! empty($m->qr_logo)) {
                 Storage::disk('public')->delete($m->qr_logo);
             }
         });
 
-        // Bust the forever-cached link counts displayed in the global overview widget.
-        static::created(fn () => cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY));
     }
 
     /** @return Collection<int, static> */
     public static function findByDestinationUrl(string $url): Collection
     {
-        return static::where('destination_url', $url)->get();
+        $builder = static::where('destination_url', $url);
+
+        return $builder->get();
     }
 
     /**
@@ -280,27 +379,21 @@ class ShortUrl extends Model
         return app(ShortUrlService::class)->destination($url);
     }
 
-    public function getRealTimeTotalVisits(): int
-    {
-        if (config('filament-short-url.counter_buffering.enabled', false)) {
-            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
-            $buffered = (int) cache()->get("{$prefix}total:{$this->id}", 0);
-
-            return $this->total_visits + $buffered;
-        }
-
-        // Use real-time visit count in cache to keep the cached model instance updated
-        $cacheKey = "filament-short-url:visits:{$this->id}";
-
-        return (int) cache()->remember($cacheKey, 3600, fn () => $this->total_visits);
-    }
-
     public function isActive(): bool
     {
         if (! $this->is_enabled) {
             return false;
         }
 
+        // For single-use links the cached model may say is_enabled=true while the DB has
+        // already flipped it to false (another request beat us to it). We must re-read from
+        // the DB here because the redirect controller dispatches the tracking job (L174)
+        // BEFORE performing the atomic disable (L226). A stale cache hit would cause:
+        //   1. A phantom visit to be logged for an already-consumed single-use link.
+        //   2. Potentially serving content (warning page, pixel page) to the second visitor
+        //      before they hit the atomic-update 410 check.
+        // The extra DB query is a justified cost: it only fires for single-use links, and
+        // only when the cached model still shows is_enabled=true.
         if ($this->single_use) {
             $realEnabled = DB::table($this->table)->where('id', $this->id)->value('is_enabled');
             if (! $realEnabled) {
@@ -308,23 +401,19 @@ class ShortUrl extends Model
             }
         }
 
-        // Not yet active
         if ($this->activated_at && $this->activated_at->isFuture()) {
             return false;
         }
 
-        // Explicitly deactivated
         if ($this->deactivated_at && $this->deactivated_at->isPast()) {
             return false;
         }
 
-        // TTL expiry
-        if ($this->expires_at && $this->expires_at->isPast()) {
+        if ($this->isExpired()) {
             return false;
         }
 
-        // Visit limit reached
-        if (! $this->single_use && $this->max_visits !== null && $this->getRealTimeTotalVisits() >= $this->max_visits) {
+        if ($this->max_visits !== null && $this->getRealTimeTotalVisits() >= $this->max_visits) {
             return false;
         }
 
@@ -333,15 +422,7 @@ class ShortUrl extends Model
 
     public function isExpired(): bool
     {
-        if ($this->expires_at !== null && $this->expires_at->isPast()) {
-            return true;
-        }
-
-        if (! $this->single_use && $this->max_visits !== null && $this->getRealTimeTotalVisits() >= $this->max_visits) {
-            return true;
-        }
-
-        return false;
+        return $this->expires_at && $this->expires_at->isPast();
     }
 
     public function trackingEnabled(): bool
@@ -349,9 +430,7 @@ class ShortUrl extends Model
         return $this->track_visits;
     }
 
-    /**
-     * @return array<string>
-     */
+    /** @return array<int, string> */
     public function trackingFields(): array
     {
         if (! $this->track_visits) {
@@ -388,641 +467,21 @@ class ShortUrl extends Model
     public function getShortUrl(): string
     {
         $prefix = config('filament-short-url.route_prefix');
+        $baseUrl = config('app.url');
+
+        if ($this->custom_domain_id && $this->customDomain) {
+            // Use https for custom domains in production; fall back to the app.url scheme
+            // in other environments (local dev, staging). This prevents branded links from
+            // using http:// when the developer hasn't yet updated their app.url to https.
+            $appScheme = parse_url($baseUrl, PHP_URL_SCHEME) ?: 'https';
+            $scheme = app()->isProduction() ? 'https' : $appScheme;
+            $baseUrl = $scheme.'://'.$this->customDomain->domain;
+        }
 
         if (! empty($prefix)) {
-            return rtrim(config('app.url'), '/').'/'.trim($prefix, '/').'/'.$this->url_key;
+            return rtrim($baseUrl, '/').'/'.trim($prefix, '/').'/'.$this->url_key;
         }
 
-        return rtrim(config('app.url'), '/').'/'.$this->url_key;
-    }
-
-    /**
-     * Resolve the targeted destination URL based on request headers/context.
-     */
-    public function resolveDestinationUrl(Request $request): string
-    {
-        $rules = $this->targeting_rules;
-
-        if (empty($rules)) {
-            return $this->destination_url;
-        }
-
-        // Backward compatibility check: legacy type-based strategy
-        if (is_array($rules) && isset($rules['type'])) {
-            $type = $rules['type'] ?? 'none';
-
-            if ($type === 'device') {
-                $parser = app(UserAgentParser::class);
-                $deviceType = $parser->getDeviceType($request->userAgent() ?? '');
-
-                if ($deviceType === 'mobile') {
-                    return $rules['device']['mobile'] ?? $rules['device']['ios'] ?? $this->destination_url;
-                }
-                if ($deviceType === 'tablet') {
-                    return $rules['device']['tablet'] ?? $rules['device']['android'] ?? $this->destination_url;
-                }
-
-                return $rules['device']['desktop'] ?? $this->destination_url;
-            }
-
-            if ($type === 'geo') {
-                $countryCode = ClientIpExtractor::getCountryCode($request);
-                if (! $countryCode) {
-                    $ip = ClientIpExtractor::getIp($request);
-                    $geo = app(GeoIpService::class)->resolve($ip);
-                    $countryCode = $geo['country_code'] ?? null;
-                }
-
-                if ($countryCode) {
-                    $countryCode = strtoupper(trim($countryCode));
-                    foreach ($rules['geo'] ?? [] as $rule) {
-                        if (strtoupper($rule['country_code'] ?? '') === $countryCode) {
-                            return $rule['url'] ?? $this->destination_url;
-                        }
-                    }
-                }
-            }
-
-            if ($type === 'language') {
-                $acceptedLanguages = $request->getLanguages();
-
-                foreach ($acceptedLanguages as $acceptedLanguage) {
-                    $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
-                    if (empty($acceptedLanguage)) {
-                        continue;
-                    }
-
-                    foreach ($rules['language'] ?? [] as $rule) {
-                        $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
-                        if ($ruleLang === $acceptedLanguage) {
-                            return $rule['url'] ?? $this->destination_url;
-                        }
-                    }
-                }
-
-                foreach ($acceptedLanguages as $acceptedLanguage) {
-                    $acceptedLanguage = strtolower(trim(str_replace('_', '-', $acceptedLanguage)));
-                    if (empty($acceptedLanguage)) {
-                        continue;
-                    }
-
-                    $parts = explode('-', $acceptedLanguage);
-                    $primaryLang = strtolower(trim($parts[0]));
-
-                    foreach ($rules['language'] ?? [] as $rule) {
-                        $ruleLang = strtolower(trim(str_replace('_', '-', $rule['language_code'] ?? '')));
-                        if ($ruleLang === $primaryLang) {
-                            return $rule['url'] ?? $this->destination_url;
-                        }
-                    }
-                }
-            }
-
-            if ($type === 'rotation') {
-                $items = $rules['rotation'] ?? [];
-                if (! empty($items)) {
-                    $totalWeight = array_sum(array_column($items, 'weight'));
-                    if ($totalWeight > 0) {
-                        $rand = mt_rand(1, $totalWeight);
-                        $currentWeight = 0;
-                        foreach ($items as $item) {
-                            $currentWeight += (int) ($item['weight'] ?? 0);
-                            if ($rand <= $currentWeight) {
-                                return $item['url'] ?? $this->destination_url;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return $this->destination_url;
-        }
-
-        // Evaluate new multi-filter rule engine
-        if (! is_array($rules)) {
-            return $this->destination_url;
-        }
-
-        // Lazy-loaded request properties for maximum performance
-        $parsedUserAgent = null;
-        $deviceType = null;
-        $platformOs = null;
-        $countryCode = null;
-        $browserLanguages = null;
-
-        foreach ($rules as $rule) {
-            $filters = $rule['filters'] ?? [];
-            if (empty($filters)) {
-                continue;
-            }
-
-            $matchType = $rule['match'] ?? 'or';
-            $ruleMatches = $matchType === 'and'; // 'and' defaults to true (requires all matching), 'or' defaults to false
-
-            foreach ($filters as $filter) {
-                $filterType = $filter['type'] ?? '';
-                $filterData = $filter['data'] ?? [];
-                $filterMatches = false;
-
-                if ($filterType === 'device') {
-                    if ($deviceType === null) {
-                        $deviceType = app(UserAgentParser::class)->getDeviceType($request->userAgent() ?? '');
-                    }
-                    $filterMatches = in_array($deviceType, $filterData['devices'] ?? []);
-                } elseif ($filterType === 'platform') {
-                    if ($platformOs === null) {
-                        $rawOs = app(UserAgentParser::class)->getOs($request->userAgent() ?? '') ?? '';
-                        $platformOs = match (true) {
-                            stripos($rawOs, 'Windows') !== false => 'windows',
-                            stripos($rawOs, 'Fire OS') !== false => 'fire_os',
-                            stripos($rawOs, 'iOS') !== false || stripos($rawOs, 'iPad') !== false => 'ios',
-                            stripos($rawOs, 'Mac') !== false => 'mac',
-                            stripos($rawOs, 'Android') !== false => 'android',
-                            stripos($rawOs, 'Linux') !== false => 'linux',
-                            default => strtolower($rawOs),
-                        };
-                    }
-                    $filterMatches = in_array($platformOs, $filterData['platforms'] ?? []);
-                } elseif ($filterType === 'country') {
-                    if ($countryCode === null) {
-                        $countryCode = ClientIpExtractor::getCountryCode($request);
-                        if (! $countryCode) {
-                            $ip = ClientIpExtractor::getIp($request);
-                            $geo = app(GeoIpService::class)->resolve($ip);
-                            $countryCode = $geo['country_code'] ?? '';
-                        }
-                        $countryCode = strtoupper(trim($countryCode));
-                    }
-                    $filterMatches = in_array($countryCode, array_map('strtoupper', $filterData['countries'] ?? []));
-                } elseif ($filterType === 'language') {
-                    if ($browserLanguages === null) {
-                        $browserLanguages = array_map(function ($lang) {
-                            return strtolower(trim(str_replace('_', '-', $lang)));
-                        }, $request->getLanguages());
-                    }
-
-                    $filterLangs = array_map('strtolower', $filterData['languages'] ?? []);
-
-                    // Pass 1: Exact match
-                    foreach ($browserLanguages as $browserLang) {
-                        if (in_array($browserLang, $filterLangs)) {
-                            $filterMatches = true;
-                            break;
-                        }
-                    }
-
-                    // Pass 2: Fallback prefix match
-                    if (! $filterMatches) {
-                        foreach ($browserLanguages as $browserLang) {
-                            $primaryLang = explode('-', $browserLang)[0];
-                            if (in_array($primaryLang, $filterLangs)) {
-                                $filterMatches = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if ($matchType === 'and') {
-                    if (! $filterMatches) {
-                        $ruleMatches = false;
-                        break; // fail fast
-                    }
-                } else { // 'or'
-                    if ($filterMatches) {
-                        $ruleMatches = true;
-                        break; // succeed fast
-                    }
-                }
-            }
-
-            if ($ruleMatches && ! empty($rule['url'])) {
-                return $rule['url'];
-            }
-        }
-
-        return $this->destination_url;
-    }
-
-    /**
-     * Atomically increment visit counters — single query when unique,
-     * to avoid race conditions and two round-trips. Supports write-back caching.
-     */
-    public function incrementVisits(bool $isUnique = false, bool $isQrScan = false): void
-    {
-        if (config('filament-short-url.counter_buffering.enabled', false)) {
-            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
-            try {
-                // Increment atomically in cache (works on Redis, Memcached, Database, File, etc.)
-                cache()->increment("{$prefix}total:{$this->id}");
-
-                if ($isUnique) {
-                    cache()->increment("{$prefix}unique:{$this->id}");
-                }
-
-                if ($isQrScan) {
-                    cache()->increment("{$prefix}qr:{$this->id}");
-                }
-
-                // Add to dirty IDs list atomically
-                if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
-                    Redis::sadd("{$prefix}dirty_ids", $this->id);
-                } else {
-                    // Safe, concurrent-proof fallback for non-Redis stores using Cache locks
-                    $lock = cache()->lock("{$prefix}dirty_ids_lock", 2);
-                    $lock->get(function () use ($prefix) {
-                        $dirtyIds = cache()->get("{$prefix}dirty_ids", []);
-                        if (! is_array($dirtyIds)) {
-                            $dirtyIds = [];
-                        }
-                        if (! in_array($this->id, $dirtyIds)) {
-                            $dirtyIds[] = $this->id;
-                            cache()->forever("{$prefix}dirty_ids", $dirtyIds);
-                        }
-                    });
-                }
-
-                return;
-            } catch (\Throwable $e) {
-                // Log and fall back to queue job below if caching backend fails
-            }
-
-            // Safe fallback: Dispatch async job so clicks are queued and not lost on cache clear
-            $connection = config('filament-short-url.queue_connection', 'sync');
-            dispatch((new IncrementVisitJob($this->id, $isUnique, $isQrScan))->onConnection($connection ?: 'sync'));
-
-            return;
-        }
-
-        $updates = [];
-        if ($isUnique) {
-            $updates['unique_visits'] = DB::raw('unique_visits + 1');
-        }
-        if ($isQrScan) {
-            $updates['qr_scans'] = DB::raw('qr_scans + 1');
-        }
-
-        $this->newQuery()
-            ->where('id', $this->id)
-            ->increment('total_visits', 1, $updates);
-
-        // Keep the real-time cache count incremented
-        $cacheKey = "filament-short-url:visits:{$this->id}";
-        try {
-            if (cache()->has($cacheKey)) {
-                cache()->increment($cacheKey);
-            } else {
-                cache()->put($cacheKey, $this->total_visits + 1, 3600);
-            }
-        } catch (\Throwable $e) {
-            // Ignore cache errors in increment to never disrupt redirection
-        }
-    }
-
-    /**
-     * Get cached statistics for this short URL.
-     *
-     * @return array<string, mixed>
-     */
-    public function getCachedStats(?string $dateFrom = null, ?string $dateTo = null): array
-    {
-        $dateFromClean = $dateFrom ? Carbon::parse($dateFrom)->toDateString() : null;
-        $dateToClean = $dateTo ? Carbon::parse($dateTo)->toDateString() : null;
-
-        $cacheTtl = (int) config('filament-short-url.geo_ip.stats_cache_ttl', 300);
-        $cacheKey = "short_url_stats_{$this->id}_".($dateFromClean ?: 'all').'_'.($dateToClean ?: 'all');
-
-        return cache()->remember($cacheKey, $cacheTtl, function () use ($dateFromClean, $dateToClean) {
-            $today = Carbon::today()->toDateString();
-
-            // 1. Fetch daily stats (aggregated historical data)
-            $dailyQuery = $this->dailyStats()->where('date', '<', $today);
-            if ($dateFromClean) {
-                $dailyQuery->where('date', '>=', $dateFromClean);
-            }
-            if ($dateToClean && $dateToClean < $today) {
-                $dailyQuery->where('date', '<=', $dateToClean);
-            }
-            $dailyStatsRows = $dailyQuery->get();
-
-            // 2. Fetch raw visits for today (if within date range)
-            $includeToday = ($dateToClean === null || $dateToClean >= $today);
-            if ($dateFromClean && $dateFromClean > $today) {
-                $includeToday = false;
-            }
-
-            $rawVisits = [];
-            if ($includeToday) {
-                $rawVisits = $this->visits()->where('visited_at', '>=', $today.' 00:00:00')->get();
-            }
-
-            // Helper to merge associative stats arrays
-            $mergeStats = function (array $base, ?array $additional): array {
-                if (empty($additional)) {
-                    return $base;
-                }
-                foreach ($additional as $key => $val) {
-                    $base[$key] = ($base[$key] ?? 0) + $val;
-                }
-
-                return $base;
-            };
-
-            // Initialize metrics
-            $totalVisits = 0;
-            $uniqueVisitsCount = 0;
-            $visitsToday = count($rawVisits);
-            $visitsThisWeek = 0;
-            $visitsThisMonth = 0;
-            $qrScans = 0;
-
-            $visitsByCountry = [];
-            $visitsByCity = [];
-            $visitsByDevice = [];
-            $visitsByBrowser = [];
-            $visitsByOs = [];
-            $visitsByReferer = [];
-            $utmSources = [];
-            $utmMediums = [];
-            $utmCampaigns = [];
-            $visitsByLanguage = [];
-
-            // Sum up daily stats
-            $startOfWeek = now()->startOfWeek()->toDateString();
-            $startOfMonth = now()->startOfMonth()->toDateString();
-
-            foreach ($dailyStatsRows as $row) {
-                $totalVisits += $row->visits_count;
-                $uniqueVisitsCount += $row->unique_visits_count;
-                $qrScans += $row->qr_visits_count ?? 0;
-
-                $rowDate = $row->date->toDateString();
-                if ($rowDate >= $startOfWeek) {
-                    $visitsThisWeek += $row->visits_count;
-                }
-                if ($rowDate >= $startOfMonth) {
-                    $visitsThisMonth += $row->visits_count;
-                }
-
-                $visitsByCountry = $mergeStats($visitsByCountry, $row->country_stats);
-                $visitsByCity = $mergeStats($visitsByCity, $row->city_stats);
-                $visitsByDevice = $mergeStats($visitsByDevice, $row->device_stats);
-                $visitsByBrowser = $mergeStats($visitsByBrowser, $row->browser_stats);
-                $visitsByOs = $mergeStats($visitsByOs, $row->os_stats);
-                $visitsByReferer = $mergeStats($visitsByReferer, $row->referer_stats);
-                $utmSources = $mergeStats($utmSources, $row->utm_source_stats);
-                $utmMediums = $mergeStats($utmMediums, $row->utm_medium_stats);
-                $utmCampaigns = $mergeStats($utmCampaigns, $row->utm_campaign_stats);
-                $visitsByLanguage = $mergeStats($visitsByLanguage, $row->language_stats);
-            }
-
-            // Combine today's raw visits
-            if ($includeToday) {
-                $totalVisits += count($rawVisits);
-                $uniqueVisitsCount += count(array_unique(array_filter($rawVisits->pluck('ip_hash')->toArray())));
-
-                $visitsThisWeek += count($rawVisits);
-                $visitsThisMonth += count($rawVisits);
-
-                foreach ($rawVisits as $visit) {
-                    if ($visit->is_qr_scan) {
-                        $qrScans++;
-                    }
-                    if ($visit->browser_language) {
-                        $visitsByLanguage[$visit->browser_language] = ($visitsByLanguage[$visit->browser_language] ?? 0) + 1;
-                    }
-                    if ($visit->country) {
-                        $visitsByCountry[$visit->country] = ($visitsByCountry[$visit->country] ?? 0) + 1;
-                    }
-                    if ($visit->city) {
-                        $cityKey = "{$visit->city} ({$visit->country_code})";
-                        $visitsByCity[$cityKey] = ($visitsByCity[$cityKey] ?? 0) + 1;
-                    }
-                    if ($visit->device_type) {
-                        $visitsByDevice[$visit->device_type] = ($visitsByDevice[$visit->device_type] ?? 0) + 1;
-                    }
-                    if ($visit->browser) {
-                        $visitsByBrowser[$visit->browser] = ($visitsByBrowser[$visit->browser] ?? 0) + 1;
-                    }
-                    if ($visit->operating_system) {
-                        $visitsByOs[$visit->operating_system] = ($visitsByOs[$visit->operating_system] ?? 0) + 1;
-                    }
-                    $refererHost = $visit->referer_host ?: 'Direct';
-                    $visitsByReferer[$refererHost] = ($visitsByReferer[$refererHost] ?? 0) + 1;
-
-                    if ($visit->utm_source) {
-                        $utmSources[$visit->utm_source] = ($utmSources[$visit->utm_source] ?? 0) + 1;
-                    }
-                    if ($visit->utm_medium) {
-                        $utmMediums[$visit->utm_medium] = ($utmMediums[$visit->utm_medium] ?? 0) + 1;
-                    }
-                    if ($visit->utm_campaign) {
-                        $utmCampaigns[$visit->utm_campaign] = ($utmCampaigns[$visit->utm_campaign] ?? 0) + 1;
-                    }
-                }
-            }
-
-            // Build visitsByDay timeline
-            $chartFrom = $dateFromClean ? Carbon::parse($dateFromClean) : now()->subDays(29)->startOfDay();
-            $chartTo = $dateToClean ? Carbon::parse($dateToClean) : now()->endOfDay();
-            $daysDiff = (int) $chartFrom->diffInDays($chartTo);
-
-            $visitsByDay = [];
-            if ($daysDiff > 90) {
-                // Group by month
-                foreach ($dailyStatsRows as $row) {
-                    $m = $row->date->format('Y-m');
-                    $visitsByDay[$m] = ($visitsByDay[$m] ?? 0) + $row->visits_count;
-                }
-                if ($includeToday) {
-                    $mToday = Carbon::parse($today)->format('Y-m');
-                    $visitsByDay[$mToday] = ($visitsByDay[$mToday] ?? 0) + count($rawVisits);
-                }
-            } else {
-                // Initialize timeline with zeros
-                for ($i = $daysDiff; $i >= 0; $i--) {
-                    $d = (clone $chartTo)->subDays($i)->format('Y-m-d');
-                    $visitsByDay[$d] = 0;
-                }
-                // Fill daily stats
-                foreach ($dailyStatsRows as $row) {
-                    $d = $row->date->format('Y-m-d');
-                    if (isset($visitsByDay[$d])) {
-                        $visitsByDay[$d] = $row->visits_count;
-                    }
-                }
-                // Fill today
-                if ($includeToday && isset($visitsByDay[$today])) {
-                    $visitsByDay[$today] = count($rawVisits);
-                }
-            }
-
-            // Sort distributions descending
-            arsort($visitsByCountry);
-            arsort($visitsByCity);
-            arsort($visitsByDevice);
-            arsort($visitsByBrowser);
-            arsort($visitsByOs);
-            arsort($visitsByReferer);
-            arsort($utmSources);
-            arsort($utmMediums);
-            arsort($utmCampaigns);
-            arsort($visitsByLanguage);
-
-            return [
-                'totalVisits' => $totalVisits,
-                'uniqueVisits' => $uniqueVisitsCount,
-                'visitsToday' => $visitsToday,
-                'visitsThisWeek' => $visitsThisWeek,
-                'visitsThisMonth' => $visitsThisMonth,
-                'visitsByDay' => $visitsByDay,
-                'visitsByCountry' => array_slice($visitsByCountry, 0, 10, true),
-                'visitsByCity' => array_slice($visitsByCity, 0, 10, true),
-                'visitsByDevice' => $visitsByDevice,
-                'visitsByBrowser' => array_slice($visitsByBrowser, 0, 8, true),
-                'visitsByOs' => array_slice($visitsByOs, 0, 8, true),
-                'visitsByReferer' => array_slice($visitsByReferer, 0, 10, true),
-                'utmSources' => array_slice($utmSources, 0, 8, true),
-                'utmMediums' => array_slice($utmMediums, 0, 8, true),
-                'utmCampaigns' => array_slice($utmCampaigns, 0, 8, true),
-                'qrScans' => $qrScans,
-                'visitsByLanguage' => array_slice($visitsByLanguage, 0, 10, true),
-            ];
-        });
-    }
-
-    /**
-     * Cache properties to hold preloaded buffered visits for the current request.
-     */
-    protected static ?array $bufferedTotalVisits = null;
-
-    protected static ?array $bufferedUniqueVisits = null;
-
-    protected static ?array $bufferedQrScans = null;
-
-    /**
-     * Preload all buffered clicks in a single batch query for the entire request.
-     * Prevents N+1 database queries even if database cache driver is used.
-     */
-    protected static function loadAllBufferedVisits(): void
-    {
-        if (static::$bufferedTotalVisits !== null) {
-            return;
-        }
-
-        static::$bufferedTotalVisits = [];
-        static::$bufferedUniqueVisits = [];
-        static::$bufferedQrScans = [];
-
-        if (! config('filament-short-url.counter_buffering.enabled', false)) {
-            return;
-        }
-
-        $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
-        $dirtyKey = "{$prefix}dirty_ids";
-
-        // 1. Fetch the list of dirty IDs (URLs with pending buffered clicks) in one query
-        $dirtyIds = [];
-        try {
-            if (cache()->getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
-                $dirtyIds = Redis::smembers($dirtyKey);
-            } else {
-                $dirtyIds = cache()->get($dirtyKey, []);
-            }
-        } catch (\Throwable) {
-            // Fallback
-        }
-
-        if (empty($dirtyIds)) {
-            return;
-        }
-
-        $dirtyIds = array_unique(array_filter((array) $dirtyIds));
-
-        // 2. Build array of keys to fetch in a single cache store read
-        $totalKeys = [];
-        $uniqueKeys = [];
-        $qrKeys = [];
-        foreach ($dirtyIds as $id) {
-            $totalKeys[$id] = "{$prefix}total:{$id}";
-            $uniqueKeys[$id] = "{$prefix}unique:{$id}";
-            $qrKeys[$id] = "{$prefix}qr:{$id}";
-        }
-
-        try {
-            // Cache::many() is highly optimized (e.g. 1 database query for database store, or 1 MGET for Redis)
-            $totals = cache()->many(array_values($totalKeys));
-            $uniques = cache()->many(array_values($uniqueKeys));
-            $qrs = cache()->many(array_values($qrKeys));
-
-            foreach ($totalKeys as $id => $key) {
-                static::$bufferedTotalVisits[$id] = (int) ($totals[$key] ?? 0);
-            }
-            foreach ($uniqueKeys as $id => $key) {
-                static::$bufferedUniqueVisits[$id] = (int) ($uniques[$key] ?? 0);
-            }
-            foreach ($qrKeys as $id => $key) {
-                static::$bufferedQrScans[$id] = (int) ($qrs[$key] ?? 0);
-            }
-        } catch (\Throwable) {
-            // Fallback
-        }
-    }
-
-    /**
-     * Get the total visits count, merging the database value with any buffered clicks in cache.
-     * Prevents database N+1 queries.
-     */
-    public function getTotalVisitsAttribute(): int
-    {
-        $dbValue = $this->attributes['total_visits'] ?? 0;
-
-        if (! config('filament-short-url.counter_buffering.enabled', false)) {
-            return $dbValue;
-        }
-
-        static::loadAllBufferedVisits();
-
-        $buffered = static::$bufferedTotalVisits[$this->id] ?? 0;
-
-        return $dbValue + $buffered;
-    }
-
-    /**
-     * Get the unique visits count, merging the database value with any buffered clicks in cache.
-     * Prevents database N+1 queries.
-     */
-    public function getUniqueVisitsAttribute(): int
-    {
-        $dbValue = $this->attributes['unique_visits'] ?? 0;
-
-        if (! config('filament-short-url.counter_buffering.enabled', false)) {
-            return $dbValue;
-        }
-
-        static::loadAllBufferedVisits();
-
-        $buffered = static::$bufferedUniqueVisits[$this->id] ?? 0;
-
-        return $dbValue + $buffered;
-    }
-
-    /**
-     * Get the QR scans count, merging the database value with any buffered clicks in cache.
-     * Prevents database N+1 queries.
-     */
-    public function getQrScansAttribute(): int
-    {
-        $dbValue = $this->attributes['qr_scans'] ?? 0;
-
-        if (! config('filament-short-url.counter_buffering.enabled', false)) {
-            return $dbValue;
-        }
-
-        static::loadAllBufferedVisits();
-
-        $buffered = static::$bufferedQrScans[$this->id] ?? 0;
-
-        return $dbValue + $buffered;
+        return rtrim($baseUrl, '/').'/'.$this->url_key;
     }
 }

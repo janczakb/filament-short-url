@@ -10,17 +10,11 @@ namespace Bjanczak\FilamentShortUrl\Services;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 class ShortUrlSettingsManager
 {
     private ?array $cache = null;
-
-    public function getSettingsPath(): string
-    {
-        return storage_path('app/filament-short-url-settings.json');
-    }
 
     /**
      * Get all settings merged with configuration defaults.
@@ -49,32 +43,6 @@ class ShortUrlSettingsManager
                     $decoded[$key] = json_decode($val, true);
                 }
 
-                // If DB is empty, check if we can import legacy settings from JSON file
-                if (empty($decoded)) {
-                    $legacyPath = $this->getSettingsPath();
-                    if (File::exists($legacyPath)) {
-                        try {
-                            $legacyContent = File::get($legacyPath);
-                            $legacySettings = json_decode($legacyContent, true) ?: [];
-
-                            // Import each legacy setting to database
-                            foreach ($legacySettings as $k => $v) {
-                                DB::table('short_url_settings')->updateOrInsert(
-                                    ['key' => $k],
-                                    ['value' => json_encode($v), 'updated_at' => now(), 'created_at' => now()]
-                                );
-                            }
-
-                            // Rename the legacy file to avoid re-importing
-                            File::move($legacyPath, $legacyPath.'.bak');
-
-                            return $legacySettings;
-                        } catch (\Throwable $e) {
-                            // Suppress import failures to prevent boot crash
-                        }
-                    }
-                }
-
                 return $decoded;
             } catch (\Throwable $e) {
                 // Fallback to empty if DB query fails during boot/installation
@@ -94,6 +62,8 @@ class ShortUrlSettingsManager
         // Merge stored settings with default values from config()
         $this->cache = array_merge([
             'route_prefix' => config('filament-short-url.route_prefix', 's'),
+            'lock_url_key' => config('filament-short-url.lock_url_key', false),
+            'disable_default_domain' => config('filament-short-url.disable_default_domain', false),
             'redirect_status_code' => config('filament-short-url.redirect_status_code', 302),
             'key_length' => config('filament-short-url.key_length', 6),
             'geo_ip_enabled' => config('filament-short-url.geo_ip.enabled', true),
@@ -115,6 +85,7 @@ class ShortUrlSettingsManager
             'rate_limiting_max_attempts' => config('filament-short-url.rate_limiting.max_attempts', 60),
             'rate_limiting_decay_seconds' => config('filament-short-url.rate_limiting.decay_seconds', 60),
             'tracking_enabled' => config('filament-short-url.tracking.enabled', true),
+            'tracking_anonymize_ips' => config('filament-short-url.tracking.anonymize_ips', false),
             'tracking_fields_ip_address' => config('filament-short-url.tracking.fields.ip_address', true),
             'tracking_fields_browser' => config('filament-short-url.tracking.fields.browser', true),
             'tracking_fields_browser_version' => config('filament-short-url.tracking.fields.browser_version', true),
@@ -151,6 +122,7 @@ class ShortUrlSettingsManager
             'assetlinks_json' => config('filament-short-url.deep_linking.assetlinks_json'),
             // Webhook signing secret
             'webhook_signing_secret' => null,
+            'enable_fallback_route' => config('filament-short-url.enable_fallback_route', true),
         ], $stored);
 
         return $this->cache;
@@ -171,8 +143,14 @@ class ShortUrlSettingsManager
         $oldPrefix = $this->get('route_prefix');
 
         // Keep only supported settings keys to prevent bloat
+        // Canonical list of all settings that may be persisted to the database.
+        // NOTE: 'enable_fallback_route' is intentionally excluded — it controls route
+        // registration which happens at boot time, before DB settings are applied.
+        // Configure it via config/filament-short-url.php or SHORT_URL_ENABLE_FALLBACK env variable.
         $keys = [
             'route_prefix',
+            'lock_url_key',
+            'disable_default_domain',
             'redirect_status_code',
             'key_length',
             'geo_ip_enabled',
@@ -194,6 +172,7 @@ class ShortUrlSettingsManager
             'rate_limiting_max_attempts',
             'rate_limiting_decay_seconds',
             'tracking_enabled',
+            'tracking_anonymize_ips',
             'tracking_fields_ip_address',
             'tracking_fields_browser',
             'tracking_fields_browser_version',
@@ -282,6 +261,9 @@ class ShortUrlSettingsManager
         if (isset($filtered['tracking_enabled'])) {
             $filtered['tracking_enabled'] = (bool) $filtered['tracking_enabled'];
         }
+        if (isset($filtered['tracking_anonymize_ips'])) {
+            $filtered['tracking_anonymize_ips'] = (bool) $filtered['tracking_anonymize_ips'];
+        }
         if (isset($filtered['tracking_fields_ip_address'])) {
             $filtered['tracking_fields_ip_address'] = (bool) $filtered['tracking_fields_ip_address'];
         }
@@ -321,6 +303,15 @@ class ShortUrlSettingsManager
         if (isset($filtered['global_webhook_enabled'])) {
             $filtered['global_webhook_enabled'] = (bool) $filtered['global_webhook_enabled'];
         }
+        if (isset($filtered['api_enabled'])) {
+            $filtered['api_enabled'] = (bool) $filtered['api_enabled'];
+        }
+        if (isset($filtered['lock_url_key'])) {
+            $filtered['lock_url_key'] = (bool) $filtered['lock_url_key'];
+        }
+        if (isset($filtered['disable_default_domain'])) {
+            $filtered['disable_default_domain'] = (bool) $filtered['disable_default_domain'];
+        }
 
         // Security v2.0 casts
         if (isset($filtered['vpn_detection_enabled'])) {
@@ -336,21 +327,28 @@ class ShortUrlSettingsManager
         $newKeys = [];
         if (isset($filtered['api_keys']) && is_array($filtered['api_keys'])) {
             foreach ($filtered['api_keys'] as &$keyObj) {
-                $key = $keyObj['key'] ?? '';
-                if (str_starts_with($key, 'sh_key_')) {
-                    $plainKey = $key;
-                    $hashed = hash('sha256', $plainKey);
-                    $masked = substr($plainKey, 0, 11).'••••'.substr($plainKey, -4);
+                $rawKey = $keyObj['key'] ?? '';
+
+                // Only hash plain-text keys (prefix 'sh_key_' without masking characters).
+                // Masked keys (containing '••••') are already stored hashed — re-hashing
+                // the masked value would permanently break authentication for that key.
+                $isPlainKey = str_starts_with($rawKey, 'sh_key_') && ! str_contains($rawKey, '••••');
+
+                if ($isPlainKey) {
+                    $hashed = hash('sha256', $rawKey);
+                    $masked = substr($rawKey, 0, 11).'••••'.substr($rawKey, -4);
 
                     $keyObj['hashed_key'] = $hashed;
                     $keyObj['key'] = $masked;
 
                     $newKeys[] = [
                         'name' => $keyObj['name'] ?? 'API Key',
-                        'plain' => $plainKey,
+                        'plain' => $rawKey,
                     ];
                 }
             }
+            unset($keyObj); // Break reference from foreach
+
             if (! empty($newKeys)) {
                 session()->flash('fsu_new_api_keys', $newKeys);
             }
@@ -358,8 +356,8 @@ class ShortUrlSettingsManager
 
         try {
             if (Schema::hasTable('short_url_settings')) {
-                DB::transaction(function () use ($filtered) {
-                    // Update or insert each key
+                DB::transaction(function () use ($filtered, $keys) {
+                    // Update or insert each submitted key
                     foreach ($filtered as $key => $val) {
                         DB::table('short_url_settings')->updateOrInsert(
                             ['key' => $key],
@@ -367,9 +365,13 @@ class ShortUrlSettingsManager
                         );
                     }
 
-                    // Delete settings from the database that are no longer in keys (e.g. removed features)
+                    // Remove keys that are no longer part of our canonical schema.
+                    // We intentionally delete from the FULL $keys whitelist, NOT from
+                    // array_keys($filtered) — otherwise a partial form submission
+                    // (e.g. saving only the QR tab) would destroy unrelated settings
+                    // such as API keys, webhook secrets, etc.
                     DB::table('short_url_settings')
-                        ->whereNotIn('key', array_keys($filtered))
+                        ->whereNotIn('key', $keys)
                         ->delete();
                 });
             }
@@ -380,7 +382,17 @@ class ShortUrlSettingsManager
         if (app()->bound('cache')) {
             cache()->forget('filament-short-url:settings');
         }
+
+        // Detect counter_buffering mode switch — flush orphaned buffer caches to prevent
+        // the two counting systems from diverging after a toggle.
+        $oldBuffering = (bool) ($this->cache['counter_buffering_enabled'] ?? false);
         $this->cache = null;
+
+        $newBuffering = (bool) ($filtered['counter_buffering_enabled'] ?? $oldBuffering);
+        if ($oldBuffering !== $newBuffering && app()->bound('cache')) {
+            $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
+            cache()->forget("{$prefix}dirty_ids");
+        }
 
         // Apply immediately to current request config
         $this->applyConfigOverrides();
@@ -428,6 +440,7 @@ class ShortUrlSettingsManager
             'filament-short-url.rate_limiting.max_attempts' => $settings['rate_limiting_max_attempts'],
             'filament-short-url.rate_limiting.decay_seconds' => $settings['rate_limiting_decay_seconds'],
             'filament-short-url.tracking.enabled' => $settings['tracking_enabled'],
+            'filament-short-url.tracking.anonymize_ips' => $settings['tracking_anonymize_ips'],
             'filament-short-url.tracking.fields.ip_address' => $settings['tracking_fields_ip_address'],
             'filament-short-url.tracking.fields.browser' => $settings['tracking_fields_browser'],
             'filament-short-url.tracking.fields.browser_version' => $settings['tracking_fields_browser_version'],
@@ -449,6 +462,8 @@ class ShortUrlSettingsManager
             'filament-short-url.webhook_events' => $settings['webhook_events'] ?? ['visited'],
             'filament-short-url.api_enabled' => (bool) ($settings['api_enabled'] ?? false),
             'filament-short-url.site_name' => $settings['site_name'] ?? null,
+            'filament-short-url.lock_url_key' => (bool) ($settings['lock_url_key'] ?? false),
+            'filament-short-url.disable_default_domain' => (bool) ($settings['disable_default_domain'] ?? false),
             // Security v2.0
             'filament-short-url.vpn_detection.enabled' => (bool) ($settings['vpn_detection_enabled'] ?? false),
             'filament-short-url.vpn_detection.driver' => $settings['vpn_detection_driver'] ?? 'ip-api',

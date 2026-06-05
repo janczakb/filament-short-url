@@ -3,10 +3,10 @@
 namespace Bjanczak\FilamentShortUrl\Console\Commands;
 
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 
 class SyncBufferedCountersCommand extends Command
 {
@@ -21,19 +21,26 @@ class SyncBufferedCountersCommand extends Command
         $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
         $dirtyKey = "{$prefix}dirty_ids";
 
-        // Pull the list atomically to avoid race conditions with incoming clicks
-        if (Cache::getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
+        // Atomically pull the dirty-ID list so incoming increments during this command
+        // are written to a fresh list rather than being lost. Strategy is driver-aware:
+        // Redis uses RENAME + SMEMBERS (O(N)) for true atomicity; all other stores use
+        // Cache::pull() which is atomic on most drivers (file, database, memcached).
+        $store = Cache::store()->getStore();
+        $isRedis = $store instanceof RedisStore;
+
+        if ($isRedis) {
             $tempKey = "{$dirtyKey}:temp:".time();
             try {
-                if (Redis::exists($dirtyKey)) {
-                    Redis::rename($dirtyKey, $tempKey);
-                    $dirtyIds = Redis::smembers($tempKey);
-                    Redis::del($tempKey);
+                $conn = $store->connection();
+                if ($conn->exists($dirtyKey)) {
+                    $conn->rename($dirtyKey, $tempKey);
+                    $rawIds = $conn->smembers($tempKey);
+                    $conn->del($tempKey);
+                    $dirtyIds = $rawIds ?: [];
                 } else {
                     $dirtyIds = [];
                 }
             } catch (\Throwable) {
-                // If key does not exist or rename fails, fallback
                 $dirtyIds = [];
             }
         } else {
@@ -46,7 +53,7 @@ class SyncBufferedCountersCommand extends Command
             return 0;
         }
 
-        $dirtyIds = array_unique(array_filter($dirtyIds));
+        $dirtyIds = array_unique(array_filter(array_map('intval', $dirtyIds)));
         $processed = 0;
         $updatesToMake = [];
 
@@ -76,7 +83,11 @@ class SyncBufferedCountersCommand extends Command
 
         try {
             DB::transaction(function () use ($updatesToMake, &$processed) {
-                $shortUrls = ShortUrl::whereIn('id', array_keys($updatesToMake))->get(['id', 'url_key']);
+                $shortUrls = ShortUrl::whereIn('id', array_keys($updatesToMake))
+                    ->with('customDomain')
+                    ->get(['id', 'url_key', 'custom_domain_id']);
+
+                $appHost = parse_url(config('app.url'), PHP_URL_HOST);
 
                 foreach ($updatesToMake as $id => $deltas) {
                     ShortUrl::where('id', $id)->update([
@@ -87,12 +98,24 @@ class SyncBufferedCountersCommand extends Command
                     $processed++;
                 }
 
+                // Bust redirect cache for all host-variant keys so subsequent requests
+                // see fresh counters (for max_visits enforcement etc.)
                 foreach ($shortUrls as $url) {
-                    Cache::forget("filament-short-url:{$url->url_key}");
+                    $hostsToForget = array_unique(array_filter([
+                        'default',
+                        $appHost,
+                        $url->customDomain?->domain,
+                    ]));
+
+                    foreach ($hostsToForget as $host) {
+                        Cache::forget("filament-short-url:{$url->url_key}:{$host}");
+                    }
                 }
             });
         } catch (\Throwable $e) {
-            // Restore pulled values in cache so no clicks are lost
+            // DB transaction failed — restore pulled cache values so no clicks are lost.
+            // Increments are used (not set) to safely merge with any new clicks that
+            // arrived during the failed transaction window.
             foreach ($updatesToMake as $id => $deltas) {
                 $totalKey = "{$prefix}total:{$id}";
                 $uniqueKey = "{$prefix}unique:{$id}";
@@ -109,9 +132,10 @@ class SyncBufferedCountersCommand extends Command
                 }
             }
 
-            // Put the IDs back into the dirty list
-            if (Cache::getDefaultDriver() === 'redis' && class_exists(Redis::class)) {
-                Redis::sadd($dirtyKey, ...array_keys($updatesToMake));
+            // Restore dirty IDs using the same driver-aware strategy
+            if ($isRedis) {
+                $conn = $store->connection();
+                $conn->sadd($dirtyKey, ...array_keys($updatesToMake));
             } else {
                 $lock = Cache::lock("{$prefix}dirty_ids_lock", 2);
                 $lock->get(function () use ($prefix, $updatesToMake) {

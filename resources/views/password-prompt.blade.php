@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('filament-short-url::default.password_title') ?? 'Password Protected' }}</title>
+    <title>{{ __('filament-short-url::default.password_title') }}</title>
     
     <!-- Premium Google Fonts: Bricolage Grotesque -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -49,10 +49,10 @@
                 <span class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white mb-3">{{ $siteName }}</span>
             @endif
             <p class="text-xl font-medium text-neutral-900 dark:text-white mt-2">
-                {{ __('filament-short-url::default.password_title') ?? 'Password Protected' }}
+                {{ __('filament-short-url::default.password_title') }}
             </p>
             <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
-                {{ __('filament-short-url::default.password_description') ?? 'This link is password-protected. Please enter the correct password to continue.' }}
+                {{ __('filament-short-url::default.password_description') }}
             </p>
         </div>
         
@@ -63,7 +63,7 @@
             <div class="flex flex-col gap-1.5 w-full">
                 <div class="relative flex flex-col justify-center px-3 py-2 w-full rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus-within:ring-2 focus-within:ring-neutral-900 dark:focus-within:ring-white transition duration-200">
                     <label for="password" class="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide select-none">
-                        {{ __('filament-short-url::default.password_placeholder') ?? 'Password' }}
+                        {{ __('filament-short-url::default.password_placeholder') }}
                     </label>
                     <input 
                         type="password" 
@@ -85,7 +85,7 @@
                 type="submit" 
                 class="w-full mt-2 py-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-neutral-900 text-white font-semibold text-sm transition duration-200 shadow-sm flex justify-center items-center gap-2"
             >
-                <span>{{ __('filament-short-url::default.password_btn_unlock') ?? 'Unlock & Redirect' }}</span>
+                <span>{{ __('filament-short-url::default.password_btn_unlock') }}</span>
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>

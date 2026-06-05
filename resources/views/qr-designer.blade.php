@@ -9,7 +9,6 @@
 
     if (isset($component) && method_exists($component, 'getStatePath')) {
         $statePath = $component->getStatePath();
-        \Illuminate\Support\Facades\Log::info('QR DESIGNER STATE PATH: ' . $statePath);
         if ($statePath) {
             $parts = explode('.', $statePath);
             if (end($parts) === 'qr_designer') {

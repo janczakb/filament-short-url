@@ -45,12 +45,14 @@ class ShortUrlGlobalOverview extends BaseWidget
             Stat::make(__('filament-short-url::default.stats_card_total'), number_format($clickData['totalVisits']))
                 ->description(abs($clicksTrend).'% '.($clicksTrend >= 0 ? 'up' : 'down').' vs last 7 days')
                 ->descriptionIcon($clicksTrend >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
+                ->chart($clickData['clicksChart'] ?? [])
                 ->icon('heroicon-o-cursor-arrow-rays')
                 ->color($clicksTrend >= 0 ? 'success' : 'danger'),
 
             Stat::make(__('filament-short-url::default.stats_card_unique'), number_format($clickData['uniqueVisits']))
                 ->description(abs($uniquesTrend).'% '.($uniquesTrend >= 0 ? 'up' : 'down').' vs last 7 days')
                 ->descriptionIcon($uniquesTrend >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
+                ->chart($clickData['uniquesChart'] ?? [])
                 ->icon('heroicon-o-user-group')
                 ->color($uniquesTrend >= 0 ? 'success' : 'danger'),
         ];
@@ -112,6 +114,34 @@ class ShortUrlGlobalOverview extends BaseWidget
                 ->distinct('ip_hash')
                 ->count('ip_hash');
 
+            // Fetch last 7 days chart data via database-level aggregation to avoid loading raw models into memory
+            $driver = DB::connection()->getDriverName();
+            $dateExpression = match ($driver) {
+                'sqlite' => "strftime('%Y-%m-%d', visited_at)",
+                'pgsql' => "to_char(visited_at, 'YYYY-MM-DD')",
+                default => "DATE_FORMAT(visited_at, '%Y-%m-%d')",
+            };
+
+            $dailyClicks = ShortUrlVisit::select(DB::raw("{$dateExpression} as date"), DB::raw('COUNT(*) as count'))
+                ->where('visited_at', '>=', now()->subDays(6)->startOfDay())
+                ->groupBy('date')
+                ->pluck('count', 'date')
+                ->toArray();
+
+            $dailyUniques = ShortUrlVisit::select(DB::raw("{$dateExpression} as date"), DB::raw('COUNT(DISTINCT ip_hash) as count'))
+                ->where('visited_at', '>=', now()->subDays(6)->startOfDay())
+                ->groupBy('date')
+                ->pluck('count', 'date')
+                ->toArray();
+
+            $clicksChart = [];
+            $uniquesChart = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $targetDate = now()->subDays($i)->toDateString();
+                $clicksChart[] = (int) ($dailyClicks[$targetDate] ?? 0);
+                $uniquesChart[] = (int) ($dailyUniques[$targetDate] ?? 0);
+            }
+
             return [
                 'totalVisits' => (int) ($agg->total_visits ?? 0),
                 'uniqueVisits' => (int) ($agg->unique_visits ?? 0),
@@ -119,6 +149,8 @@ class ShortUrlGlobalOverview extends BaseWidget
                 'prev7Clicks' => $prev7Clicks,
                 'last7Uniques' => $last7Uniques,
                 'prev7Uniques' => $prev7Uniques,
+                'clicksChart' => $clicksChart,
+                'uniquesChart' => $uniquesChart,
             ];
         });
     }

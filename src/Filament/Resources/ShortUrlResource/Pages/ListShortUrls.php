@@ -20,13 +20,16 @@ class ListShortUrls extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->label(__('filament-short-url::default.empty_state_action'))
+                ->modalHeading(__('filament-short-url::default.empty_state_action'))
                 ->icon('heroicon-o-plus')
                 ->size('sm')
                 ->color('primary')
                 ->modalWidth('4xl')
-                ->mutateFormDataUsing(function (array $data): array {
+                ->modalAutofocus(false)
+                ->mutateFormDataUsing(function (array $data, ShortUrlService $service): array {
                     if (empty($data['url_key'])) {
-                        $data['url_key'] = app(ShortUrlService::class)->generateKey();
+                        $data['url_key'] = $service->generateKey();
                     }
 
                     return $data;
@@ -68,16 +71,16 @@ class ListShortUrls extends ManageRecords
                     $encoded = urlencode($shortUrl);
                     $eid = 'fsu_'.substr(md5($shortUrl), 0, 8);
 
-                    $successTitle = __('filament-short-url::default.success_modal_title') ?? 'Your link & QR code are ready!';
-                    $successSubtitle = __('filament-short-url::default.success_modal_subtitle') ?? 'Time to get some clicks 🎉';
-                    $successHelper = __('filament-short-url::default.success_modal_helper') ?? 'Copy and share manually or choose a platform.';
-                    $downloadSvgText = __('filament-short-url::default.qr_download_svg') ?? 'Download SVG';
-                    $downloadPngText = __('filament-short-url::default.qr_download_png') ?? 'Download PNG';
-                    $closeButtonText = __('filament-short-url::default.close_button') ?? 'Close';
-                    $copyLinkText = __('filament-short-url::default.action_copy') ?? 'Copy link';
-                    $qrCodeText = __('filament-short-url::default.action_qr') ?? 'QR Code';
-                    $openLinkText = __('filament-short-url::default.open_link') ?? 'Open link';
-                    $dontShowAgainText = __('filament-short-url::default.dont_show_again') ?? "Don't show sharing options after creating a link";
+                    $successTitle = __('filament-short-url::default.success_modal_title');
+                    $successSubtitle = __('filament-short-url::default.success_modal_subtitle');
+                    $successHelper = __('filament-short-url::default.success_modal_helper');
+                    $downloadSvgText = __('filament-short-url::default.qr_download_svg');
+                    $downloadPngText = __('filament-short-url::default.qr_download_png');
+                    $closeButtonText = __('filament-short-url::default.close_button');
+                    $copyLinkText = __('filament-short-url::default.action_copy');
+                    $qrCodeText = __('filament-short-url::default.action_qr');
+                    $openLinkText = __('filament-short-url::default.open_link');
+                    $dontShowAgainText = __('filament-short-url::default.dont_show_again');
 
                     $record = $recordId ? ShortUrl::find($recordId) : null;
                     $qrDefaults = $record ? $record->getQrOptions() : config('filament-short-url.qr_defaults', []);

@@ -42,9 +42,14 @@ class ShortUrlTracker
         ?string $utmContent = null,
         bool $isQrScan = false,
         ?string $browserLanguage = null,
+        ?string $selectedVariant = null,
     ): ?ShortUrlVisit {
         $ip = ClientIpExtractor::getIp($request);
-        $ipHash = hash('sha256', $ip);
+
+        // HMAC-SHA256 keyed with app.key — plain SHA-256 is trivially reversible for
+        // IPv4 (only ~4.3B unique values). The app.key salt makes this per-installation
+        // and computationally infeasible to reverse without the secret.
+        $ipHash = hash_hmac('sha256', $ip, config('app.key', ''));
         $ua = $request->userAgent() ?? '';
         $parsed = $this->uaParser->parse($ua);
 
@@ -78,11 +83,16 @@ class ShortUrlTracker
                 ->exists();
         }
 
+        $storedIp = $ip;
+        if ($storedIp && config('filament-short-url.tracking.anonymize_ips', false)) {
+            $storedIp = static::anonymizeIp($storedIp);
+        }
+
         $visit = new ShortUrlVisit;
         $visit->short_url_id = $shortUrl->id;
         $visit->visited_at = now();
         $visit->ip_hash = $ipHash;
-        $visit->ip_address = $shortUrl->track_ip_address ? $ip : null;
+        $visit->ip_address = $shortUrl->track_ip_address ? $storedIp : null;
         $visit->browser = $shortUrl->track_browser ? $parsed['browser'] : null;
         $visit->browser_version = $shortUrl->track_browser_version ? $parsed['browser_version'] : null;
         $visit->operating_system = $shortUrl->track_operating_system ? $parsed['operating_system'] : null;
@@ -96,6 +106,7 @@ class ShortUrlTracker
         $visit->is_proxy = $isProxy;
         $visit->is_qr_scan = $isQrScan;
         $visit->browser_language = $shortUrl->track_browser_language ? $browserLanguage : null;
+        $visit->selected_variant = $selectedVariant;
 
         $visit->utm_source = $utmSource;
         $visit->utm_medium = $utmMedium;
@@ -138,5 +149,32 @@ class ShortUrlTracker
         }
 
         return $visit;
+    }
+
+    /**
+     * Anonymize IP address by masking the last octet (IPv4) or last 80 bits (IPv6) with zeros.
+     */
+    public static function anonymizeIp(?string $ip): ?string
+    {
+        if (empty($ip)) {
+            return null;
+        }
+
+        $packed = @inet_pton($ip);
+        if ($packed === false) {
+            return $ip; // Fallback if parsing fails
+        }
+
+        if (strlen($packed) === 4) {
+            // IPv4: mask last byte (8 bits)
+            $packed[3] = "\x00";
+        } elseif (strlen($packed) === 16) {
+            // IPv6: mask last 10 bytes (80 bits)
+            for ($i = 6; $i < 16; $i++) {
+                $packed[$i] = "\x00";
+            }
+        }
+
+        return inet_ntop($packed);
     }
 }

@@ -29,6 +29,17 @@ class GeoIpService
     private static array $runtimeCache = [];
 
     /**
+     * Flush the in-process runtime cache.
+     *
+     * Call this in test setUp()/tearDown() to prevent state leaking between test cases
+     * when the same PHP process runs multiple tests (e.g. PHPUnit with Pest).
+     */
+    public static function flush(): void
+    {
+        self::$runtimeCache = [];
+    }
+
+    /**
      * Resolve country and city data for the given IP address.
      *
      * @return array{country: string|null, country_code: string|null, city: string|null}
@@ -158,25 +169,32 @@ class GeoIpService
 
         try {
             $reader = new Reader($dbPath);
-            $dbType = $reader->metadata()->databaseType;
 
-            if (str_contains($dbType, 'City')) {
-                $record = $reader->city($ip);
+            try {
+                $dbType = $reader->metadata()->databaseType;
+
+                if (str_contains($dbType, 'City')) {
+                    $record = $reader->city($ip);
+
+                    return [
+                        'country' => $record->country->name ?? null,
+                        'country_code' => $record->country->isoCode ?? null,
+                        'city' => $record->city->name ?? null,
+                    ];
+                }
+
+                $record = $reader->country($ip);
 
                 return [
                     'country' => $record->country->name ?? null,
                     'country_code' => $record->country->isoCode ?? null,
-                    'city' => $record->city->name ?? null,
+                    'city' => null,
                 ];
+            } finally {
+                // Always close the file handle to prevent FD leaks in long-lived
+                // processes such as Laravel Octane or FrankenPHP workers.
+                $reader->close();
             }
-
-            $record = $reader->country($ip);
-
-            return [
-                'country' => $record->country->name ?? null,
-                'country_code' => $record->country->isoCode ?? null,
-                'city' => null,
-            ];
         } catch (\Throwable $e) {
             Log::warning('[FilamentShortUrl] MaxMind GeoIP lookup failed', [
                 'ip' => substr($ip, 0, 8).'***',

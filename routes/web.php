@@ -4,8 +4,6 @@ use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlApiController;
 use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlLogoController;
 use Bjanczak\FilamentShortUrl\Http\Controllers\ShortUrlRedirectController;
 use Bjanczak\FilamentShortUrl\Http\Middleware\AuthenticateShortUrlApi;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/.well-known/apple-app-site-association', [ShortUrlRedirectController::class, 'serveAasa'])
@@ -42,11 +40,10 @@ Route::post('admin/short-url/upload-logo', [ShortUrlLogoController::class, 'uplo
     ->name('short-url.upload-logo')
     ->middleware(['web']);
 
-Route::post('admin/short-url/log-debug', function (Request $request) {
-    Log::info('QR DESIGNER JS DEBUG: '.json_encode($request->all()));
-
-    return response()->json(['status' => 'ok']);
-})->middleware(['web']);
-
 Route::get('short-url/logo/{filename}', [ShortUrlLogoController::class, 'serveLogo'])
     ->name('short-url.logo');
+
+if (config('filament-short-url.enable_fallback_route', true)) {
+    Route::fallback(ShortUrlRedirectController::class)
+        ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
+}

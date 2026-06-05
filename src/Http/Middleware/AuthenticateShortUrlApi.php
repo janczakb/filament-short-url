@@ -9,6 +9,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticateShortUrlApi
 {
+    public function __construct(
+        private readonly ShortUrlSettingsManager $mgr,
+    ) {}
+
     /**
      * Handle an incoming request.
      */
@@ -34,8 +38,7 @@ class AuthenticateShortUrlApi
             ], 401);
         }
 
-        $mgr = app(ShortUrlSettingsManager::class);
-        $keys = $mgr->get('api_keys', []);
+        $keys = $this->mgr->get('api_keys', []);
 
         $valid = false;
         $hashedInput = hash('sha256', $apiKey);

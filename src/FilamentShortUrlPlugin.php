@@ -8,6 +8,7 @@
 
 namespace Bjanczak\FilamentShortUrl;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlCustomDomainResource;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlPixelResource;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ShortUrlSettingsPage;
@@ -53,6 +54,7 @@ class FilamentShortUrlPlugin implements Plugin
             ->resources([
                 ShortUrlResource::class,
                 ShortUrlPixelResource::class,
+                ShortUrlCustomDomainResource::class,
             ])
             ->pages([
                 ShortUrlSettingsPage::class,

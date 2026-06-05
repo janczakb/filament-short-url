@@ -4,6 +4,7 @@ namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 
 use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Models\ShortUrlCustomDomain;
 use Bjanczak\FilamentShortUrl\Services\AppLinkingEngine;
 use Bjanczak\FilamentShortUrl\Services\ClientIpExtractor;
 use Bjanczak\FilamentShortUrl\Services\ProxyDetectionService;
@@ -20,11 +21,46 @@ class ShortUrlRedirectController extends Controller
 {
     public function __construct(
         private readonly ShortUrlService $service,
+        private readonly ProxyDetectionService $proxyDetector,
+        private readonly UserAgentParser $uaParser,
     ) {}
 
-    public function __invoke(Request $request, string $key): Response
+    public function __invoke(Request $request, ?string $key = null): Response
     {
-        $shortUrl = ShortUrl::findByKey($key);
+        if (empty($key)) {
+            $key = $request->path();
+        }
+
+        $host = $request->getHost();
+        $mainDomain = parse_url(config('app.url'), PHP_URL_HOST);
+        $isCustomDomain = $host && strcasecmp($host, $mainDomain) !== 0;
+
+        if ($isCustomDomain) {
+            // Use a short-lived cache shared with ShortUrl::findByKey() to avoid two
+            // separate DB round-trips for the same custom domain on a single request.
+            $customDomain = cache()->remember(
+                "filament-short-url:custom-domain:{$host}",
+                300, // 5 minutes — invalidated by ShortUrlCustomDomain model events
+                fn () => ShortUrlCustomDomain::where('domain', $host)
+                    ->where('is_active', true)
+                    ->first()
+            );
+
+            if (! $customDomain) {
+                abort(404);
+            }
+        } else {
+            $prefix = config('filament-short-url.route_prefix');
+            if (! empty($prefix) && ! $request->route()?->named('short-url.redirect')) {
+                abort(404);
+            }
+        }
+
+        if (str_contains($key, '/')) {
+            abort(404);
+        }
+
+        $shortUrl = ShortUrl::findByKey($key, $host);
 
         // 404 if not found
         if (! $shortUrl) {
@@ -33,7 +69,7 @@ class ShortUrlRedirectController extends Controller
 
         // Redirect to custom expiration URL if defined, otherwise 410 Gone if disabled or expired
         if (! $shortUrl->isActive()) {
-            if ($shortUrl->expiration_redirect_url) {
+            if ($shortUrl->expiration_redirect_url && $shortUrl->is_enabled) {
                 return redirect()->away($shortUrl->expiration_redirect_url, 302);
             }
 
@@ -45,8 +81,7 @@ class ShortUrlRedirectController extends Controller
         // 1. VPN/Proxy & Bot Blocking Check
         if (config('filament-short-url.vpn_detection.enabled', false) && config('filament-short-url.vpn_detection.block_action') === 'block_with_403') {
             $ipAddress = ClientIpExtractor::getIp($request);
-            $proxyDetector = app(ProxyDetectionService::class);
-            $detection = $proxyDetector->detect($ipAddress);
+            $detection = $this->proxyDetector->detect($ipAddress);
             if ($detection['is_proxy'] || $detection['is_bot']) {
                 abort(403, 'Access denied. VPN, Proxy, or automated scraping connection detected.');
             }
@@ -95,7 +130,7 @@ class ShortUrlRedirectController extends Controller
                     RateLimiter::hit($passwordLimiterKey, 60); // 1 minute decay
 
                     $errors = new MessageBag([
-                        'password' => __('filament-short-url::default.password_error') ?? 'Incorrect password.',
+                        'password' => __('filament-short-url::default.password_error'),
                     ]);
 
                     return response(view('filament-short-url::password-prompt', ['errors' => $errors]))
@@ -112,8 +147,7 @@ class ShortUrlRedirectController extends Controller
 
         // App Linking / Deep Links Auto-Open Check
         if ($shortUrl->auto_open_app_mobile) {
-            $uaParser = app(UserAgentParser::class);
-            $deviceType = $uaParser->getDeviceType($request->userAgent() ?? '');
+            $deviceType = $this->uaParser->getDeviceType($request->userAgent() ?? '');
 
             if ($deviceType === 'mobile' || $deviceType === 'tablet') {
                 $matchedApp = AppLinkingEngine::matchApp($destination);
@@ -156,6 +190,8 @@ class ShortUrlRedirectController extends Controller
                     }
                 }
 
+                $selectedVariant = app()->bound('resolved_ab_variant') ? app('resolved_ab_variant') : null;
+
                 $job = new TrackShortUrlVisitJob(
                     shortUrl: $shortUrl,
                     ipAddress: $ipAddress,
@@ -170,6 +206,7 @@ class ShortUrlRedirectController extends Controller
                     utmContent: $request->query('utm_content'),
                     isQrScan: $isQrScan,
                     browserLanguage: $browserLanguage,
+                    selectedVariant: $selectedVariant,
                 );
 
                 if ($connection) {
@@ -199,8 +236,24 @@ class ShortUrlRedirectController extends Controller
                 ]), 410)->header('Content-Type', 'text/html');
             }
 
-            // Manually forget cache since DB-level update does not trigger Eloquent events
-            cache()->forget("filament-short-url:{$shortUrl->url_key}");
+            // Clear ALL cache key variants for this url_key.
+            // The redirect cache uses host-suffixed keys (e.g. "filament-short-url:{key}:{host}").
+            // We must clear every variant to prevent a stale is_enabled=true cache entry
+            // on a different host from allowing the link to be re-used after it is disabled.
+            // This mirrors the logic in ShortUrl::saved().
+            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+            $hostsToForget = array_unique(array_filter([
+                'default',
+                $appHost,
+                $request->getHost(),
+                $shortUrl->custom_domain_id && $shortUrl->customDomain
+                    ? $shortUrl->customDomain->domain
+                    : null,
+            ]));
+
+            foreach ($hostsToForget as $h) {
+                cache()->forget("filament-short-url:{$shortUrl->url_key}:{$h}");
+            }
         }
 
         $activePixels = $shortUrl->pixels->where('is_active', true);

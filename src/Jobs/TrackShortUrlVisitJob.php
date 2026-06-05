@@ -48,6 +48,7 @@ class TrackShortUrlVisitJob implements ShouldQueue
         public readonly ?string $utmContent = null,
         public readonly bool $isQrScan = false,
         public readonly ?string $browserLanguage = null,
+        public readonly ?string $selectedVariant = null,
     ) {
         $this->onQueue(config('filament-short-url.queue_name', 'default'));
     }
@@ -68,8 +69,8 @@ class TrackShortUrlVisitJob implements ShouldQueue
             'HTTP_REFERER' => $this->refererUrl,
         ]);
 
-        $countryCode = isset($this->countryCode) ? $this->countryCode : null;
-        $city = isset($this->city) ? $this->city : null;
+        $countryCode = $this->countryCode;
+        $city = $this->city;
 
         $visit = $tracker->record(
             shortUrl: $shortUrl,
@@ -83,10 +84,18 @@ class TrackShortUrlVisitJob implements ShouldQueue
             utmContent: $this->utmContent,
             isQrScan: $this->isQrScan,
             browserLanguage: $this->browserLanguage,
+            selectedVariant: $this->selectedVariant,
         );
 
-        // Null means bot/crawler — nothing to dispatch or report
+        // Null means the tracker detected a bot/crawler — nothing to dispatch.
         if ($visit === null) {
+            return;
+        }
+
+        // Skip webhooks and GA4 for proxy/VPN visits. The visit is still persisted
+        // to the database for audit purposes, but external integrations should only
+        // receive events for legitimate human traffic — matching what the stats UI shows.
+        if ($visit->is_bot || $visit->is_proxy) {
             return;
         }
 

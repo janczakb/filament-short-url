@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('filament-short-url::default.pixel_loading_title') ?? 'Connecting...' }}</title>
+    <title>{{ __('filament-short-url::default.pixel_loading_title') }}</title>
 
     <!-- Premium Google Fonts: Bricolage Grotesque -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -148,10 +148,10 @@
             </div>
 
             <p class="text-xl font-medium text-neutral-900 dark:text-white mt-2">
-                {{ __('filament-short-url::default.pixel_loading_title') ?? 'Connecting...' }}
+                {{ __('filament-short-url::default.pixel_loading_title') }}
             </p>
             <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
-                {{ __('filament-short-url::default.pixel_loading_description') ?? 'Preparing your connection and forwarding you now.' }}
+                {{ __('filament-short-url::default.pixel_loading_description') }}
             </p>
         </div>
 

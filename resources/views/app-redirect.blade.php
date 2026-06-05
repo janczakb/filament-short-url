@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('filament-short-url::default.app_redirect_title') ?? 'Opening App...' }}</title>
+    <title>{{ __('filament-short-url::default.app_redirect_title') }}</title>
     
     <!-- Premium Google Fonts: Bricolage Grotesque -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,10 +154,10 @@
             </div>
             
             <p class="text-xl font-bold text-neutral-900 dark:text-white mt-2">
-                {{ __('filament-short-url::default.app_redirect_opening_in', ['app' => $appName]) ?? "Opening in {$appName}" }}
+                {{ __('filament-short-url::default.app_redirect_opening_in', ['app' => $appName]) }}
             </p>
             <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-2 max-w-[280px]">
-                {{ __('filament-short-url::default.app_redirect_waiting_text') ?? 'We are redirecting you to the native application. Please wait a moment...' }}
+                {{ __('filament-short-url::default.app_redirect_waiting_text') }}
             </p>
         </div>
         
@@ -171,7 +171,7 @@
                    onmouseover="this.style.filter='brightness(1.05)';"
                    onmouseout="this.style.filter='brightness(0.95)';"
                    id="deep-link-btn">
-                    <span>{{ __('filament-short-url::default.app_redirect_btn_open') ?? 'Open Native App' }}</span>
+                    <span>{{ __('filament-short-url::default.app_redirect_btn_open') }}</span>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
@@ -181,7 +181,7 @@
                 <a href="{{ $destination }}"
                    class="w-full py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-semibold text-sm transition duration-200 flex justify-center items-center gap-2 shadow-sm"
                    id="fallback-btn">
-                    <span>{{ __('filament-short-url::default.app_redirect_btn_browser') ?? 'Open in Browser' }}</span>
+                    <span>{{ __('filament-short-url::default.app_redirect_btn_browser') }}</span>
                 </a>
             </div>
 
@@ -191,10 +191,10 @@
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <span>{{ __('filament-short-url::default.app_redirect_in_app_warning_title') ?? 'In-App Browser Detected' }}</span>
+                    <span>{{ __('filament-short-url::default.app_redirect_in_app_warning_title') }}</span>
                 </p>
                 <p class="text-[11px] leading-relaxed opacity-95">
-                    {{ __('filament-short-url::default.app_redirect_in_app_warning_desc') ?? 'Redirections can be restricted inside Instagram or Facebook. Tap the three dots (•••) in the top-right corner and select "Open in Safari" or "Open in Chrome" to launch the app.' }}
+                    {{ __('filament-short-url::default.app_redirect_in_app_warning_desc') }}
                 </p>
             </div>
         </div>

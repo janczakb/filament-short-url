@@ -219,7 +219,37 @@ it('runs database-level daily stats aggregation successfully', function () {
     expect($stats->device_stats)->toBe(['desktop' => 2, 'mobile' => 1])
         ->and($stats->browser_stats)->toBe(['Chrome' => 2, 'Safari' => 1])
         ->and($stats->os_stats)->toBe(['iOS' => 1, 'macOS' => 2])
-        ->and($stats->country_stats)->toBe(['Poland' => 3])
+        ->and($stats->country_stats)->toBe(['PL' => 3])
         ->and($stats->city_stats)->toBe(['Krakow (PL)' => 1, 'Warsaw (PL)' => 2])
         ->and($stats->language_stats)->toBe(['en' => 1, 'pl' => 2]);
+});
+
+it('anonymizes IP address correctly for IPv4 and IPv6', function () {
+    $ipv4 = '192.168.1.123';
+    $ipv6 = '2001:db8:85a3:8d3:1319:8a2e:370:7334';
+
+    expect(\Bjanczak\FilamentShortUrl\Services\ShortUrlTracker::anonymizeIp($ipv4))->toBe('192.168.1.0')
+        ->and(\Bjanczak\FilamentShortUrl\Services\ShortUrlTracker::anonymizeIp($ipv6))->toBe('2001:db8:85a3::');
+});
+
+it('anonymizes saved IP address when anonymize_ips is enabled but computes hash on raw IP', function () {
+    $mgr = app(\Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager::class);
+    $mgr->set(['tracking_anonymize_ips' => true]);
+
+    $link = ShortUrl::create([
+        'destination_url' => 'https://example.com/anonymize',
+        'url_key' => 'anonkey',
+        'track_ip_address' => true,
+    ]);
+
+    $request = \Illuminate\Http\Request::create('/anonkey', 'GET', [], [], [], [
+        'REMOTE_ADDR' => '1.2.3.4',
+    ]);
+
+    $tracker = app(\Bjanczak\FilamentShortUrl\Services\ShortUrlTracker::class);
+    $visit = $tracker->record($link, $request);
+
+    expect($visit->ip_address)->toBe('1.2.3.0')
+        // Hash must now use HMAC-SHA256 keyed with app.key \u2014 NOT plain SHA-256
+        ->and($visit->ip_hash)->toBe(hash_hmac('sha256', '1.2.3.4', config('app.key', '')));
 });

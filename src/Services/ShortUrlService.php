@@ -9,6 +9,7 @@
 namespace Bjanczak\FilamentShortUrl\Services;
 
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Models\ShortUrlCustomDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -92,6 +93,20 @@ class ShortUrlService
             'track_device_type' => $fields['device_type'] ?? true,
             'track_referer_url' => $fields['referer_url'] ?? true,
         ], $data);
+
+        if (! array_key_exists('custom_domain_id', $data) || $data['custom_domain_id'] === '') {
+            $defaultDisabled = (bool) config('filament-short-url.disable_default_domain', false);
+            if (! $defaultDisabled) {
+                $data['custom_domain_id'] = null;
+            } else {
+                $domains = ShortUrlCustomDomain::where('is_active', true)
+                    ->where('is_verified', true)
+                    ->get();
+                if ($domains->count() === 1) {
+                    $data['custom_domain_id'] = $domains->first()->id;
+                }
+            }
+        }
 
         if (empty($data['url_key'])) {
             $data['url_key'] = $this->generateKey();

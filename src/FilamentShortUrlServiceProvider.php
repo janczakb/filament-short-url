@@ -8,6 +8,7 @@
 
 namespace Bjanczak\FilamentShortUrl;
 
+use Bjanczak\FilamentShortUrl\Assets\ShortUrlCss;
 use Bjanczak\FilamentShortUrl\Console\Commands\SyncBufferedCountersCommand;
 use Bjanczak\FilamentShortUrl\Services\GeoIpService;
 use Bjanczak\FilamentShortUrl\Services\ProxyDetectionService;
@@ -16,7 +17,6 @@ use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTracker;
 use Bjanczak\FilamentShortUrl\Services\UserAgentParser;
-use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Console\Scheduling\Schedule;
 use Spatie\LaravelPackageTools\Package;
@@ -34,20 +34,14 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
             ->hasViews('filament-short-url')
             ->hasTranslations()
             ->hasMigrations([
-                '2024_01_01_000001_create_short_urls_table',
-                '2024_01_01_000002_create_short_url_visits_table',
-                '2026_06_01_000003_add_utm_city_referer_to_short_url_visits_table',
-                '2026_06_01_000004_add_targeting_and_security_to_short_urls_table',
-                '2026_06_01_000005_create_short_url_daily_stats_table',
-                '2026_06_02_000006_add_max_visits_and_expiration_redirect_to_short_urls_table',
-                '2026_06_02_000007_add_retargeting_pixels_and_webhooks_to_short_urls_table',
-                '2026_06_02_000008_add_bot_and_proxy_to_short_url_visits_table',
-                '2026_06_02_224250_add_qr_logo_to_short_urls_table',
-                '2026_06_03_110000_add_qr_and_language_to_visits_and_daily_stats',
-                '2026_06_03_120000_add_track_browser_language_to_short_urls_table',
-                '2026_06_03_150000_create_short_url_pixels_table',
-                '2026_06_03_160000_add_auto_open_app_mobile_to_short_urls_table',
-                '2026_06_04_000000_create_short_url_settings_table',
+                '2024_01_01_000001_create_short_url_settings_table',
+                '2024_01_01_000002_create_short_url_pixels_table',
+                '2024_01_01_000003_create_short_urls_table',
+                '2024_01_01_000004_create_short_url_visits_table',
+                '2024_01_01_000005_create_short_url_daily_stats_table',
+                '2026_06_05_000001_add_user_id_to_short_urls_table',
+                '2026_06_05_000002_create_short_url_custom_domains_table',
+                '2026_06_05_000003_add_custom_domain_id_to_short_urls_table',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,
@@ -59,7 +53,6 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
     public function packageRegistered(): void
     {
         $this->app->singleton(ShortUrlSettingsManager::class);
-        $this->app->make(ShortUrlSettingsManager::class)->applyConfigOverrides();
 
         // Bind services as singletons for efficient reuse
         $this->app->singleton(UserAgentParser::class);
@@ -72,8 +65,10 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        $this->app->make(ShortUrlSettingsManager::class)->applyConfigOverrides();
+
         FilamentAsset::register([
-            Css::make('filament-short-url', __DIR__.'/../resources/dist/filament-short-url.css'),
+            ShortUrlCss::make('filament-short-url', __DIR__.'/../resources/dist/filament-short-url.css'),
         ], package: 'janczakb/filament-short-url');
 
         // Automatically register scheduled tasks in the application scheduler

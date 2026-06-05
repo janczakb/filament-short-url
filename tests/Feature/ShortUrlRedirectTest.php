@@ -235,7 +235,7 @@ it('caches stats page calculations', function () {
     // Clear the specific date-filtered cache key
     $dateFrom = now()->subDays(29)->format('Y-m-d');
     $dateTo = now()->format('Y-m-d');
-    Cache::forget("short_url_stats_{$shortUrl->id}_{$dateFrom}_{$dateTo}");
+    $shortUrl->clearStatsCache($dateFrom, $dateTo);
 
     // Third mount: should now be 1 because cache is cleared and recalculated
     $page->mount($shortUrl);

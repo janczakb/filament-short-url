@@ -19,6 +19,7 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 
 ### Why choose Filament Short URL?
 * **Save on SaaS Costs**: Replace expensive Bitly or Rebrandly subscriptions with a self-hosted solution that has zero click or creation limits.
+* **Custom Domain Branding**: Connect your own custom domains with dynamic DNS checks and automatic routing redirection at the root level.
 * **Server-Side GA4 Tracking**: Bypasses browser-side ad blockers completely to ensure 100% accurate traffic data.
 * **Retarget on External Sites**: Inject tracking pixels (Meta, Google Ads, LinkedIn, TikTok, Pinterest) on a beautiful glassmorphic redirect page before forwarding visitors.
 * **Seamless Mobile App Redirects**: Launch native mobile applications (Instagram, YouTube, Spotify, WhatsApp) automatically using deep links.
@@ -47,6 +48,7 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 ## Features
 
 - 🔗 **Base62 Short Link Generation** — Create clean, custom short links or let the system auto-generate collision-free Base62 keys.
+- 🌐 **Custom Domain Branding (new in v4.0.0)** — Register custom domains, show dynamic DNS setup instructions (A/CNAME records), verify records in real-time, and route redirects directly at the root of verified custom domains.
 - 🌍 **Multiple Geo-IP Drivers** — Route and analyze traffic with offline MaxMind detection, CDN edge headers (Cloudflare's `CF-IPCountry`, CloudFront), or fallback APIs.
 - 🗺️ **Interactive Visitor World Map** — Showcase geographic click distribution on a beautiful SVG world map widget with real-time hover details.
 - 📈 **Comprehensive Analytics Dashboard** — Monitor total/unique visits, referrers, operating systems, devices, browsers, and top browser languages in real-time.
@@ -68,11 +70,15 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 - 🛡️ **Throttling & Rate Limiting** — Protect your redirection routes from flood attacks with configurable per-IP rate limits.
 - 📊 **Log Aggregation & Pruning** — Compact millions of raw visit logs into daily summaries automatically to prevent database bloat.
 - 🎯 **Central Retargeting Pixel Registry (new in v3.0.0)** — Register Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, and Pinterest Tag centrally and associate them with links via checkboxes.
-- 🔌 **Developer REST API (updated in v3.2.0)** — Full programmatical control with secure API Key authentication to create, read, update, list, delete, and inspect analytics for short links externally.
+- 🔌 **Developer REST API (updated in v3.5.0)** — Full programmatical control with secure API Key authentication to create, read, update, list, delete, and inspect analytics for short links externally.
 - 📡 **Real-Time Webhooks** — Asynchronous HTTP POST notifications on `visited`, `created`, `expired`, and `limit_reached` events with a built-in retry policy.
 - 📱 **Mobile App Deep Linking (new in v3.0.0)** — Detect mobile visitors and open links directly in 24+ native apps (Instagram, YouTube, Spotify, TikTok, etc.) using custom URI schemes.
 - 🔗 **Universal Links & App Links (new in v3.0.0)** — Host iOS `apple-app-site-association` and Android `assetlinks.json` domain configuration files directly from your root domain.
 - 🎨 **Branded Expiry Pages (new in v3.0.0)** — Display a premium, dark-mode compatible custom expiry page when a link is deactivated or limit-reached, falling back to a clean site-name greeting instead of a generic browser error.
+- 👤 **User Attribution (new in v3.5.0)** — Automatically assign the authenticated user's ID to every new short URL. Show their avatar and hover card (name + email) directly in the list table.
+- 🕒 **Relative Time Badges (new in v3.5.0)** — Display compact relative timestamps (e.g., `2h`, `5d`, `3mo`) for link creation dates with rich Alpine.js hover popovers showing precise absolute dates and timezone offsets.
+- ⌨️ **Keyboard Shortcuts (new in v3.5.0)** — Hover over any table row to enable shortcut keys: `E` (edit), `Q` (QR code), `I` (share/copy), `S` (statistics), `X` (delete). Shortcuts are safely ignored when focus is inside modals or text inputs.
+- 🔘 **Unified 3-dot Action Dropdown (new in v3.5.0)** — All per-row actions are consolidated under a single icon button that opens a styled dropdown with shortcut key badges on the right.
 
 ---
 
@@ -244,6 +250,9 @@ The package comes with a built-in admin settings dashboard. It is accessible dir
 
 Settings are stored dynamically in the database (`short_url_settings` table), cached indefinitely, and immediately override config defaults. Legacy settings from `filament-short-url-settings.json` are automatically imported on first load.
 
+> [!NOTE]
+> **Modular Tab Architecture (New in v3.5.0)**: The settings form is split into 8 independent, single-responsibility tab classes (`LinkTab`, `TargetingTab`, `TrackingTab`, `SecurityTab`, `GeoIpTab`, `VpnDetectionTab`, `QrDesignTab`, `PixelsTab`) to reduce load times, improve code maintainability, and allow clean tab query parameters navigation (e.g. `?tab=qr`).
+
 The settings panel allows you to configure:
 
 ### 1. General Routing & Queueing
@@ -354,7 +363,7 @@ When a short URL is expired, deactivated, or has reached its maximum visit limit
 
 ---
 
-## Smart Link Targeting (updated in v3.3.0)
+## Smart Link Targeting (updated in v3.5.0)
 
 The **Targeting & Security** tab exposes a powerful rule engine that lets you route different visitors to different destinations — all from a single short URL.
 
@@ -416,9 +425,67 @@ $shortUrl->update([
 If your database contains legacy single-strategy rules (e.g. `'type' => 'device'` or `'type' => 'geo'`), the plugin handles them automatically:
 * **Redirection Engine**: The redirect system detects the legacy structure and processes it on-the-fly using the legacy strategy.
 * **Filament UI**: When loading a link with legacy rules, the Filament Form automatically upgrades and hydrates them to equivalent new multi-filter rules.
-* **A/B Split Rotation**: The legacy rotation strategy is still supported backward-compatibly in redirect logic, but cannot be newly configured through the Filament v3.3.0 form.
 
 ---
+
+## A/B Split Testing & Weighted Traffic Rotation (new in v3.5.0)
+
+A single short URL can distribute traffic across 2–5 landing pages using configurable weights. This is useful for comparing conversion rates between different pages without changing the link you've already shared.
+
+### Two ways to set it up
+
+**Root-level split test** — Set the **Destination Type** to `A/B Split Test` directly on the short URL. All visitors hitting that link will be distributed across your variants.
+
+**Nested inside a targeting rule** — Combine split testing with audience targeting. For example: send mobile visitors from Poland into a 50/50 test, while everyone else goes to a single fallback URL.
+
+### Weights
+
+Each variant gets a percentage weight. Weights must sum to exactly **100%** and can be adjusted in 1% increments. The admin form shows an interactive split bar — drag the handles or hit **"Balance weights"** to divide traffic evenly. When you add or remove a variant, weights are rebalanced automatically.
+
+UTM parameters and other query strings on the original click are forwarded to whichever variant is selected.
+
+### Analytics
+
+Every visit records which variant was resolved (`selected_variant` column in the visit log). The link's statistics dashboard shows a **Variant Clicks Distribution** bar chart so you can compare actual click shares against your configured weights.
+
+### REST API
+
+For root-level split tests, pass `rotation_variants` in the request body:
+
+```json
+{
+  "destination_type": "split",
+  "rotation_variants": [
+    { "label": "Variant A", "url": "https://example.com/page-a", "weight": 70 },
+    { "label": "Variant B", "url": "https://example.com/page-b", "weight": 30 }
+  ]
+}
+```
+
+To nest a split test inside a targeting rule, use `variants` within the rule object:
+
+```json
+{
+  "destination_type": "single",
+  "destination_url": "https://example.com/default",
+  "targeting_rules": [
+    {
+      "match": "or",
+      "destination_type": "split",
+      "variants": [
+        { "label": "Mobile A", "url": "https://example.com/mob-a", "weight": 50 },
+        { "label": "Mobile B", "url": "https://example.com/mob-b", "weight": 50 }
+      ],
+      "filters": [
+        { "type": "device", "data": { "devices": ["mobile"] } }
+      ]
+    }
+  ]
+}
+```
+
+---
+
 
 ## Native App Linking & Deep Linking (new in v3.0.0)
 
@@ -589,7 +656,132 @@ $shortUrl->pixels()->sync([$pixelId1, $pixelId2]);
 
 ---
 
+## Custom Domain Branding (new in v4.0.0)
+
+Branded links (e.g. `go.company.com/abc123` instead of `yourdomain.com/s/abc123`) significantly increase click-through rates and build trust. This package includes a full-featured custom domain manager out-of-the-box.
+
+### Key Features
+1. **Dynamic CNAME/A Record Verification**: Resolves DNS records in real-time natively using PHP's `dns_get_record()` (with fallback to `dig`) and matches against the host server IP — supports both CNAME and A record setups.
+2. **DNS Setup Instructions**: Step-by-step instructions for non-technical users to connect their domain in their registrar (GoDaddy, Cloudflare, Namecheap, etc.) directly in the Filament UI.
+3. **Verified-Only Assignment**: Only domains that pass DNS verification can be associated with short URLs.
+4. **Root-Level Redirections**: When a visitor hits a custom domain link (e.g. `go.company.com/abc123`), the request is matched directly at the root path — omitting the default `/s/` prefix automatically.
+
+### How to use
+1. Go to the **Custom Domains** page in the Filament admin panel (sidebar → Links → Custom Domains).
+2. Click **Create** and enter your domain name (e.g. `go.company.com`).
+3. Follow the DNS Setup instructions shown in the modal to point your DNS records to the application server.
+4. Click **Setup DNS / Verify** inside the table actions. Once DNS resolves correctly, the domain status changes to **Active**.
+5. In the Short URL creation form, select your custom domain from the **Custom Domain** dropdown. The generated short URL will use your branded domain automatically.
+
+### DNS Setup (for users)
+
+You need to add **one** of the following records at your DNS provider:
+
+| Type  | Name               | Value                          |
+|-------|--------------------|--------------------------------|
+| CNAME | `go` (subdomain)   | `yourdomain.com.` (main host) |
+| A     | `go` (subdomain)   | `123.45.67.89` (server IP)    |
+
+The plugin dynamically resolves the host application's IP at verification time — no hardcoded IP configuration is required.
+
+### Web Server Configuration (required)
+
+Custom domains must be configured at the web server level to forward requests to your Laravel application. Below are example configurations:
+
+#### nginx
+
+```nginx
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name go.company.com;
+
+    # Proxy to your main Laravel app
+    location / {
+        proxy_pass http://127.0.0.1:80;  # or your app server socket
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Or, if the custom domain points directly to the same server running Laravel:
+
+```nginx
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name go.company.com;
+
+    root /var/www/your-app/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+}
+```
+
+#### Caddy
+
+```caddyfile
+go.company.com {
+    root * /var/www/your-app/public
+    php_fastcgi unix//run/php/php8.3-fpm.sock
+    file_server
+}
+```
+
+#### Apache
+
+```apache
+<VirtualHost *:80>
+    ServerName go.company.com
+    DocumentRoot /var/www/your-app/public
+
+    <Directory /var/www/your-app/public>
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+> **Note:** The Laravel application automatically detects the incoming `Host` header and routes the request to the correct short URL via the fallback route. No additional application configuration is needed beyond registering the domain in the Filament UI.
+
+### Server Requirements
+
+- DNS verification runs natively using PHP's built-in `dns_get_record()` function.
+- If native DNS functions are disabled or fail, the plugin falls back to using the `dig` CLI tool (`apt install dnsutils` on Debian/Ubuntu, `yum install bind-utils` on CentOS/RHEL).
+- If neither is available, the plugin falls back to `$_SERVER['SERVER_ADDR']` for A record matching.
+- The DNS verification runs synchronously in the admin panel when the **Verify** button is clicked. For production use with many domains, consider wrapping it in a queued job.
+
+### Database Schema
+
+Custom domains are stored in the `short_url_custom_domains` table:
+
+| Column       | Type      | Description                                       |
+|--------------|-----------|---------------------------------------------------|
+| `id`         | bigint    | Primary key                                       |
+| `user_id`    | bigint    | Owner (nullable, references `users.id`)           |
+| `domain`     | string    | The domain name (e.g. `go.company.com`)           |
+| `is_verified`| boolean   | Whether DNS verification passed                   |
+| `is_active`  | boolean   | Whether the domain is enabled for use             |
+| `created_at` | timestamp | Creation timestamp                                |
+| `updated_at` | timestamp | Last update timestamp                             |
+
+Short URLs reference their custom domain via `custom_domain_id` (foreign key on `short_urls`).
+
+---
+
 ## Developer REST API (new in v1.5.0)
+
 
 The plugin exposes a REST API that allows external systems (CRMs, Zapier, Make, custom integrations) to manage short URLs programmatically.
 
@@ -754,23 +946,24 @@ curl -X PATCH https://yourdomain.com/api/short-url/links/promo26 \
 | Field | Type | Required (POST) | Description |
 |---|---|---|---|
 | `destination_url` | string (URL) | ✅ | Target URL (max 2048 chars) |
+| `custom_domain_id` | integer | ❌ | ID of a verified custom domain record |
 | `url_key` | string | ❌ | Custom unique slug/key (max 32 chars, alpha-dash; auto-generated if omitted) |
-| `notes` | string | ❌ | Internal admin notes (max 1000 chars) |
+| `notes` | string | ❌ | Internal admin notes (max 255 chars) |
 | `is_enabled` | boolean | ❌ | Active status (default: `true`) |
 | `redirect_status_code` | integer (301/302) | ❌ | HTTP redirect status code |
 | `single_use` | boolean | ❌ | Expire the short link immediately after the first visit |
 | `forward_query_params` | boolean | ❌ | Forward visitor query parameters to target destination |
 | `max_visits` | integer | ❌ | Maximum click threshold limit |
-| `expiration_redirect_url` | string (URL) | ❌ | Fallback URL to redirect to upon link expiration |
+| `expiration_redirect_url` | string (URL) | ❌ | Fallback URL to redirect to upon link expiration (max 255 chars) |
 | `activated_at` | datetime | ❌ | Activation timestamp (must be after or equal to today) |
 | `expires_at` | datetime | ❌ | Expiration timestamp (must be after or equal to `activated_at`) |
 | `pixels` | array of integers | ❌ | List of registered retargeting pixel IDs to associate with the link |
 | `webhook_url` | string (URL) | ❌ | Per-link webhook URL for immediate event notifications |
-| `targeting_rules` | array | ❌ | Advanced Multi-Filter Targeting Rules JSON schema (see [Smart Link Targeting](#smart-link-targeting-updated-in-v330) for schema details) |
+| `targeting_rules` | array | ❌ | Advanced Multi-Filter Targeting Rules JSON schema (see [Smart Link Targeting](#smart-link-targeting-updated-in-v340) for schema details) |
 | `password` | string | ❌ | Password to protect the short URL |
 | `show_warning_page` | boolean | ❌ | Toggle redirect warning interstitial page |
 | `auto_open_app_mobile` | boolean | ❌ | Auto open deep link in native application on mobile devices |
-| `ga_tracking_id` | string | ❌ | Custom Google Analytics 4 Measurement ID for this link (`G-XXXXXXXXXX`) |
+| `ga_tracking_id` | string | ❌ | Custom Google Analytics 4 Measurement ID for this link (`G-XXXXXXXXXX`, max 50 chars) |
 | `track_visits` | boolean | ❌ | Toggle tracking/analytics logging for this link (default: `true`) |
 | `track_ip_address` | boolean | ❌ | Track client IP address (default: `true`) |
 | `track_browser` | boolean | ❌ | Track client browser name (default: `true`) |
@@ -1007,6 +1200,35 @@ You can also pre-configure all parameters via your `.env` file:
 |---|---|---|---|
 | `SHORT_URL_PREFIX` | `route_prefix` | `'s'` | URL prefix for short URL redirects. |
 | `SHORT_URL_SITE_NAME` | `site_name` | `null` | Brand/Site name override for warning/interstitial pages. |
+
+### User Integration Configuration
+
+The `user` configuration block (new in v3.5.0) connects the package to your application's `User` model so that creator avatars and details are displayed in the admin table:
+
+```php
+// config/filament-short-url.php
+'user' => [
+    'model'         => \App\Models\User::class,
+    'name_column'   => 'name',
+    'email_column'  => 'email',
+    'avatar_column' => 'avatar_url', // attribute name, method name, or null to auto-detect
+],
+```
+
+**Avatar resolution order:**
+1. Call `$user->{avatar_column}()` if it is a method on the model.
+2. Read `$user->{avatar_column}` as a direct attribute.
+3. Call `$user->getFilamentAvatarUrl()` if the model implements `Filament\Models\Contracts\HasAvatar`.
+4. Fall back to a Gravatar URL derived from the user's email.
+
+Set `avatar_column` to `null` to skip steps 1–2 and start from the `HasAvatar` interface check.
+
+The package automatically attaches the currently authenticated user's ID to every newly created short URL via a model `creating` event on `ShortUrl`.
+
+### Full .env Reference
+
+| Environment Variable | Config Path | Default | Description |
+|---|---|---|---|
 | `SHORT_URL_GEO_IP` | `geo_ip.enabled` | `true` | Globally enable/disable Geo-IP tracking. |
 | `SHORT_URL_GEO_IP_DRIVER` | `geo_ip.driver` | `'headers'` | Geo-IP resolver driver (`headers`, `maxmind`, `ip-api`). |
 | `SHORT_URL_MAXMIND_DB` | `geo_ip.maxmind.database_path` | `storage_path('geoip/GeoLite2-Country.mmdb')` | Path to local MaxMind db. |
@@ -1024,6 +1246,7 @@ You can also pre-configure all parameters via your `.env` file:
 | `SHORT_URL_RATE_LIMIT_MAX` | `rate_limiting.max_attempts` | `60` | Max redirect requests within the decay window. |
 | `SHORT_URL_RATE_LIMIT_DECAY` | `rate_limiting.decay_seconds` | `60` | Rate limiter rolling window in seconds. |
 | `SHORT_URL_DEEP_LINKING_ENABLED` | `deep_linking.enabled` | `false` | Enable serving domain association files for deep linking. |
+| `SHORT_URL_ENABLE_FALLBACK` | `enable_fallback_route` | `true` | Toggle registration of the global fallback redirection route. |
 
 > [!TIP]
 > **Database Configuration Preferred**: Avoid configuring large, multi-line JSON blocks (such as `apple-app-site-association` and `assetlinks.json`) via `.env` file environment variables as it is error-prone and can cause parsing issues. The recommended approach is to configure them dynamically via the **Filament Settings Panel**, which stores them securely in the database with real-time JSON validation.
@@ -1171,6 +1394,28 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 
 ## Changelog
 
+### v4.0.0
+- **Custom Domains Branding** — Let users connect branded custom domains with real-time CNAME/A record DNS verification and automatic prefix-free root routing.
+- **Cache Leak Fix** — Solved a critical caching bug where single-use links could be visited multiple times during the cache TTL by passing the host-specific key suffix to cache invalidations.
+- **Aggregator Performance Tuning** — Restructured daily aggregation SQL queries to filter only active URL IDs, leveraging composite indexes and running native DB aggregations.
+- **Logo Upload Authorization** — Secured the logo upload API with resource-level permission and policy checks.
+- **DB-Free Registration Phase** — Deferred settings overrides to the service provider boot phase to prevent database errors during offline configuration caching.
+- **Conditional Redirection Fallback** — Added configurations to optionally disable global fallback route registration.
+
+### v3.5.0
+- **User Attribution** — Short URLs now record the creator. Their avatar and hover card (name + email) are displayed in the list table.
+- **Relative Date Badges** — Creation dates show compact relative strings (`2h`, `5d`, `3mo`). Hover to see the precise date and timezone.
+- **Keyboard Shortcuts** — Hover any table row and press `E` (edit), `Q` (QR code), `I` (share), `S` (statistics), or `X` (delete).
+- **Unified Action Dropdown** — All per-row actions consolidated under a single 3-dot button with keyboard shortcut badges.
+- **Row Click → Statistics** — Clicking a table row navigates directly to the link's Statistics page.
+- **A/B Split Testing** — Weighted traffic rotation in root-level links and nested targeting rules, with drag-based sliders and a one-click "Balance weights" action.
+- **Variant Analytics** — Tracks which A/B variant was served and shows a "Variant Clicks Distribution" chart in the analytics dashboard.
+- **Query Optimization** — Composite DB index on the visits table; queries filter by indexed `country_code`; Eloquent hydration bypassed with `toBase()->get()` for large sets.
+- **GDPR IP Anonymization** — Opt-in IP masking (IPv4/IPv6) with SHA-256 hashing for unique visitor identification, managed via Settings.
+- **Google Safe Browsing in REST API** — Safety checks now apply to all incoming URLs in the API (destination, A/B variants, targeting rules).
+- **Settings URL Cleanup** — Tab query parameters are now human-readable (e.g. `?tab=qr` instead of `?tab=qr-defaults::data::tab`).
+- **Analytics Enhancements** — QR Scan Conversion Rate card with period-over-period delta, browser/OS version subtexts, A/B click-share vs. weight comparison.
+
 ### v3.3.0
 - **Advanced Multi-Filter Targeting Engine** — Replaced the legacy single-strategy selection panel with a highly flexible rule engine supporting custom `AND` / `OR` logic matching.
 - **Granular Filter Categories** — Added support for filtering by devices (Desktop, Mobile, Tablet), platform operating systems (Windows, macOS, Linux, iOS, Android, Fire OS), countries (multiselect with search), and browser languages (multiselect with search).
@@ -1201,7 +1446,6 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 - **Standalone Settings Page** — Relocated the Settings interface from a resource header sub-action to a standalone sidebar navigation page under the default plugin group.
 - **Retargeting Pixel API** — The REST API now fully exposes the `pixels` relationship array parameter for registering and linking retargeting pixels programmatically.
 - **Enhanced Browser Language Redirection** — Robust double-pass language targeting logic matching exact locales first (e.g. `en-US`, `zh-CN`) and falling back to base language codes (e.g. `en`, `zh`).
-- **Full Localization & WhatsApp Favicon Fix** — Added friendly translation strings in English and Polish across the entire app-linking preview and redirect interfaces, and adjusted domains order to restore the WhatsApp favicon.
 - **Custom Branded Expiry Pages** — Replaced raw 410 HTTP errors with a beautiful, fully localized, dark-mode compatible HTML expiry page displaying the Site Name, expired link details, and a homepage button.
 
 ### v2.0.0
@@ -1209,9 +1453,7 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 - **Dedicated QR Code Scan Tracking** — Differentiates visitor clicks from physical QR code scans by dynamically appending source tags (`?source=qr`). Added a new database tracking column (`is_qr_scan` on visits, `qr_scans` on short URLs, and `qr_visits_count` on daily stats). Displays a dedicated scans counter badge in the Filament list table.
 - **Browser Language Detection & Statistics** — Captures visitor browser preferred language headers (`browser_language` field) and aggregates them into the daily stats table. Displays a new "Top Languages" widget breakdown in the link statistics dashboard.
 - **High-Traffic Performance Safeguards & Robust Rollbacks** — Atomic database transactions for buffered counter updates with fail-safe rollback that restores cache values in case of DB connection failures. Prevents N+1 queries by preloading request-wide counters in a single batch cache lookup.
-- **Early Boot & Test Container Safety** — Safe settings caching that checks app container state before resolving `cache`, preventing early boot container exceptions during tests or artisan boots.
-- **Atomic Duplicate Visit Caching** — Bypasses database exists checks for duplicate visitors by utilizing atomic `cache()->add` keys to prevent database bottlenecking.
-- **Support for Empty Route Prefix (Root-Level URLs)** — Enhanced `getShortUrl()` to support empty route prefixes without generating double slashes (e.g. `domain.com/abc123` instead of `domain.com//abc123`). This allows clean root-level redirection domains. Added defensive slash trimming to standard prefixes.
+- **Support for Empty Route Prefix (Root-Level URLs)** — Enhanced `getShortUrl()` to support empty route prefixes without generating double slashes (e.g. `domain.com/abc123` instead of `domain.com//abc123`).
 
 ### v1.7.0
 - **Role-based Settings Access Control** — New `authorizeSettingsUsing(Closure)` method on the plugin to restrict who can access the Settings page. Supports any callable returning a `bool`. Also auto-detects a `manageSettings` method on a registered `ShortUrl` policy. The Settings button in the table header is hidden automatically when access is denied.
@@ -1220,10 +1462,9 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 - **Google Safe Browsing Integration** — Automatic safety checks against Google's API during link creation or modification. Includes bypass settings, asynchronous checking option, and alert badges.
 - **VPN / Proxy / Bot Filtering** — Detect and filter out VPN/proxy traffic and Tor nodes using external proxy detection APIs to keep traffic analytics clean.
 - **Visitor World Map Widget** — Live interactive SVG world map showing clicks distribution per country, custom intensity highlighting, and hover details.
-- **Enhanced Caching & Chart Formatting** — Improved analytics caching for high volumes, and clean `d.m` date formatting (removed year) on visitor stats charts.
 
 ### v1.5.1
-- **REST API On/Off Toggle** — Enable or disable the entire developer REST API from Settings → API & Webhooks without touching code. Returns `503 Service Unavailable` when disabled. Toggle takes effect immediately without route cache clearing.
+- **REST API On/Off Toggle** — Enable or disable the entire developer REST API from Settings → API & Webhooks without touching code. Returns `503 Service Unavailable` when disabled.
 
 ### v1.5.0
 - **Social Retargeting Pixels** — Attach Meta Pixel, Google Tag (GA4/Ads), and LinkedIn Insight Tag to any short URL. A premium glassmorphic interstitial page executes pixel scripts in the visitor's browser before forwarding them to the destination. Enables building remarketing audiences even on external domains.
@@ -1235,16 +1476,12 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 - **Validity Date Ranges (From-To)** — Set activation dates (`activated_at` and `expires_at`) to control exactly when a short link is active.
 - **Custom Visit Limit Counters** — Define a custom maximum visit limit (`max_visits`) after which a link automatically expires (e.g., active for 3 hits).
 - **Custom Expiration Fallbacks** — Redirect expired/inactive visitors to a custom `expiration_redirect_url` rather than showing a static 410 Gone error page.
-- **Reactive Validity Controls** — Master switch to toggle date limits, including bidirectional datetime picker constraints (Active From cannot exceed Expires At and vice versa) and custom UI field visibility.
-- **Smart Model Observers** — Automatic cleanup of unused parameters (like clearing `max_visits` if `single_use` is enabled, and clearing expiration fallbacks if date limits are off) to guarantee database consistency.
 - **Fluent Builder APIs** — Fluent method additions (`activatedAt()`, `deactivatedAt()`, `maxVisits()`, `expirationRedirectUrl()`) in the developer query builder.
 
 ### v1.3.0
 - **Automatic Scheduler Registration** — Zero-configuration task registration within the ServiceProvider booted phase (dynamically honors Settings toggles).
 - **Interactive Settings Validators** — Adds real-time "Test connection" verify action for GA4 Measurement Protocol and "Verify file" action for MaxMind database paths.
 - **Robust Table Row Copy Action** — High-reliability, conflict-free click-to-copy in table rows with built-in fallback helper for non-HTTPS (secure context) browser environments.
-- **Filament v5 Notification API** — Seamless integration of the new `FilamentNotification` class API inside client-side JS.
-- **Asset Compilation Guide** — Explains Tailwind CLI CSS compilation and Filament asset publishing workflows for package extensions.
 
 ### v1.2.0
 - **Password-protected links** — Session-based unlock flow with a styled prompt page.
@@ -1252,8 +1489,6 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 - **Smart targeting** — Device-based, Country/Geo-based, and A/B weighted rotation rules per link.
 - **Rate limiting** — Configurable per-IP redirect throttling with 429 responses.
 - **Daily stats aggregation** — Nightly `short-url:aggregate-and-prune` command for scalable log management.
-- **Counter buffering fallback** — `IncrementVisitJob` as queue-based fallback when Redis is unavailable.
-- **Database compatibility** — Replaced `ENUM` with `VARCHAR`, removed MySQL-only `->after()` calls.
 - **Extended Settings GUI** — New "Performance & Security" tab for aggregation and rate limiting configuration.
 - **Polish translations** — Full `pl` locale support for all new features.
 

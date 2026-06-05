@@ -14,10 +14,13 @@ class ListShortUrlPixels extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->label(__('filament-short-url::default.empty_state_pixel_action'))
+                ->modalHeading(__('filament-short-url::default.empty_state_pixel_action'))
                 ->icon('heroicon-o-plus')
                 ->size('sm')
                 ->color('primary')
-                ->modalWidth('md'),
+                ->modalWidth('md')
+                ->modalAutofocus(false),
         ];
     }
 }

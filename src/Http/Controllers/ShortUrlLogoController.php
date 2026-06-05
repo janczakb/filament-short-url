@@ -8,10 +8,12 @@
 
 namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -24,15 +26,19 @@ class ShortUrlLogoController extends Controller
      */
     public function uploadLogo(Request $request): JsonResponse
     {
-        Log::info('ShortUrlLogoController::uploadLogo called', [
-            'auth_check' => auth()->check(),
-            'user_id' => auth()->id(),
-            'has_file' => $request->hasFile('logo'),
-            'all_files' => array_keys($request->allFiles()),
-        ]);
-
         if (! auth()->check()) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Authorize access using Filament's resource check or direct Gate check
+        if (class_exists(ShortUrlResource::class)) {
+            if (! ShortUrlResource::canCreate()) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+        } else {
+            if (Gate::denies('create', ShortUrl::class)) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
         }
 
         $request->validate([
@@ -203,7 +209,7 @@ class ShortUrlLogoController extends Controller
         imagedestroy($src);
         imagedestroy($dst);
 
-        if ($saved && $webpData !== false) {
+        if ($saved && ! empty($webpData)) {
             return $disk->put($targetPath, $webpData);
         }
 

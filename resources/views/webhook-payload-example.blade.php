@@ -36,7 +36,7 @@
 
 <div class="space-y-2 mt-4">
     <label class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
-        {{ __('filament-short-url::default.webhook_show_payload') ?? 'Show example JSON payload' }}
+        {{ __('filament-short-url::default.webhook_show_payload') }}
     </label>
 
     <div 

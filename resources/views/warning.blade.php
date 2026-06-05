@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('filament-short-url::default.warning_title') ?? 'Redirect Warning' }}</title>
+    <title>{{ __('filament-short-url::default.warning_title') }}</title>
     
     <!-- Premium Google Fonts: Bricolage Grotesque -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -49,10 +49,10 @@
                 <span class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white mb-3">{{ $siteName }}</span>
             @endif
             <p class="text-xl font-medium text-neutral-900 dark:text-white mt-2">
-                {{ __('filament-short-url::default.warning_title') ?? 'Security Redirect Warning' }}
+                {{ __('filament-short-url::default.warning_title') }}
             </p>
             <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
-                {{ __('filament-short-url::default.warning_description') ?? 'You are leaving this secure portal and being redirected to an external target link. Please ensure you trust the address below:' }}
+                {{ __('filament-short-url::default.warning_description') }}
             </p>
         </div>
         
@@ -90,7 +90,7 @@
                 <!-- Continue Button (Primary Accent) -->
                 <a href="{{ request()->fullUrlWithQuery(['confirmed' => 1]) }}"
                    class="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 dark:bg-rose-500 dark:hover:bg-rose-400 text-white font-semibold text-sm transition duration-200 shadow-sm flex justify-center items-center gap-2 text-center">
-                    <span>{{ __('filament-short-url::default.warning_btn_continue') ?? 'Continue to Destination' }}</span>
+                    <span>{{ __('filament-short-url::default.warning_btn_continue') }}</span>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
@@ -99,7 +99,7 @@
                 <!-- Go Back Button (Secondary) -->
                 <button onclick="window.history.back()"
                         class="w-full py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-semibold text-sm transition duration-200 flex justify-center items-center gap-2 shadow-sm">
-                    {{ __('filament-short-url::default.warning_btn_back') ?? 'Go Back' }}
+                    {{ __('filament-short-url::default.warning_btn_back') }}
                 </button>
             </div>
         </div>

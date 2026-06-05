@@ -57,6 +57,7 @@ class ShortUrlVisit extends Model
         'is_proxy',
         'is_qr_scan',
         'browser_language',
+        'selected_variant',
     ];
 
     /** @var array<string, string> */

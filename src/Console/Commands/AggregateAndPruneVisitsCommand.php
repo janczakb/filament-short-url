@@ -46,7 +46,13 @@ class AggregateAndPruneVisitsCommand extends Command
                     $start = $date.' 00:00:00';
                     $end = $nextDate.' 00:00:00';
 
-                    // 1. Get totals and uniques per short_url_id
+                    // Driver-aware boolean count: MySQL/SQLite store booleans as TINYINT (= 1),
+                    // PostgreSQL uses a native boolean type (cast to int for aggregation).
+                    $driver = DB::connection()->getDriverName();
+                    $qrExpr = $driver === 'pgsql'
+                        ? 'count(case when is_qr_scan::int = 1 then 1 end) as qr_scans'
+                        : 'count(case when is_qr_scan = 1 then 1 end) as qr_scans';
+
                     $totals = DB::table('short_url_visits')
                         ->where('visited_at', '>=', $start)
                         ->where('visited_at', '<', $end)
@@ -54,7 +60,7 @@ class AggregateAndPruneVisitsCommand extends Command
                             'short_url_id',
                             DB::raw('count(*) as total'),
                             DB::raw('count(distinct ip_hash) as uniques'),
-                            DB::raw("count(case when is_qr_scan = 1 or is_qr_scan = true or is_qr_scan = '1' then 1 end) as qr_scans"),
+                            DB::raw($qrExpr),
                         ])
                         ->groupBy('short_url_id')
                         ->get();
@@ -79,14 +85,21 @@ class AggregateAndPruneVisitsCommand extends Command
                             'utm_medium_stats' => [],
                             'utm_campaign_stats' => [],
                             'language_stats' => [],
+                            'variant_stats' => [],
                         ];
                     }
 
-                    // Helper to fetch and populate category stats
+                    // Helper to fetch and populate category stats natively in database GROUP BY
                     $populateStats = function (string $column, string $statsKey) use ($start, $end, &$statsByUrl): void {
+                        $urlIds = array_keys($statsByUrl);
+                        if (empty($urlIds)) {
+                            return;
+                        }
+
                         $query = DB::table('short_url_visits')
                             ->where('visited_at', '>=', $start)
                             ->where('visited_at', '<', $end)
+                            ->whereIn('short_url_id', $urlIds)
                             ->whereNotNull($column)
                             ->where($column, '<>', '');
 
@@ -118,17 +131,18 @@ class AggregateAndPruneVisitsCommand extends Command
                         }
                     };
 
-                    // Populate all categories via 10 quick indexed database aggregations
+                    // Populate all categories via 11 quick indexed database aggregations
                     $populateStats('device_type', 'device_stats');
                     $populateStats('browser', 'browser_stats');
                     $populateStats('operating_system', 'os_stats');
-                    $populateStats('country', 'country_stats');
+                    $populateStats('country_code', 'country_stats');
                     $populateStats('city', 'city_stats');
                     $populateStats('referer_host', 'referer_stats');
                     $populateStats('utm_source', 'utm_source_stats');
                     $populateStats('utm_medium', 'utm_medium_stats');
                     $populateStats('utm_campaign', 'utm_campaign_stats');
                     $populateStats('browser_language', 'language_stats');
+                    $populateStats('selected_variant', 'variant_stats');
 
                     // Write aggregated stats to ShortUrlDailyStats
                     foreach ($statsByUrl as $urlId => $s) {
@@ -149,6 +163,7 @@ class AggregateAndPruneVisitsCommand extends Command
                             'utm_campaign_stats' => $s['utm_campaign_stats'],
                             'qr_visits_count' => $s['qr_scans'],
                             'language_stats' => $s['language_stats'],
+                            'variant_stats' => $s['variant_stats'],
                         ]);
                     }
                 });

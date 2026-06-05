@@ -107,10 +107,11 @@ it('clears deep linking cache when settings page save is triggered', function ()
     {
         public ?array $formData = [];
 
-        public function save(): void
+        public function save(?ShortUrlSettingsManager $mgr = null): void
         {
             // Simulating save logic
-            app(ShortUrlSettingsManager::class)->set($this->formData);
+            $mgr ??= app(ShortUrlSettingsManager::class);
+            $mgr->set($this->formData);
 
             cache()->forget('fsu:deep-linking:aasa');
             cache()->forget('fsu:deep-linking:assetlinks');

@@ -1,0 +1,459 @@
+<?php
+
+/**
+ * @author     Bartek Janczak <barek122@gmail.com>
+ * @copyright  2026 Bartek Janczak
+ * @license    Custom Source-Available License (see LICENSE file)
+ */
+
+namespace Bjanczak\FilamentShortUrl\Http\Requests;
+
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateShortUrlRequest extends FormRequest
+{
+    /**
+     * Cache for the resolved ShortUrl model.
+     */
+    protected ?ShortUrl $shortUrlModel = null;
+
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the resolved ShortUrl model for this request.
+     */
+    public function getModel(): ShortUrl
+    {
+        if ($this->shortUrlModel !== null) {
+            return $this->shortUrlModel;
+        }
+
+        $idOrKey = $this->route('idOrKey');
+        if (is_numeric($idOrKey)) {
+            $this->shortUrlModel = ShortUrl::findOrFail((int) $idOrKey);
+        } else {
+            $link = ShortUrl::where('url_key', $idOrKey)->first();
+
+            if (! $link) {
+                abort(404, 'Short URL not found.');
+            }
+
+            $this->shortUrlModel = $link;
+        }
+
+        return $this->shortUrlModel;
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $model = $this->getModel();
+
+        if ($this->has('expires_at') && ! $this->has('activated_at')) {
+            $this->merge([
+                'activated_at' => $model->activated_at?->toIso8601String(),
+            ]);
+        }
+        if ($this->has('activated_at') && ! $this->has('expires_at')) {
+            $this->merge([
+                'expires_at' => $model->expires_at?->toIso8601String(),
+            ]);
+        }
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        $model = $this->getModel();
+        $safeBrowsing = app(SafeBrowsingService::class);
+
+        $countries = __('filament-short-url::countries');
+        $countryRule = is_array($countries) && ! empty($countries)
+            ? 'in:'.implode(',', array_merge(array_keys($countries), array_map('strtolower', array_keys($countries))))
+            : 'string|max:10';
+
+        $languages = __('filament-short-url::languages');
+        $languageRule = is_array($languages) && ! empty($languages)
+            ? 'in:'.implode(',', array_merge(array_keys($languages), array_map('strtoupper', array_keys($languages))))
+            : 'string|max:10';
+
+        $safeBrowsingRule = function (string $attribute, $value, \Closure $fail) use ($safeBrowsing) {
+            if (empty($value)) {
+                return;
+            }
+            if (! $safeBrowsing->isSafe($value)) {
+                $fail(__('filament-short-url::default.safe_browsing_error'));
+            }
+        };
+
+        $isLegacyRules = is_array($this->input('targeting_rules')) && isset($this->input('targeting_rules')['type']);
+
+        $targetingRules = [];
+        if ($isLegacyRules) {
+            $targetingRules = [
+                'targeting_rules' => 'nullable|array',
+                'targeting_rules.type' => 'required_with:targeting_rules|string|in:none,device,geo,language,rotation',
+                'targeting_rules.device' => 'nullable|array',
+                'targeting_rules.device.mobile' => ['nullable', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.device.tablet' => ['nullable', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.device.desktop' => ['nullable', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.device.ios' => ['nullable', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.device.android' => ['nullable', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.geo' => 'nullable|array',
+                'targeting_rules.geo.*.country_code' => 'required_with:targeting_rules.geo|distinct:ignore_case|'.$countryRule,
+                'targeting_rules.geo.*.url' => ['required_with:targeting_rules.geo', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.language' => 'nullable|array',
+                'targeting_rules.language.*.language_code' => 'required_with:targeting_rules.language|distinct:ignore_case|'.$languageRule,
+                'targeting_rules.language.*.url' => ['required_with:targeting_rules.language', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.rotation' => 'nullable|array',
+                'targeting_rules.rotation.*.url' => ['required_with:targeting_rules.rotation', 'url', 'max:2048', $safeBrowsingRule],
+                'targeting_rules.rotation.*.weight' => 'required_with:targeting_rules.rotation|integer|min:1|max:1000',
+            ];
+        } else {
+            $targetingRules = [
+                'targeting_rules' => [
+                    'nullable',
+                    'array',
+                    'max:10',
+                    function (string $attribute, $value, \Closure $fail) use ($safeBrowsing) {
+                        if (! is_array($value)) {
+                            return;
+                        }
+                        foreach ($value as $index => $rule) {
+                            if (! is_array($rule)) {
+                                $fail("Targeting rule at index {$index} must be an array.");
+
+                                continue;
+                            }
+                            $allowedKeys = ['match', 'destination_type', 'url', 'variants', 'filters'];
+                            $invalidKeys = array_diff(array_keys($rule), $allowedKeys);
+                            if (! empty($invalidKeys)) {
+                                $fail("Invalid keys in targeting rule at index {$index}: ".implode(', ', $invalidKeys));
+                            }
+
+                            $destType = $rule['destination_type'] ?? 'single';
+                            if ($destType === 'split') {
+                                if (empty($rule['variants']) || ! is_array($rule['variants'])) {
+                                    $fail("Targeting rule at index {$index} requires a non-empty 'variants' array for split destination type.");
+                                } else {
+                                    $variants = $rule['variants'];
+                                    $variantsCount = count($variants);
+                                    if ($variantsCount < 2 || $variantsCount > 5) {
+                                        $fail("Targeting rule at index {$index} must have between 2 and 5 variants.");
+
+                                        continue;
+                                    }
+
+                                    $variantSum = 0;
+                                    foreach ($variants as $vIndex => $variant) {
+                                        if (! is_array($variant)) {
+                                            $fail("Variant at index {$vIndex} of targeting rule {$index} must be an array.");
+
+                                            continue;
+                                        }
+
+                                        // Guard against random keys in variant
+                                        $allowedVariantKeys = ['label', 'url', 'weight'];
+                                        $invalidVariantKeys = array_diff(array_keys($variant), $allowedVariantKeys);
+                                        if (! empty($invalidVariantKeys)) {
+                                            $fail("Invalid keys in variant at index {$vIndex} of targeting rule {$index}: ".implode(', ', $invalidVariantKeys));
+                                        }
+
+                                        if (empty($variant['url']) || ! filter_var($variant['url'], FILTER_VALIDATE_URL)) {
+                                            $fail("Variant at index {$vIndex} of targeting rule {$index} requires a valid 'url'.");
+                                        } else {
+                                            if (! $safeBrowsing->isSafe($variant['url'])) {
+                                                $fail("Variant at index {$vIndex} of targeting rule {$index} URL has been flagged by Google Safe Browsing as unsafe.");
+                                            }
+                                        }
+                                        if (empty($variant['label']) || ! is_string($variant['label'])) {
+                                            $fail("Variant at index {$vIndex} of targeting rule {$index} requires a string 'label'.");
+                                        }
+                                        if (! isset($variant['weight']) || ! is_numeric($variant['weight'])) {
+                                            $fail("Variant at index {$vIndex} of targeting rule {$index} requires a numeric 'weight'.");
+                                        } else {
+                                            $weight = $variant['weight'];
+                                            if (floor($weight) != $weight) {
+                                                $fail("Variant at index {$vIndex} of targeting rule {$index} weight must be an integer.");
+                                            } else {
+                                                $weight = (int) $weight;
+                                                if ($weight < 0 || $weight > 100) {
+                                                    $fail("Variant at index {$vIndex} of targeting rule {$index} weight must be between 0 and 100.");
+                                                }
+                                                $variantSum += $weight;
+                                            }
+                                        }
+                                    }
+
+                                    if ($variantSum !== 100) {
+                                        $fail("Suma udziałów w ruchu dla targeting rule {$index} musi wynosić dokładnie 100%. Obecna suma: {$variantSum}%.");
+                                    }
+                                }
+                            } else {
+                                if (empty($rule['url']) || ! filter_var($rule['url'], FILTER_VALIDATE_URL)) {
+                                    $fail("Targeting rule at index {$index} requires a valid 'url' for single destination type.");
+                                } else {
+                                    if (! $safeBrowsing->isSafe($rule['url'])) {
+                                        $fail("Targeting rule at index {$index} URL has been flagged by Google Safe Browsing as unsafe.");
+                                    }
+                                }
+                                if (! empty($rule['variants'])) {
+                                    $fail("Targeting rule at index {$index} must not have 'variants' for single destination type.");
+                                }
+                            }
+                        }
+                    },
+                ],
+                'targeting_rules.*.match' => 'required_with:targeting_rules|string|in:or,and',
+                'targeting_rules.*.destination_type' => 'nullable|string|in:single,split',
+                'targeting_rules.*.url' => 'nullable|url|max:2048',
+                'targeting_rules.*.variants' => 'nullable|array',
+                'targeting_rules.*.filters' => [
+                    'required_with:targeting_rules',
+                    'array',
+                    'min:1',
+                    function (string $attribute, $value, \Closure $fail) {
+                        if (! is_array($value)) {
+                            return;
+                        }
+                        $types = collect($value)->pluck('type');
+                        if ($types->duplicates()->isNotEmpty()) {
+                            $fail('Each filter type (device, platform, country, language) can only be added once.');
+                        }
+
+                        foreach ($value as $index => $filter) {
+                            if (! is_array($filter)) {
+                                $fail("Filter at index {$index} must be an array.");
+
+                                continue;
+                            }
+
+                            $allowedFilterKeys = ['type', 'data'];
+                            $invalidFilterKeys = array_diff(array_keys($filter), $allowedFilterKeys);
+                            if (! empty($invalidFilterKeys)) {
+                                $fail("Invalid keys in filter at index {$index}: ".implode(', ', $invalidFilterKeys));
+
+                                continue;
+                            }
+
+                            $type = $filter['type'] ?? null;
+                            $data = $filter['data'] ?? null;
+
+                            if (! in_array($type, ['device', 'platform', 'country', 'language'])) {
+                                continue;
+                            }
+
+                            if (! is_array($data)) {
+                                $fail("Filter data for type '{$type}' must be an array.");
+
+                                continue;
+                            }
+
+                            $allowedKeys = match ($type) {
+                                'device' => ['devices'],
+                                'platform' => ['platforms'],
+                                'country' => ['countries'],
+                                'language' => ['languages'],
+                            };
+
+                            $invalidKeys = array_diff(array_keys($data), $allowedKeys);
+                            if (! empty($invalidKeys)) {
+                                $fail("Invalid keys in data for filter '{$type}': ".implode(', ', $invalidKeys));
+
+                                continue;
+                            }
+
+                            $mainKey = $allowedKeys[0];
+                            if (! isset($data[$mainKey]) || ! is_array($data[$mainKey]) || empty($data[$mainKey])) {
+                                $fail("Filter '{$type}' requires a non-empty array named '{$mainKey}'.");
+
+                                continue;
+                            }
+                        }
+                    },
+                ],
+                'targeting_rules.*.filters.*.type' => 'required_with:targeting_rules|string|in:device,platform,country,language',
+                'targeting_rules.*.filters.*.data' => 'required_with:targeting_rules|array',
+                'targeting_rules.*.filters.*.data.devices' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.devices.*' => 'string|in:desktop,mobile,tablet',
+                'targeting_rules.*.filters.*.data.platforms' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.platforms.*' => 'string|in:android,fire_os,ios,linux,mac,windows',
+                'targeting_rules.*.filters.*.data.countries' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.countries.*' => 'string|'.$countryRule,
+                'targeting_rules.*.filters.*.data.languages' => 'nullable|array',
+                'targeting_rules.*.filters.*.data.languages.*' => 'string|'.$languageRule,
+            ];
+        }
+
+        $destType = $this->input('destination_type', $model->destination_type);
+
+        $isRequired = false;
+        if ($this->has('destination_type') && $this->input('destination_type') === 'split') {
+            $isRequired = true;
+        }
+
+        $rotationVariantsRules = ['array'];
+        if ($destType === 'split') {
+            $rotationVariantsRules[] = $isRequired ? 'required' : 'sometimes|required';
+            $rotationVariantsRules[] = 'min:2';
+            $rotationVariantsRules[] = 'max:5';
+        } else {
+            $rotationVariantsRules[] = 'nullable';
+            $rotationVariantsRules[] = 'max:0';
+        }
+
+        $rotationVariantsRules[] = function (string $attribute, $value, \Closure $fail) use ($destType, $safeBrowsing) {
+            if (! is_array($value)) {
+                return;
+            }
+            if ($destType === 'single') {
+                if (! empty($value)) {
+                    $fail('Rotation variants are not allowed for single destination type.');
+                }
+
+                return;
+            }
+
+            $sum = 0;
+            foreach ($value as $index => $variant) {
+                if (! is_array($variant)) {
+                    $fail("Variant at index {$index} must be an array.");
+
+                    continue;
+                }
+
+                $allowedKeys = ['label', 'url', 'weight'];
+                $invalidKeys = array_diff(array_keys($variant), $allowedKeys);
+                if (! empty($invalidKeys)) {
+                    $fail("Invalid keys in variant at index {$index}: ".implode(', ', $invalidKeys));
+                }
+
+                $weight = $variant['weight'] ?? null;
+                if ($weight === null || ! is_numeric($weight)) {
+                    continue;
+                }
+
+                if (floor($weight) != $weight) {
+                    $fail("Variant at index {$index} weight must be an integer.");
+                } else {
+                    $weight = (int) $weight;
+                    if ($weight < 0 || $weight > 100) {
+                        $fail("Variant at index {$index} weight must be between 0 and 100.");
+                    }
+                    $sum += $weight;
+                }
+
+                $url = $variant['url'] ?? null;
+                if ($url && filter_var($url, FILTER_VALIDATE_URL)) {
+                    if (! $safeBrowsing->isSafe($url)) {
+                        $fail("Variant at index {$index} URL has been flagged by Google Safe Browsing as unsafe.");
+                    }
+                }
+            }
+
+            if ($sum !== 100) {
+                $fail('Suma udziałów w ruchu musi wynosić dokładnie 100%. Obecna suma: '.$sum.'%.');
+            }
+        };
+
+        $activatedAtRule = 'nullable|date';
+        if ($this->has('activated_at') && $this->input('activated_at') !== $model->activated_at?->toIso8601String() && $this->input('activated_at') !== $model->activated_at?->toDateTimeString()) {
+            $activatedAtRule .= '|after_or_equal:today';
+        }
+
+        $defaultDisabled = (bool) config('filament-short-url.disable_default_domain', false);
+
+        $customDomainRule = [
+            'sometimes',
+            $defaultDisabled ? 'required' : 'nullable',
+            'integer',
+            'exists:short_url_custom_domains,id,is_active,1,is_verified,1',
+        ];
+
+        if (config('filament-short-url.lock_url_key', false)) {
+            $customDomainRule[] = function (string $attribute, $value, \Closure $fail) use ($model) {
+                $original = $model->custom_domain_id !== null ? (int) $model->custom_domain_id : null;
+                $newVal = $value !== null && $value !== '' ? (int) $value : null;
+
+                if ($newVal !== $original) {
+                    $fail(__('filament-short-url::default.custom_domain_locked_error'));
+                }
+            };
+        }
+
+        $urlKeyRule = [
+            'sometimes',
+            'required',
+            'string',
+            'alpha_dash',
+            'max:32',
+            'unique:short_urls,url_key,'.$model->id,
+        ];
+
+        if (config('filament-short-url.lock_url_key', false)) {
+            $urlKeyRule[] = function (string $attribute, $value, \Closure $fail) use ($model) {
+                if ($value !== $model->url_key) {
+                    $fail(__('filament-short-url::default.url_key_locked_error'));
+                }
+            };
+        }
+
+        $rules = [
+            'destination_type' => 'sometimes|required|string|in:single,split',
+            'destination_url' => array_merge(
+                $destType === 'single' ? ['sometimes', 'required'] : ['nullable'],
+                ['url', 'max:2048', $safeBrowsingRule]
+            ),
+            'rotation_variants' => $rotationVariantsRules,
+            'rotation_variants.*.label' => 'required_with:rotation_variants|string|max:100',
+            'rotation_variants.*.url' => 'required_with:rotation_variants|url|max:2048',
+            'rotation_variants.*.weight' => 'required_with:rotation_variants|integer|min:0|max:100',
+            'custom_domain_id' => $customDomainRule,
+            'url_key' => $urlKeyRule,
+            'notes' => 'nullable|string|max:255',
+            'is_enabled' => 'sometimes|required|boolean',
+            'redirect_status_code' => 'sometimes|required|integer|in:301,302',
+            'single_use' => 'sometimes|required|boolean',
+            'forward_query_params' => 'sometimes|required|boolean',
+            'max_visits' => 'nullable|integer|min:1',
+            'expiration_redirect_url' => 'nullable|url|max:255',
+            'activated_at' => $activatedAtRule,
+            'expires_at' => 'nullable|date|after_or_equal:activated_at',
+            'webhook_url' => 'nullable|url|max:2048',
+        ];
+
+        $rules = array_merge($rules, $targetingRules);
+
+        return array_merge($rules, [
+            'password' => 'nullable|string|max:255',
+            'show_warning_page' => 'sometimes|required|boolean',
+            'auto_open_app_mobile' => 'sometimes|required|boolean',
+            'ga_tracking_id' => 'nullable|string|max:50|regex:/^G-[A-Z0-9]+$/',
+            'track_visits' => 'sometimes|required|boolean',
+            'track_ip_address' => 'sometimes|required|boolean',
+            'track_browser' => 'sometimes|required|boolean',
+            'track_browser_version' => 'sometimes|required|boolean',
+            'track_operating_system' => 'sometimes|required|boolean',
+            'track_operating_system_version' => 'sometimes|required|boolean',
+            'track_device_type' => 'sometimes|required|boolean',
+            'track_referer_url' => 'sometimes|required|boolean',
+            'track_browser_language' => 'sometimes|required|boolean',
+            'pixels' => 'nullable|array',
+            'pixels.*' => 'integer|exists:short_url_pixels,id',
+        ]);
+    }
+}
