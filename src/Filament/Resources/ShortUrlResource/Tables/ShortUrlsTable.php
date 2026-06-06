@@ -18,6 +18,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ShortUrlsTable
 {
@@ -159,7 +160,7 @@ class ShortUrlsTable
                         Action::make('move')
                             ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_move').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">M</span></div>'))
                             ->icon('heroicon-o-folder-open')
-                            ->modalHeading(fn (ShortUrl $record) => __('filament-short-url::default.action_move') . ' ' . str_replace(['http://', 'https://'], '', $record->getShortUrl()))
+                            ->modalHeading(fn (ShortUrl $record) => __('filament-short-url::default.action_move').' '.str_replace(['http://', 'https://'], '', $record->getShortUrl()))
                             ->modalWidth('md')
                             ->modalSubmitActionLabel(__('filament-short-url::default.action_move'))
                             ->fillForm(fn (ShortUrl $record): array => [
@@ -177,7 +178,7 @@ class ShortUrlsTable
                                             ->required()
                                             ->maxLength(100)
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', \Illuminate\Support\Str::slug($state))),
+                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state))),
                                         Forms\Components\TextInput::make('slug')
                                             ->label(__('filament-short-url::default.folder_slug'))
                                             ->required()
@@ -198,7 +199,7 @@ class ShortUrlsTable
                                             ->default('gray')
                                             ->required()
                                             ->native(false),
-                                    ])
+                                    ]),
                             ])
                             ->action(function (ShortUrl $record, array $data): void {
                                 $record->update(['folder_id' => $data['folder_id']]);

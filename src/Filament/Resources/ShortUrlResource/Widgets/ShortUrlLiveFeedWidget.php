@@ -97,21 +97,21 @@ class ShortUrlLiveFeedWidget extends Widget
                     'is_qr_scan', 'selected_variant',
                 ])
                 ->map(fn (ShortUrlVisit $visit) => [
-                    'id'               => $visit->id,
-                    'time_ago'         => $visit->visited_at->diffForHumans(),
-                    'ip_address'       => $visit->ip_address,
-                    'flag_url'         => $visit->country_code
+                    'id' => $visit->id,
+                    'time_ago' => $visit->visited_at->diffForHumans(),
+                    'ip_address' => $visit->ip_address,
+                    'flag_url' => $visit->country_code
                         ? 'https://flagcdn.com/h20/'.strtolower($visit->country_code).'.webp'
                         : null,
-                    'country'          => $visit->country,
-                    'country_code'     => $visit->country_code,
-                    'city'             => $visit->city,
-                    'browser'          => $visit->browser,
+                    'country' => $visit->country,
+                    'country_code' => $visit->country_code,
+                    'city' => $visit->city,
+                    'browser' => $visit->browser,
                     'operating_system' => $visit->operating_system,
-                    'device_type'      => $visit->device_type,
-                    'referer_host'     => $visit->referer_host,
-                    'referer_url'      => $visit->referer_url,
-                    'is_qr_scan'       => $visit->is_qr_scan,
+                    'device_type' => $visit->device_type,
+                    'referer_host' => $visit->referer_host,
+                    'referer_url' => $visit->referer_url,
+                    'is_qr_scan' => $visit->is_qr_scan,
                     'selected_variant' => $visit->selected_variant,
                 ])
                 ->all();

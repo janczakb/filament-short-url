@@ -331,22 +331,27 @@ it('requires password to redirect when protected', function () {
         'track_visits' => false,
     ]);
 
-    // Unauthenticated request should render password prompt view
+    // Unauthenticated request should redirect to the stateful s-auth route
     $response = $this->get('/s/password123');
+    $response->assertStatus(302);
+    $response->assertRedirect('/s-auth/password123');
+
+    // GET request to s-auth should render password prompt view
+    $response = $this->get('/s-auth/password123');
     $response->assertStatus(200);
     $response->assertSee('Password Required');
 
     // Send incorrect password
-    $response = $this->post('/s/password123', ['password' => 'wrong']);
+    $response = $this->post('/s-auth/password123', ['password' => 'wrong']);
     $response->assertStatus(200);
     $response->assertSee('Incorrect password');
 
     // Send correct password
-    $response = $this->post('/s/password123', ['password' => 'secret-key']);
-    $response->assertRedirect('/s/password123');
+    $response = $this->post('/s-auth/password123', ['password' => 'secret-key']);
+    $response->assertRedirect('/s-auth/password123');
 
     // Following request should redirect to target
-    $this->get('/s/password123')->assertRedirect('https://example.com');
+    $this->get('/s-auth/password123')->assertRedirect('https://example.com');
 });
 
 it('applies rate limiting on password attempts when protected', function () {
@@ -358,13 +363,13 @@ it('applies rate limiting on password attempts when protected', function () {
 
     // First 5 incorrect attempts should return 200 (renders password prompt again)
     for ($i = 0; $i < 5; $i++) {
-        $this->post('/s/password-ratelimit', ['password' => 'wrong-pass'])
+        $this->post('/s-auth/password-ratelimit', ['password' => 'wrong-pass'])
             ->assertStatus(200)
             ->assertSee('Incorrect password');
     }
 
     // 6th incorrect attempt should be rate limited (429)
-    $this->post('/s/password-ratelimit', ['password' => 'wrong-pass'])
+    $this->post('/s-auth/password-ratelimit', ['password' => 'wrong-pass'])
         ->assertStatus(429);
 });
 
@@ -393,31 +398,36 @@ it('requires password first, then shows warning page when both are enabled', fun
         'track_visits' => false,
     ]);
 
-    // 1. Visit without password -> password prompt page, not warning page
+    // 1. Visit without password -> redirects to s-auth route
     $response = $this->get('/s/both-secure');
+    $response->assertStatus(302);
+    $response->assertRedirect('/s-auth/both-secure');
+
+    // Visit s-auth without password -> password prompt page, not warning page
+    $response = $this->get('/s-auth/both-secure');
     $response->assertStatus(200);
     $response->assertSee('Password Required');
     $response->assertDontSee('Security Redirect Warning');
 
     // 2. Submit wrong password -> password prompt page with error
-    $response = $this->post('/s/both-secure', ['password' => 'wrong']);
+    $response = $this->post('/s-auth/both-secure', ['password' => 'wrong']);
     $response->assertStatus(200);
     $response->assertSee('Incorrect password');
     $response->assertDontSee('Security Redirect Warning');
 
     // 3. Submit correct password -> redirects back to the short URL path
-    $response = $this->post('/s/both-secure', ['password' => 'secret-combination']);
-    $response->assertRedirect('/s/both-secure');
+    $response = $this->post('/s-auth/both-secure', ['password' => 'secret-combination']);
+    $response->assertRedirect('/s-auth/both-secure');
 
     // 4. Follow redirect (GET request with authenticated session, but without confirmed parameter)
     // -> shows redirect warning page, not direct redirect
-    $response = $this->get('/s/both-secure');
+    $response = $this->get('/s-auth/both-secure');
     $response->assertStatus(200);
     $response->assertSee('Security Redirect Warning');
     $response->assertSee('https://example.com');
 
     // 5. Follow the confirmed link (confirmed=1) -> redirects to destination
-    $this->get('/s/both-secure?confirmed=1')
+    $this->get('/s-auth/both-secure?confirmed=1')
         ->assertRedirect('https://example.com');
 });
 

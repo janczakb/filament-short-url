@@ -20,7 +20,16 @@ Route::match(
 )
     ->name('short-url.redirect')
     ->where('key', '[a-zA-Z0-9_-]+')
-    ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
+    ->middleware(config('filament-short-url.middleware', ['throttle:120,1']));
+
+Route::match(
+    ['GET', 'POST'],
+    config('filament-short-url.route_prefix', 's').'-auth/{key}',
+    [ShortUrlRedirectController::class, 'handlePasswordAuth']
+)
+    ->name('short-url.password-auth')
+    ->where('key', '[a-zA-Z0-9_-]+')
+    ->middleware(array_merge(['web'], config('filament-short-url.middleware', ['throttle:120,1'])));
 
 Route::prefix('api/short-url')
     ->middleware([
@@ -44,5 +53,5 @@ Route::get('short-url/logo/{filename}', [ShortUrlLogoController::class, 'serveLo
 
 if (config('filament-short-url.enable_fallback_route', true)) {
     Route::fallback(ShortUrlRedirectController::class)
-        ->middleware(config('filament-short-url.middleware', ['web', 'throttle:120,1']));
+        ->middleware(config('filament-short-url.middleware', ['throttle:120,1']));
 }

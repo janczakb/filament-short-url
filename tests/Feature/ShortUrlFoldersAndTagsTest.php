@@ -106,6 +106,8 @@ it('renders live activity feed widget with filtered data', function () {
         'filters' => ['country_code' => 'PL'],
     ])
         ->assertViewHas('visits', function ($visits) {
-            return count($visits) === 1 && $visits->first()->country_code === 'PL';
+            $first = collect($visits)->first();
+
+            return count($visits) === 1 && ($first['country_code'] ?? $first->country_code ?? null) === 'PL';
         });
 });

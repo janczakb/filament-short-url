@@ -4,7 +4,6 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlTagResource\Pages\ListShortUrlTags;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlTag;
-use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -12,7 +11,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -81,14 +79,14 @@ class ShortUrlTagResource extends Resource
                     ->label(__('filament-short-url::default.tag_color'))
                     ->allowHtml()
                     ->options([
-                        'gray' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #737373;"></span><span>' . __('filament-short-url::default.color_gray') . '</span></span>',
-                        'red' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ef4444;"></span><span>' . __('filament-short-url::default.color_red') . '</span></span>',
-                        'blue' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #3b82f6;"></span><span>' . __('filament-short-url::default.color_blue') . '</span></span>',
-                        'green' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #10b981;"></span><span>' . __('filament-short-url::default.color_green') . '</span></span>',
-                        'yellow' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #f59e0b;"></span><span>' . __('filament-short-url::default.color_yellow') . '</span></span>',
-                        'indigo' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #6366f1;"></span><span>' . __('filament-short-url::default.color_indigo') . '</span></span>',
-                        'purple' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #a855f7;"></span><span>' . __('filament-short-url::default.color_purple') . '</span></span>',
-                        'pink' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ec4899;"></span><span>' . __('filament-short-url::default.color_pink') . '</span></span>',
+                        'gray' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #737373;"></span><span>'.__('filament-short-url::default.color_gray').'</span></span>',
+                        'red' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ef4444;"></span><span>'.__('filament-short-url::default.color_red').'</span></span>',
+                        'blue' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #3b82f6;"></span><span>'.__('filament-short-url::default.color_blue').'</span></span>',
+                        'green' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #10b981;"></span><span>'.__('filament-short-url::default.color_green').'</span></span>',
+                        'yellow' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #f59e0b;"></span><span>'.__('filament-short-url::default.color_yellow').'</span></span>',
+                        'indigo' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #6366f1;"></span><span>'.__('filament-short-url::default.color_indigo').'</span></span>',
+                        'purple' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #a855f7;"></span><span>'.__('filament-short-url::default.color_purple').'</span></span>',
+                        'pink' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ec4899;"></span><span>'.__('filament-short-url::default.color_pink').'</span></span>',
                     ])
                     ->default('gray')
                     ->required()
@@ -125,9 +123,9 @@ class ShortUrlTagResource extends Resource
                         ->icon('heroicon-o-trash')
                         ->label(__('filament-short-url::default.action_delete_tag')),
                 ])
-                ->icon('heroicon-m-ellipsis-vertical')
-                ->color('gray')
-                ->iconButton(),
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('gray')
+                    ->iconButton(),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc')

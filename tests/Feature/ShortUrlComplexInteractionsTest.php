@@ -66,17 +66,17 @@ describe('complex option interactions', function () {
             'password' => 'secret123',
         ]);
 
-        // First attempt (below rate limit) -> Shows password page (200)
-        $this->get('/s/pw-rl-combo')->assertStatus(200)->assertSee('Password Required');
+        // First attempt (below rate limit) -> Redirects to stateful s-auth route (302)
+        $this->get('/s/pw-rl-combo')->assertStatus(302)->assertRedirect('/s-auth/pw-rl-combo');
 
-        // Second attempt (at rate limit) -> Shows password page (200)
-        $this->get('/s/pw-rl-combo')->assertStatus(200);
+        // Second attempt (at rate limit) -> Redirects to stateful s-auth route (302)
+        $this->get('/s/pw-rl-combo')->assertStatus(302)->assertRedirect('/s-auth/pw-rl-combo');
 
         // Third attempt (exceeds rate limit) -> Aborts with 429
         $this->get('/s/pw-rl-combo')->assertStatus(429);
 
-        // Submitting POST should also be blocked by the rate limiter
-        $this->post('/s/pw-rl-combo', ['password' => 'secret123'])->assertStatus(429);
+        // Submitting POST to s-auth should also be blocked by the rate limiter
+        $this->post('/s-auth/pw-rl-combo', ['password' => 'secret123'])->assertStatus(429);
     });
 
     it('password rate limiting is independent and tracks wrong attempts only', function () {
@@ -91,19 +91,19 @@ describe('complex option interactions', function () {
 
         // Submit 5 wrong attempts -> 200 with incorrect password
         for ($i = 0; $i < 5; $i++) {
-            $this->post('/s/pw-brute', ['password' => 'wrong-password'])
+            $this->post('/s-auth/pw-brute', ['password' => 'wrong-password'])
                 ->assertStatus(200)
                 ->assertSee('Incorrect password');
         }
 
         // 6th attempt (even correct password) -> 429 due to brute force protection
-        $this->post('/s/pw-brute', ['password' => 'open-sesame'])
+        $this->post('/s-auth/pw-brute', ['password' => 'open-sesame'])
             ->assertStatus(429);
 
         // Check that a different IP can still log in successfully immediately
         $this->withServerVariables(['REMOTE_ADDR' => '1.1.1.1'])
-            ->post('/s/pw-brute', ['password' => 'open-sesame'])
-            ->assertRedirect('/s/pw-brute');
+            ->post('/s-auth/pw-brute', ['password' => 'open-sesame'])
+            ->assertRedirect('/s-auth/pw-brute');
     });
 
     it('targeting rules apply after password protection but before warning page', function () {
@@ -127,6 +127,13 @@ describe('complex option interactions', function () {
         $response = $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
             ->get('/s/tgt-pw-warn');
 
+        $response->assertStatus(302)
+            ->assertRedirect('/s-auth/tgt-pw-warn');
+
+        // Visit s-auth to see the password prompt
+        $response = $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
+            ->get('/s-auth/tgt-pw-warn');
+
         $response->assertStatus(200)
             ->assertSee('Password Required')
             ->assertDontSee('Security Redirect Warning')
@@ -134,12 +141,12 @@ describe('complex option interactions', function () {
 
         // 2. Submit correct password
         $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
-            ->post('/s/tgt-pw-warn', ['password' => 'super-secret'])
-            ->assertRedirect('/s/tgt-pw-warn');
+            ->post('/s-auth/tgt-pw-warn', ['password' => 'super-secret'])
+            ->assertRedirect('/s-auth/tgt-pw-warn');
 
         // 3. Authenticated request as mobile: targeting resolved to mobile.com, warning page shown
         $response2 = $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
-            ->get('/s/tgt-pw-warn');
+            ->get('/s-auth/tgt-pw-warn');
 
         $response2->assertStatus(200)
             ->assertSee('Security Redirect Warning')
@@ -148,7 +155,7 @@ describe('complex option interactions', function () {
 
         // 4. Confirm redirection: goes to mobile URL
         $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
-            ->get('/s/tgt-pw-warn?confirmed=1')
+            ->get('/s-auth/tgt-pw-warn?confirmed=1')
             ->assertRedirect('https://mobile.com');
     });
 
@@ -369,8 +376,13 @@ describe('complex option interactions', function () {
             'show_warning_page' => true,
         ]);
 
-        // Attempting to bypass password using ?confirmed=1 should still show password prompt
-        $this->get('/s/pw-bypass?confirmed=1')
+        // Attempting to bypass password using ?confirmed=1 should redirect to stateful s-auth route
+        $response = $this->get('/s/pw-bypass?confirmed=1');
+        $response->assertStatus(302);
+        $response->assertRedirect('/s-auth/pw-bypass?confirmed=1');
+
+        // Visiting s-auth should render password prompt view, not warning page
+        $this->get('/s-auth/pw-bypass?confirmed=1')
             ->assertStatus(200)
             ->assertSee('Password Required')
             ->assertDontSee('Security Redirect Warning');

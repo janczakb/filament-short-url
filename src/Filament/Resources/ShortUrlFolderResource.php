@@ -4,7 +4,6 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlFolderResource\Pages\ListShortUrlFolders;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlFolder;
-use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -81,14 +80,14 @@ class ShortUrlFolderResource extends Resource
                     ->label(__('filament-short-url::default.folder_color'))
                     ->allowHtml()
                     ->options([
-                        'gray' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #737373;"></span><span>' . __('filament-short-url::default.color_gray') . '</span></span>',
-                        'red' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ef4444;"></span><span>' . __('filament-short-url::default.color_red') . '</span></span>',
-                        'blue' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #3b82f6;"></span><span>' . __('filament-short-url::default.color_blue') . '</span></span>',
-                        'green' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #10b981;"></span><span>' . __('filament-short-url::default.color_green') . '</span></span>',
-                        'yellow' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #f59e0b;"></span><span>' . __('filament-short-url::default.color_yellow') . '</span></span>',
-                        'indigo' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #6366f1;"></span><span>' . __('filament-short-url::default.color_indigo') . '</span></span>',
-                        'purple' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #a855f7;"></span><span>' . __('filament-short-url::default.color_purple') . '</span></span>',
-                        'pink' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ec4899;"></span><span>' . __('filament-short-url::default.color_pink') . '</span></span>',
+                        'gray' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #737373;"></span><span>'.__('filament-short-url::default.color_gray').'</span></span>',
+                        'red' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ef4444;"></span><span>'.__('filament-short-url::default.color_red').'</span></span>',
+                        'blue' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #3b82f6;"></span><span>'.__('filament-short-url::default.color_blue').'</span></span>',
+                        'green' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #10b981;"></span><span>'.__('filament-short-url::default.color_green').'</span></span>',
+                        'yellow' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #f59e0b;"></span><span>'.__('filament-short-url::default.color_yellow').'</span></span>',
+                        'indigo' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #6366f1;"></span><span>'.__('filament-short-url::default.color_indigo').'</span></span>',
+                        'purple' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #a855f7;"></span><span>'.__('filament-short-url::default.color_purple').'</span></span>',
+                        'pink' => '<span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full shrink-0 border border-black/10 dark:border-white/10" style="background-color: #ec4899;"></span><span>'.__('filament-short-url::default.color_pink').'</span></span>',
                     ])
                     ->default('gray')
                     ->required()
@@ -137,13 +136,13 @@ class ShortUrlFolderResource extends Resource
                         ->icon('heroicon-o-trash')
                         ->label(__('filament-short-url::default.action_delete_folder')),
                 ])
-                ->icon('heroicon-m-ellipsis-vertical')
-                ->color('gray')
-                ->iconButton()
-                ->extraAttributes([
-                    'class' => 'action-trigger-btn group flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border text-sm bg-transparent hover:bg-bg-muted data-[state=open]:ring-4 data-[state=open]:ring-border-subtle sm:inline-flex h-8 w-8 outline-none transition-all duration-200 border-transparent data-[state=open]:border-neutral-500 sm:group-hover/card:data-[state=closed]:border-neutral-200',
-                    'style' => 'width: 32px !important; height: 32px !important; padding: 0px !important; border-radius: 8px !important;',
-                ]),
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('gray')
+                    ->iconButton()
+                    ->extraAttributes([
+                        'class' => 'action-trigger-btn group flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border text-sm bg-transparent hover:bg-bg-muted data-[state=open]:ring-4 data-[state=open]:ring-border-subtle sm:inline-flex h-8 w-8 outline-none transition-all duration-200 border-transparent data-[state=open]:border-neutral-500 sm:group-hover/card:data-[state=closed]:border-neutral-200',
+                        'style' => 'width: 32px !important; height: 32px !important; padding: 0px !important; border-radius: 8px !important;',
+                    ]),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc')

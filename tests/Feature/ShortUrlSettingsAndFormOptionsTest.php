@@ -407,20 +407,29 @@ describe('link option: password', function () {
     it('shows password prompt to unauthenticated visitor', function () {
         makeLink(['url_key' => 'pw1', 'password' => 'letmein']);
 
-        $this->get('/s/pw1')->assertStatus(200)->assertSee('Password Required');
+        // GET request to /s/{key} should redirect to /s-auth/{key}
+        $response = $this->get('/s/pw1');
+        $response->assertStatus(302);
+        $response->assertRedirect('/s-auth/pw1');
+
+        // GET request to /s-auth/{key} should show password prompt
+        $this->get('/s-auth/pw1')->assertStatus(200)->assertSee('Password Required');
     });
 
     it('redirects after correct password via session', function () {
         makeLink(['url_key' => 'pw2', 'password' => 'open']);
 
-        $this->post('/s/pw2', ['password' => 'open'])->assertRedirect('/s/pw2');
-        $this->get('/s/pw2')->assertRedirect('https://example.com');
+        // POST correct password to /s-auth/{key} -> redirects back to /s-auth/{key}
+        $this->post('/s-auth/pw2', ['password' => 'open'])->assertRedirect('/s-auth/pw2');
+        // Following request to /s-auth/{key} redirects to final destination
+        $this->get('/s-auth/pw2')->assertRedirect('https://example.com');
     });
 
     it('returns error view on wrong password', function () {
         makeLink(['url_key' => 'pw3', 'password' => 'right']);
 
-        $this->post('/s/pw3', ['password' => 'wrong'])
+        // POST wrong password to /s-auth/{key} -> returns prompt with error
+        $this->post('/s-auth/pw3', ['password' => 'wrong'])
             ->assertStatus(200)
             ->assertSee('Incorrect password');
     });
@@ -429,17 +438,22 @@ describe('link option: password', function () {
         makeLink(['url_key' => 'pw-rl', 'password' => 'correct']);
 
         for ($i = 0; $i < 5; $i++) {
-            $this->post('/s/pw-rl', ['password' => 'wrong'])->assertStatus(200);
+            $this->post('/s-auth/pw-rl', ['password' => 'wrong'])->assertStatus(200);
         }
 
-        $this->post('/s/pw-rl', ['password' => 'wrong'])->assertStatus(429);
+        $this->post('/s-auth/pw-rl', ['password' => 'wrong'])->assertStatus(429);
     });
 
     it('password check happens before warning page', function () {
         makeLink(['url_key' => 'pw-warn', 'password' => 'abc', 'show_warning_page' => true]);
 
+        // Unauthenticated visitor redirects to /s-auth/pw-warn
+        $response = $this->get('/s/pw-warn');
+        $response->assertStatus(302);
+        $response->assertRedirect('/s-auth/pw-warn');
+
         // Password prompt must appear first, not warning
-        $this->get('/s/pw-warn')->assertSee('Password Required')->assertDontSee('Security Redirect Warning');
+        $this->get('/s-auth/pw-warn')->assertSee('Password Required')->assertDontSee('Security Redirect Warning');
     });
 });
 
@@ -1125,8 +1139,13 @@ describe('option interactions and conflict scenarios', function () {
     it('single_use link with password shows password prompt on first visit', function () {
         makeLink(['url_key' => 'su-pw', 'single_use' => true, 'password' => 'abc']);
 
-        // Should show password prompt, NOT redirect + disable
-        $this->get('/s/su-pw')->assertSee('Password Required');
+        // Should redirect to stateful s-auth route
+        $response = $this->get('/s/su-pw');
+        $response->assertStatus(302);
+        $response->assertRedirect('/s-auth/su-pw');
+
+        // Visiting s-auth should render password prompt, NOT redirect + disable
+        $this->get('/s-auth/su-pw')->assertSee('Password Required');
 
         // Link must still be enabled (not consumed by the password prompt visit)
         expect(ShortUrl::where('url_key', 'su-pw')->value('is_enabled'))->toBeTrue();

@@ -4,7 +4,6 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
-use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
 
