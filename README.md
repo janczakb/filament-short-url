@@ -15,7 +15,7 @@
     <a href="https://github.com/janczakb/filament-short-url/actions"><img src="https://img.shields.io/badge/tests-passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
-A self-hosted **URL shortener, redirect engine, and QR code manager** built as a [Filament v5](https://filamentphp.com) plugin. Drop it into any Laravel 13 application to replace Bitly, Dub.co, or Rebrandly subscriptions — with full data ownership, no click limits, and no monthly fees.
+A self-hosted **URL shortener, redirect engine, and QR code manager** built as a [Filament v5](https://filamentphp.com) plugin. Drop it into any Laravel 11+ application to replace Bitly, Dub.co, or Rebrandly subscriptions — with full data ownership, no click limits, and no monthly fees.
 
 On top of basic link shortening it ships: multi-channel analytics with live activity feed, cross-filtering, and cross-domain retargeting pixels; advanced routing rules (device, country, language, A/B); mobile deep linking into 24+ native apps; a REST API with scoped keys; HMAC-signed webhooks; and offline GDPR-safe Geo-IP — all managed from a polished Filament admin panel.
 
