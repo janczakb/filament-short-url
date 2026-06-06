@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="art/logo-fism.png" width="180" alt="Filament Short URL — Laravel link shortener plugin for Filament">
+    <img src="art/plugin-filament.png" width="180" alt="Filament Short URL — Laravel link shortener plugin for Filament">
 </p>
 
 <h1 align="center">Filament Short URL</h1>
@@ -18,12 +18,6 @@
 A self-hosted **URL shortener, redirect engine, and QR code manager** built as a [Filament v5](https://filamentphp.com) plugin. Drop it into any Laravel 11+ application to replace Bitly, Dub.co, or Rebrandly subscriptions — with full data ownership, no click limits, and no monthly fees.
 
 On top of basic link shortening it ships: multi-channel analytics with live activity feed, cross-filtering, and cross-domain retargeting pixels; advanced routing rules (device, country, language, A/B); mobile deep linking into 24+ native apps; a REST API with scoped keys; HMAC-signed webhooks; and offline GDPR-safe Geo-IP — all managed from a polished Filament admin panel.
-
-## Video Walkthrough
-
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/edeca20a-2265-435e-a7f3-a32773c48bda" width="100%" autoplay loop muted controls style="max-width: 100%; border-radius: 8px;"></video>
-</p>
 
 ---
 
