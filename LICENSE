@@ -1,22 +1,58 @@
-Custom Source-Available License
+Custom Source-Available & Dual-Commercial License
 
-Copyright (c) 2026 Bartek Janczak
+Copyright (c) 2026 Bartek Janczak. All rights reserved.
 
-TERMS AND CONDITIONS
+IMPORTANT: PLEASE READ THIS LICENSE AGREEMENT CAREFULLY. BY DOWNLOADING, INSTALLING, OR USING THE SOFTWARE, YOU AGREE TO BE BOUND BY ALL THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL, OR USE THE SOFTWARE.
 
-1. Grant of License
-Subject to the terms of this License, the Copyright Holder hereby grants you a worldwide, royalty-free, non-exclusive, non-sublicensable license to:
-- Use the Software for personal, internal, or commercial purposes.
-- Modify the Software for your own personal, internal, or commercial use.
+-------------------------------------------------------------------------------
+1. DEFINITIONS
+-------------------------------------------------------------------------------
+"Software" means the "Short URL Manager" PHP/Filament package, including all source code, modules, documentation, migrations, updates, and modified versions thereof.
+"Copyright Holder" means Bartek Janczak.
+"Commercial Distribution" means selling, renting, leasing, sublicensing, or otherwise distributing the Software (in whole or in part, or embedded into a larger work, boilerplate, theme, SaaS platform, or application) to third parties for monetary gain, fees, or any commercial consideration.
+"Internal Commercial Use" means deploying and using the Software within your own business operations or building a custom website/system for a single client, where the client does not resell the underlying code.
 
-2. Restrictions
-You are strictly prohibited from:
-- Redistributing the Software, in whole or in part, or any modified versions thereof, in any public repository (including but not limited to public repositories on GitHub, GitLab, Bitbucket) or package registry (such as Packagist).
-- Selling, renting, leasing, or sublicensing the Software or any modified versions thereof as a standalone package or library.
-- Publishing, distributing, or sharing the Software under a different name or package name.
+-------------------------------------------------------------------------------
+2. GRANT OF FREE LICENSE (NON-DISTRIBUTION ONLY)
+-------------------------------------------------------------------------------
+Subject to compliance with Section 3 (Restrictions), the Copyright Holder hereby grants you a worldwide, royalty-free, non-exclusive, non-sublicensable license to:
+a) Download, install, and use the Software free of charge for personal, educational, internal business purposes, or Internal Commercial Use across an unlimited number of projects.
+b) Modify the Software solely for your own private, internal, or Internal Commercial Use, provided that any such modifications are kept private and are never distributed publicly.
 
-3. Copyright Notice
-The above copyright notice and this permission notice must be included in all copies or substantial portions of the Software.
+-------------------------------------------------------------------------------
+3. STRICT RESTRICTIONS & PROHIBITIONS
+-------------------------------------------------------------------------------
+Unless you have obtained an explicit, written Commercial License from the Copyright Holder pursuant to Section 4, you are STRICTLY PROHIBITED from:
+a) Public Redistribution: Publishing, hosting, or sharing the Software, in whole or in part, or any modified versions thereof, in any public repository (including but not limited to public repositories on GitHub, GitLab, Bitbucket) or public package registries (such as Packagist).
+b) Commercial Exploitation & Bundling: Engaging in any Commercial Distribution. You may not bundle, embed, or include the Software, in whole or in part, or any modified versions thereof, into any product, theme, extension, boilerplate, framework, or software application that is offered for sale, license, subscription, or commercial distribution to third parties.
+c) Relabeling: Publishing, distributing, or sharing the Software under a different author, vendor, or package name.
+d) Sublicensing: Granting any third party the right to resell, redistribute, or further sublicense the Software.
 
-4. Disclaimer of Warranty
+-------------------------------------------------------------------------------
+4. DUAL-LICENSING & COMMERCIAL LICENSING REQUIREMENT
+-------------------------------------------------------------------------------
+Any individual, entity, or organization wishing to engage in Commercial Distribution, or use the Software in a manner not expressly permitted by Section 2, MUST secure a separate, written Commercial License from the Copyright Holder prior to such use or distribution. 
+
+To inquire about purchasing a Commercial License or to request written authorization, please contact the Copyright Holder via email at: bartek122@gmail.com
+
+Commercial Licenses may be subject to a licensing fee, revenue-sharing model, or other terms as agreed upon in writing by the Copyright Holder. Any Commercial Distribution attempted without a valid, active, written Commercial License from the Copyright Holder is null and void, constitutes a material breach of this Agreement, and is a direct infringement of international copyright laws.
+
+-------------------------------------------------------------------------------
+5. INTELLECTUAL PROPERTY & COPYRIGHT NOTICE
+-------------------------------------------------------------------------------
+The Software is licensed, not sold. The Copyright Holder retains all right, title, and interest in and to the Software, including all copyrights, patents, trade secrets, and other intellectual property rights. The original copyright notice, author attribution, and this entire permission notice must be included in all copies, substantial portions, or private forks of the Software.
+
+-------------------------------------------------------------------------------
+6. TERMINATION
+-------------------------------------------------------------------------------
+This License and your right to use the Software will terminate automatically and immediately, without notice from the Copyright Holder, if you fail to comply with any of its terms or restrictions. Upon termination, you must immediately cease all use of the Software and destroy all copies, full or partial, in your possession.
+
+-------------------------------------------------------------------------------
+7. GOVERNING LAW AND JURISDICTION
+-------------------------------------------------------------------------------
+This License Agreement shall be governed by, and construed in accordance with, the substantive laws of Poland, without regard to its conflict of laws principles. Any legal action, suit, or proceeding arising out of or relating to this License shall be instituted exclusively in the competent courts located in Warsaw, Poland.
+
+-------------------------------------------------------------------------------
+8. DISCLAIMER OF WARRANTY
+-------------------------------------------------------------------------------
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
