@@ -83,25 +83,26 @@ On top of basic link shortening it ships: multi-channel analytics with live acti
 
 | Feature | Filament Short URL | Bitly | Dub.co | Rebrandly |
 |---|:---:|:---:|:---:|:---:|
-| Self-hosted | ✅ | ❌ | ❌ | ❌ |
+| Self-hosted | ✅ | ❌ | partial¹ | ❌ |
 | Unlimited links & clicks | ✅ | ❌ | ❌ | ❌ |
 | Custom domains | ✅ | 💰 | 💰 | 💰 |
-| QR code designer | ✅ | 💰 | basic | 💰 |
-| A/B split testing | ✅ | ❌ | ❌ | ❌ |
-| Retargeting pixels (5 providers) | ✅ | ❌ | ❌ | ❌ |
-| Mobile deep linking (24+ apps) | ✅ | ❌ | partial | ❌ |
-| Server-side GA4 (bypasses ad-block) | ✅ | ❌ | ❌ | ❌ |
+| QR code designer | ✅ | 💰 basic | 💰 basic | 💰 |
+| A/B split testing | ✅ | ❌ | ✅ | ❌ |
+| Retargeting pixels | ✅ 5 providers | ❌ | ❌ | 💰 |
+| Mobile deep linking | ✅ 24+ apps | 💰 Enterprise | 💰 partial | 💰 |
+| Server-side GA4 (ad-block bypass) | ✅ | ❌ | ❌ | ❌ |
 | Live activity feed | ✅ | ❌ | ✅ | ❌ |
-| Cross-filtering analytics | ✅ | ❌ | partial | ❌ |
-| REST API with per-key scopes | ✅ | 💰 | ✅ | 💰 |
-| HMAC-signed webhooks | ✅ | 💰 | ✅ | 💰 |
+| Cross-filtering analytics | ✅ | 💰 basic | partial | 💰 basic |
+| REST API | ✅ scoped keys | 💰 | ✅ | 💰 |
+| Webhooks | ✅ HMAC-signed | 💰 Enterprise | ✅ | 💰 |
 | Offline GDPR Geo-IP (MaxMind) | ✅ | ❌ | ❌ | ❌ |
 | VPN & bot filtering | ✅ | ❌ | ❌ | ❌ |
 | Google Safe Browsing on save | ✅ | ❌ | ❌ | ❌ |
-| Data stays on your server | ✅ | ❌ | ❌ | ❌ |
-| Monthly cost | **$0** | $0–$199+ | $0–$190+ | $0–$499+ |
+| Filament/Laravel admin panel | ✅ | ❌ | ❌ | ❌ |
+| Data stays on your server | ✅ | ❌ | partial¹ | ❌ |
+| Monthly cost | **$0** | $0–$199+ | $0–$190+ | $0–$49+ |
 
-> 💰 = available on paid plans only
+> 💰 = paid plans only &nbsp;·&nbsp; ¹ Dub.co is open-source (AGPLv3) but self-hosting requires external managed services (Tinybird, PlanetScale, Upstash)
 
 ---
 
