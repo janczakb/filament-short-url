@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="art/plugin-filament.png" width="100%" style="border-radius: 12px;" alt="Filament Short URL — Laravel link shortener plugin for Filament">
+    <img src="art/plugin-filament-v2.png" width="100%" style="border-radius: 12px;" alt="Filament Short URL — Laravel link shortener plugin for Filament">
 </p>
 
 <h1 align="center">Filament Short URL</h1>
