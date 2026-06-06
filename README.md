@@ -19,9 +19,16 @@ A self-hosted **URL shortener, redirect engine, and QR code manager** built as a
 
 On top of basic link shortening it ships: multi-channel analytics with live activity feed, cross-filtering, and cross-domain retargeting pixels; advanced routing rules (device, country, language, A/B); mobile deep linking into 24+ native apps; a REST API with scoped keys; HMAC-signed webhooks; and offline GDPR-safe Geo-IP — all managed from a polished Filament admin panel.
 
+## Video Walkthrough
+
+<p align="center">
+  <video src="art/preview.webm" width="100%" autoplay loop muted controls style="max-width: 100%; border-radius: 8px;"></video>
+</p>
+
 ---
 
 ## Screenshots
+
 
 <p align="center">
   <table align="center" style="border-collapse: collapse; border: none;">
