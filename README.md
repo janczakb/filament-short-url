@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://cdn3d.iconscout.com/3d/premium/thumb/url-3d-icon-png-download-9292351.png" width="180" alt="Filament Short URL — Laravel link shortener plugin for Filament">
+    <img src="art/logo-fism.png" width="180" alt="Filament Short URL — Laravel link shortener plugin for Filament">
 </p>
 
 <h1 align="center">Filament Short URL</h1>
