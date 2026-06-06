@@ -53,11 +53,29 @@ class DeveloperTab
                                     ->disabled()
                                     ->dehydrated()
                                     ->default(fn () => 'sh_key_'.bin2hex(random_bytes(16))),
+                                Select::make('scope')
+                                    ->label(__('filament-short-url::default.api_key_scope'))
+                                    ->options([
+                                        'links:read-write' => __('filament-short-url::default.api_key_scope_read_write'),
+                                        'links:read-only' => __('filament-short-url::default.api_key_scope_read_only'),
+                                    ])
+                                    ->default('links:read-write')
+                                    ->required(),
+                                Select::make('rate_limit')
+                                    ->label(__('filament-short-url::default.api_key_rate_limit'))
+                                    ->options([
+                                        '60' => __('filament-short-url::default.api_key_rate_limit_rpm', ['count' => 60]),
+                                        '120' => __('filament-short-url::default.api_key_rate_limit_rpm', ['count' => 120]),
+                                        '300' => __('filament-short-url::default.api_key_rate_limit_rpm', ['count' => 300]),
+                                        '0' => __('filament-short-url::default.api_key_rate_limit_unlimited'),
+                                    ])
+                                    ->default('60')
+                                    ->required(),
                                 Toggle::make('is_active')
                                     ->label(__('filament-short-url::default.active'))
                                     ->default(true),
                             ])
-                            ->columns(3)
+                            ->columns(5)
                             ->default([]),
                     ]),
 

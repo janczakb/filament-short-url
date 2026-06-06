@@ -11,14 +11,12 @@ namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 use Bjanczak\FilamentShortUrl\Http\Requests\StoreShortUrlRequest;
 use Bjanczak\FilamentShortUrl\Http\Requests\UpdateShortUrlRequest;
 use Bjanczak\FilamentShortUrl\Http\Resources\ShortUrlResource;
-use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
 
 class ShortUrlApiController extends Controller
 {
@@ -54,9 +52,6 @@ class ShortUrlApiController extends Controller
         if (! empty($pixelIds)) {
             $shortUrl->pixels()->sync($pixelIds);
         }
-
-        // Fire 'created' webhook if active
-        $this->dispatchCreatedWebhook($shortUrl);
 
         return (new ShortUrlResource($shortUrl))
             ->additional(['message' => 'Short URL created successfully.'])
@@ -148,48 +143,5 @@ class ShortUrlApiController extends Controller
         }
 
         return $link;
-    }
-
-    /**
-     * Dispatch webhook if global or per-link webhook is active for 'created' event.
-     */
-    private function dispatchCreatedWebhook(ShortUrl $shortUrl): void
-    {
-        $targetUrl = $shortUrl->webhook_url;
-        $globalUrl = config('filament-short-url.global_webhook_url');
-        $events = config('filament-short-url.webhook_events', []);
-
-        if (empty($targetUrl) && ! empty($globalUrl) && in_array('created', $events)) {
-            $targetUrl = $globalUrl;
-        }
-
-        if (! empty($targetUrl)) {
-            try {
-                $connection = config('filament-short-url.queue_connection', 'sync');
-
-                $job = new SendWebhookJob(
-                    url: $targetUrl,
-                    event: 'created',
-                    payload: [
-                        'event' => 'created',
-                        'timestamp' => now()->toIso8601String(),
-                        'short_url' => (new ShortUrlResource($shortUrl))->resolve(),
-                    ]
-                );
-
-                if ($connection) {
-                    $job->onConnection($connection);
-                } else {
-                    $job->onConnection('sync');
-                }
-
-                dispatch($job);
-            } catch (\Throwable $e) {
-                Log::error('[FilamentShortUrl] Created webhook dispatch failed', [
-                    'url_key' => $shortUrl->url_key,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
     }
 }

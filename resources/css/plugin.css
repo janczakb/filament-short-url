@@ -1,7 +1,10 @@
-@import "tailwindcss";
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
 
 @source "../../src/**/*.php";
-@source "../../resources/views/**/*.blade.php";
+@source "../views/**/*.blade.php";
+@source "packages/filament-short-url/src/**/*.php";
+@source "packages/filament-short-url/resources/views/**/*.blade.php";
 
 .short-url-card {
     position: relative !important;
@@ -85,4 +88,38 @@ select.fi-select-input:disabled,
 .fi-select-input .fi-select-input-btn.fi-disabled {
     background-image: none !important;
     padding-right: 0.75rem !important;
+}
+
+/* Folder Card overrides to reset default Filament record-content padding and force height/width stretch */
+.folder-card .fi-ta-record-content,
+.folder-card .fi-ta-record-content-ctn {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+
+.folder-card .fi-ta-record-content {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Position action buttons absolute on the card wrapper to keep dropdown aligned */
+.folder-card .fi-ta-actions {
+    position: absolute !important;
+    top: 1rem !important;
+    right: 1rem !important;
+    z-index: 20 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Force height down the Filament table layout tree so justify-between works */
+.folder-card .fi-ta-stack,
+.folder-card .fi-ta-stack > div,
+.folder-card .fi-ta-text,
+.folder-card .fi-ta-text > div {
+    height: 100% !important;
 }

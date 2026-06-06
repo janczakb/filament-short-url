@@ -2,7 +2,7 @@
 
 return [
     'navigation_label' => 'Linki',
-    'navigation_group' => 'Narzędzia',
+    'navigation_group' => 'Skracacz linków',
     'resource_title' => 'Krótki URL',
     'empty_state_heading' => 'Brak linków',
     'empty_state_description' => 'Zacznij tworzyć krótkie linki dla swoich kampanii marketingowych, programów partnerskich i nie tylko.',
@@ -152,6 +152,7 @@ return [
     'url_key_change_confirmation_heading' => 'Zastąpić link?',
     'url_key_change_confirmation' => 'Zmieniłeś krótki klucz (Short Key) tego linku. Zapisanie tych zmian spowoduje, że dotychczasowy krótki URL przestanie działać, a wszelkie udostępnione wcześniej linki z poprzednim kluczem wygasną.',
     'action_share' => 'Udostępnij link',
+    'action_move' => 'Przenieś',
     'share_title' => 'Udostępnij Link',
     'share_description' => 'Udostępnij ten krótki link przez:',
     'share_copy' => 'Skopiuj',
@@ -672,5 +673,76 @@ return [
     'action_delete_domain' => 'Usuń domenę',
     'delete_domain_confirmation_desc' => 'Czy na pewno chcesz usunąć tę własną domenę? Ta akcja nie może zostać cofnięta – postępuj ostrożnie.',
     'short_link_label' => 'Krótki link',
-];
 
+    // API Scopes & Rate Limits
+    'api_key_scope' => 'Uprawnienia (Scope)',
+    'api_key_scope_helper' => 'Wybierz poziom dostępu dla tego klucza API.',
+    'api_key_scope_read_write' => 'Odczyt i Zapis (Pełny dostęp)',
+    'api_key_scope_read_only' => 'Tylko Odczyt (Read-Only)',
+    'api_key_rate_limit' => 'Limit zapytań',
+    'api_key_rate_limit_helper' => 'Zdefiniuj maksymalną liczbę zapytań na minutę dopuszczalną dla tego klucza.',
+    'api_key_rate_limit_unlimited' => 'Bez limitu',
+    'api_key_rate_limit_rpm' => ':count zapytań / min',
+
+    // Folders
+    'folders_navigation_label' => 'Foldery',
+    'folder_resource_title' => 'Folder',
+    'folder_name' => 'Nazwa folderu',
+    'folder_slug' => 'Uproszczona nazwa (Slug)',
+    'folder_color' => 'Kolor',
+    'empty_state_folder_action' => 'Utwórz folder',
+    'empty_state_folders_heading' => 'Brak folderów',
+    'empty_state_folders_description' => 'Uporządkuj swoje krótkie linki w folderach.',
+    'action_edit_folder' => 'Edytuj folder',
+    'action_delete_folder' => 'Usuń folder',
+    'link_count_one' => '1 link',
+    'link_count_many' => ':count linków',
+
+    // Tagi
+    'tags_navigation_label' => 'Tagi',
+    'tag_resource_title' => 'Tag',
+    'tag_name' => 'Nazwa tagu',
+    'tag_slug' => 'Uproszczona nazwa (Slug)',
+    'tag_color' => 'Kolor',
+    'empty_state_tag_action' => 'Utwórz tag',
+    'empty_state_tags_heading' => 'Brak tagów',
+    'empty_state_tags_description' => 'Oznaczaj swoje krótkie linki tagami, by łatwo je filtrować.',
+    'action_edit_tag' => 'Edytuj tag',
+    'action_delete_tag' => 'Usuń tag',
+
+    // Archiving
+    'is_archived' => 'Zarchiwizowany',
+    'is_archived_helper' => 'Zarchiwizowane linki są ukrywane z głównej listy, ale nadal przekierowują użytkowników.',
+    'action_archive' => 'Archiwizuj',
+    'action_restore' => 'Przywróć',
+    'action_archive_selected' => 'Zarchiwizuj zaznaczone',
+    'action_restore_selected' => 'Przywróć zaznaczone',
+    'tab_active_links' => 'Aktywne',
+    'tab_archived_links' => 'Zarchiwizowane',
+
+    // Live Feed
+    'stats_tab_live_feed' => 'Strumień aktywności',
+    'stats_live_feed_empty' => 'Brak wizyt. Nowe wizyty pojawią się tutaj w czasie rzeczywistym.',
+    'stats_live_feed_poll_interval' => 'Aktualizacja co 5s',
+    'stats_col_visitor' => 'Odwiedzający / Lokalizacja',
+
+    // Puste stany - makiety
+    'empty_state_tags_mock_redirecting' => 'Przekierowywanie...',
+    'empty_state_tags_mock_promo' => 'promocja',
+    'empty_state_tags_mock_social' => 'social-media',
+    'empty_state_tags_mock_dev' => 'programisci',
+
+    // Liczba linków w folderze
+    'folder_one_link' => '1 link',
+    'folder_many_links' => ':count linków',
+
+    // Colors
+    'color_gray' => 'Szary',
+    'color_red' => 'Czerwony',
+    'color_blue' => 'Niebieski',
+    'color_green' => 'Zielony',
+    'color_yellow' => 'Żółty',
+    'color_indigo' => 'Indygo',
+    'color_purple' => 'Fioletowy',
+    'color_pink' => 'Różowy',
+];

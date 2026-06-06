@@ -59,7 +59,7 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
                     ->sortable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumm::make('referer_host')
+                Tables\Columns\TextColumn::make('referer_host')
                     ->label(__('filament-short-url::default.stats_col_referrer'))
                     ->icon('heroicon-o-link')
                     ->formatStateUsing(fn ($state) => empty($state) ? __('filament-short-url::default.stats_referer_direct') : $state)

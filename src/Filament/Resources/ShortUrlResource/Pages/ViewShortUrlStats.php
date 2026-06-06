@@ -32,6 +32,8 @@ class ViewShortUrlStats extends Page implements HasForms
 
     public array $activeFilters = [];
 
+    public string $activeTab = 'statistics';
+
     #[On('set-stats-filter')]
     public function setStatsFilter(string $key, $value): void
     {

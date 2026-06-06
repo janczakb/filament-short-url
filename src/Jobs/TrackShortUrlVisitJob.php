@@ -35,7 +35,7 @@ class TrackShortUrlVisitJob implements ShouldQueue
     public int $backoff = 5;
 
     public function __construct(
-        public readonly ShortUrl $shortUrl,
+        public readonly int $shortUrlId,
         public readonly string $ipAddress,
         public readonly string $userAgent,
         public readonly ?string $refererUrl = null,
@@ -56,7 +56,7 @@ class TrackShortUrlVisitJob implements ShouldQueue
     public function handle(ShortUrlTracker $tracker): void
     {
         // Re-fetch fresh model to avoid acting on stale state
-        $shortUrl = ShortUrl::find($this->shortUrl->id);
+        $shortUrl = ShortUrl::find($this->shortUrlId);
 
         if (! $shortUrl || ! $shortUrl->track_visits) {
             return;
@@ -102,70 +102,38 @@ class TrackShortUrlVisitJob implements ShouldQueue
         // Fire event for user listeners
         ShortUrlVisited::dispatch($shortUrl, $visit);
 
-        // Trigger Webhook if active
-        $targetUrl = $shortUrl->webhook_url;
-        $globalUrl = config('filament-short-url.global_webhook_url');
-        $events = config('filament-short-url.webhook_events', []);
-
-        $webhooksToDispatch = [];
-        if (! empty($targetUrl)) {
-            $webhooksToDispatch[] = $targetUrl;
-        }
-        if (! empty($globalUrl) && in_array('visited', $events)) {
-            $webhooksToDispatch[] = $globalUrl;
-        }
-
-        if (! empty($webhooksToDispatch)) {
-            $payload = [
-                'event' => 'visited',
-                'timestamp' => now()->toIso8601String(),
-                'short_url' => [
-                    'id' => $shortUrl->id,
-                    'destination_url' => $shortUrl->destination_url,
-                    'url_key' => $shortUrl->url_key,
-                    'short_url' => $shortUrl->getShortUrl(),
-                    'total_visits' => (int) $shortUrl->getRealTimeTotalVisits(),
-                    'unique_visits' => (int) $shortUrl->unique_visits,
-                ],
-                'visit' => [
-                    'id' => $visit->id,
-                    'visited_at' => $visit->visited_at->toIso8601String(),
-                    'device_type' => $visit->device_type,
-                    'browser' => $visit->browser,
-                    'browser_version' => $visit->browser_version,
-                    'operating_system' => $visit->operating_system,
-                    'operating_system_version' => $visit->operating_system_version,
-                    'country' => $visit->country,
-                    'country_code' => $visit->country_code,
-                    'city' => $visit->city,
-                    'referer_url' => $visit->referer_url,
-                    'referer_host' => $visit->referer_host,
-                    'utm_source' => $visit->utm_source,
-                    'utm_medium' => $visit->utm_medium,
-                    'utm_campaign' => $visit->utm_campaign,
-                    'utm_term' => $visit->utm_term,
-                    'utm_content' => $visit->utm_content,
-                    'is_qr_scan' => (bool) $visit->is_qr_scan,
-                    'browser_language' => $visit->browser_language,
-                ],
-            ];
-
-            foreach (array_unique($webhooksToDispatch) as $url) {
-                try {
-                    dispatch(new SendWebhookJob(
-                        url: $url,
-                        event: 'visited',
-                        payload: $payload
-                    )->onConnection($this->connection ?: 'sync'));
-                } catch (\Throwable $e) {
-                    Log::error('[FilamentShortUrl] Visited webhook dispatch failed', [
-                        'url' => $url,
-                        'url_key' => $shortUrl->url_key,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+        // Check if limit is reached now
+        if ($shortUrl->max_visits !== null && $shortUrl->getRealTimeTotalVisits() >= $shortUrl->max_visits) {
+            $limitReachedKey = "fsu:limit-reached-webhook-sent:{$shortUrl->id}";
+            if (cache()->add($limitReachedKey, true, 86400 * 30)) {
+                $shortUrl->dispatchWebhook('limit_reached');
             }
         }
+
+        // Trigger Webhook if active
+        $shortUrl->dispatchWebhook('visited', [
+            'visit' => [
+                'id' => $visit->id,
+                'visited_at' => $visit->visited_at->toIso8601String(),
+                'device_type' => $visit->device_type,
+                'browser' => $visit->browser,
+                'browser_version' => $visit->browser_version,
+                'operating_system' => $visit->operating_system,
+                'operating_system_version' => $visit->operating_system_version,
+                'country' => $visit->country,
+                'country_code' => $visit->country_code,
+                'city' => $visit->city,
+                'referer_url' => $visit->referer_url,
+                'referer_host' => $visit->referer_host,
+                'utm_source' => $visit->utm_source,
+                'utm_medium' => $visit->utm_medium,
+                'utm_campaign' => $visit->utm_campaign,
+                'utm_term' => $visit->utm_term,
+                'utm_content' => $visit->utm_content,
+                'is_qr_scan' => (bool) $visit->is_qr_scan,
+                'browser_language' => $visit->browser_language,
+            ],
+        ]);
 
         // Optional GA4 Measurement Protocol integration
         if ($shortUrl->ga_tracking_id && config('filament-short-url.ga4.api_secret')) {

@@ -64,12 +64,43 @@ class ShortUrlCustomDomain extends Model
      */
     protected static function booted(): void
     {
-        $bust = static function (self $m): void {
+        static::saved(function (self $m): void {
             cache()->forget("filament-short-url:custom-domain:{$m->domain}");
-        };
 
-        static::saved($bust);
-        static::deleted($bust);
+            $domainChanged = $m->wasChanged('domain');
+            if ($domainChanged) {
+                $oldDomain = $m->getOriginal('domain');
+                if ($oldDomain) {
+                    cache()->forget("filament-short-url:custom-domain:{$oldDomain}");
+                }
+            }
+
+            // Invalidate the redirect cache keys for all short URLs mapped to this domain
+            // if the domain name changes or its active status is toggled.
+            if ($domainChanged || $m->wasChanged('is_active')) {
+                $hosts = [$m->domain];
+                if ($domainChanged && isset($oldDomain)) {
+                    $hosts[] = $oldDomain;
+                }
+
+                $shortUrls = $m->shortUrls()->get(['url_key']);
+                foreach ($shortUrls as $url) {
+                    foreach ($hosts as $host) {
+                        cache()->forget("filament-short-url:{$url->url_key}:{$host}");
+                    }
+                }
+            }
+        });
+
+        static::deleted(function (self $m): void {
+            cache()->forget("filament-short-url:custom-domain:{$m->domain}");
+
+            // Clear redirect caches for all URLs mapped to this deleted domain
+            $shortUrls = $m->shortUrls()->get(['url_key']);
+            foreach ($shortUrls as $url) {
+                cache()->forget("filament-short-url:{$url->url_key}:{$m->domain}");
+            }
+        });
     }
 
     /**

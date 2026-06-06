@@ -2,7 +2,7 @@
 
 return [
     'navigation_label' => 'Links',
-    'navigation_group' => 'Tools',
+    'navigation_group' => 'URL Shortener',
     'resource_title' => 'Short URL',
     'empty_state_heading' => 'No links yet',
     'empty_state_description' => 'Start creating short links for your marketing campaigns, referral programs, and more.',
@@ -156,6 +156,7 @@ return [
     'url_key_change_confirmation_heading' => 'Replace link?',
     'url_key_change_confirmation' => "You've modified the back-half of this link's URL. Saving these changes will update the key. Any references to the original link will break.",
     'action_share' => 'Share Link',
+    'action_move' => 'Move',
     'share_title' => 'Share Link',
     'share_description' => 'Share this short link via:',
     'share_copy' => 'Copy',
@@ -674,5 +675,76 @@ return [
     'action_delete_domain' => 'Delete Domain',
     'delete_domain_confirmation_desc' => 'Are you sure you want to delete this custom domain? This action cannot be undone – proceed with caution.',
     'short_link_label' => 'Short Link',
-];
 
+    // API Scopes & Rate Limits
+    'api_key_scope' => 'API Scope',
+    'api_key_scope_helper' => 'Choose the permission level for this API key.',
+    'api_key_scope_read_write' => 'Read & Write (Full Access)',
+    'api_key_scope_read_only' => 'Read Only',
+    'api_key_rate_limit' => 'Rate Limit',
+    'api_key_rate_limit_helper' => 'Define the maximum requests per minute allowed for this key.',
+    'api_key_rate_limit_unlimited' => 'Unlimited',
+    'api_key_rate_limit_rpm' => ':count requests / min',
+
+    // Folders
+    'folders_navigation_label' => 'Folders',
+    'folder_resource_title' => 'Folder',
+    'folder_name' => 'Folder Name',
+    'folder_slug' => 'Slug',
+    'folder_color' => 'Color',
+    'empty_state_folder_action' => 'Create Folder',
+    'empty_state_folders_heading' => 'No folders yet',
+    'empty_state_folders_description' => 'Organize your short links into folders.',
+    'action_edit_folder' => 'Edit Folder',
+    'action_delete_folder' => 'Delete Folder',
+    'link_count_one' => '1 link',
+    'link_count_many' => ':count links',
+
+    // Tags
+    'tags_navigation_label' => 'Tags',
+    'tag_resource_title' => 'Tag',
+    'tag_name' => 'Tag Name',
+    'tag_slug' => 'Slug',
+    'tag_color' => 'Color',
+    'empty_state_tag_action' => 'Create Tag',
+    'empty_state_tags_heading' => 'No tags yet',
+    'empty_state_tags_description' => 'Tag your short links to filter them easily.',
+    'action_edit_tag' => 'Edit Tag',
+    'action_delete_tag' => 'Delete Tag',
+
+    // Archiving
+    'is_archived' => 'Archived',
+    'is_archived_helper' => 'Archived links are hidden from the active list but continue to redirect.',
+    'action_archive' => 'Archive',
+    'action_restore' => 'Restore',
+    'action_archive_selected' => 'Archive Selected',
+    'action_restore_selected' => 'Restore Selected',
+    'tab_active_links' => 'Active',
+    'tab_archived_links' => 'Archived',
+
+    // Live Feed
+    'stats_tab_live_feed' => 'Live Feed',
+    'stats_live_feed_empty' => 'No visits recorded yet. Visits will appear here in real-time.',
+    'stats_live_feed_poll_interval' => 'Updates every 5s',
+    'stats_col_visitor' => 'Visitor / Location',
+
+    // Empty state mock values
+    'empty_state_tags_mock_redirecting' => 'Redirecting...',
+    'empty_state_tags_mock_promo' => 'promo',
+    'empty_state_tags_mock_social' => 'social',
+    'empty_state_tags_mock_dev' => 'dev',
+
+    // Folder links count
+    'folder_one_link' => '1 link',
+    'folder_many_links' => ':count links',
+
+    // Colors
+    'color_gray' => 'Gray',
+    'color_red' => 'Red',
+    'color_blue' => 'Blue',
+    'color_green' => 'Green',
+    'color_yellow' => 'Yellow',
+    'color_indigo' => 'Indigo',
+    'color_purple' => 'Purple',
+    'color_pink' => 'Pink',
+];

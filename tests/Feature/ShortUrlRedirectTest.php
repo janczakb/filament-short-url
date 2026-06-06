@@ -1,6 +1,7 @@
 <?php
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ViewShortUrlStats;
+use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlDailyStats;
@@ -833,4 +834,62 @@ it('evaluates platform and browser language filters in new rule engine', functio
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         'Accept-Language' => 'pl-PL,pl;q=0.9',
     ])->assertRedirect('https://example.com');
+});
+
+it('dispatches limit_reached webhook when link reaches its click limit', function () {
+    Queue::fake([SendWebhookJob::class]);
+    cache()->forget('filament-short-url:settings');
+
+    $shortUrl = createShortUrl([
+        'url_key' => 'limit-reach-webhook',
+        'max_visits' => 1,
+        'track_visits' => true,
+        'webhook_url' => 'https://webhook.site/limit',
+    ]);
+
+    // Force queue connection to sync for the job so it runs inline
+    config(['filament-short-url.queue_connection' => 'sync']);
+
+    // Perform visit (will trigger TrackShortUrlVisitJob which will increment total_visits to 1 >= max_visits)
+    $this->get('/s/limit-reach-webhook');
+
+    Queue::assertPushed(SendWebhookJob::class, function ($job) {
+        return $job->url === 'https://webhook.site/limit' && $job->event === 'limit_reached';
+    });
+});
+
+it('dispatches expired webhook when user attempts to visit an expired link', function () {
+    Queue::fake([SendWebhookJob::class]);
+    cache()->forget('filament-short-url:settings');
+
+    $shortUrl = createShortUrl([
+        'url_key' => 'expired-webhook-test',
+        'expires_at' => now()->subDay(),
+        'track_visits' => true,
+        'webhook_url' => 'https://webhook.site/expired',
+    ]);
+
+    // Perform visit to expired link
+    $this->get('/s/expired-webhook-test');
+
+    Queue::assertPushed(SendWebhookJob::class, function ($job) {
+        return $job->url === 'https://webhook.site/expired' && $job->event === 'expired';
+    });
+});
+
+it('invalidates redirect cache keys when the url_key is updated', function () {
+    $shortUrl = createShortUrl([
+        'url_key' => 'old-key',
+        'track_visits' => false,
+    ]);
+
+    cache()->remember('filament-short-url:old-key:default', 3600, fn () => $shortUrl);
+    expect(cache()->has('filament-short-url:old-key:default'))->toBeTrue();
+
+    // Now update url_key
+    $shortUrl->update(['url_key' => 'new-key']);
+
+    // Cache for both keys should be cleared
+    expect(cache()->has('filament-short-url:old-key:default'))->toBeFalse();
+    expect(cache()->has('filament-short-url:new-key:default'))->toBeFalse();
 });

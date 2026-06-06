@@ -1,10 +1,19 @@
 <x-filament-panels::page>
     <x-filament::tabs class="mb-6">
         <x-filament::tabs.item
-            :active="true"
+            wire:click="$set('activeTab', 'statistics')"
+            :active="$activeTab === 'statistics'"
             icon="heroicon-m-presentation-chart-line"
         >
             {{ __('filament-short-url::default.stats_tab_statistics') }}
+        </x-filament::tabs.item>
+
+        <x-filament::tabs.item
+            tag="a"
+            href="{{ \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource::getUrl('stats.live', ['record' => $record]) }}"
+            icon="heroicon-m-bolt"
+        >
+            {{ __('filament-short-url::default.stats_tab_live_feed') }}
         </x-filament::tabs.item>
 
         <x-filament::tabs.item
@@ -127,3 +136,4 @@
         ], key('stats-variants-' . $dateFrom . '-' . $dateTo . '-' . $filtersHash))
     </div>
 </x-filament-panels::page>
+

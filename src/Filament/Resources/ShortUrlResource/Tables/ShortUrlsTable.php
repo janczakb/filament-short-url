@@ -60,6 +60,18 @@ class ShortUrlsTable
                         '0' => 'Multi-use',
                         '1' => 'Single-use',
                     ]),
+
+                SelectFilter::make('folder')
+                    ->label(__('filament-short-url::default.folder_resource_title'))
+                    ->relationship('folder', 'name')
+                    ->preload()
+                    ->multiple(),
+
+                SelectFilter::make('tags')
+                    ->label(__('filament-short-url::default.tags_navigation_label'))
+                    ->relationship('tags', 'name')
+                    ->preload()
+                    ->multiple(),
             ])
             ->recordClasses(fn (): string => 'short-url-card group/card')
             ->actions([
@@ -142,6 +154,64 @@ class ShortUrlsTable
                         ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_stats').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">S</span></div>'))
                         ->icon('heroicon-o-chart-bar')
                         ->url(fn (ShortUrl $record): string => ShortUrlResource::getUrl('stats', ['record' => $record])),
+
+                    ActionGroup::make([
+                        Action::make('move')
+                            ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_move').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">M</span></div>'))
+                            ->icon('heroicon-o-folder-open')
+                            ->modalHeading(fn (ShortUrl $record) => __('filament-short-url::default.action_move') . ' ' . str_replace(['http://', 'https://'], '', $record->getShortUrl()))
+                            ->modalWidth('md')
+                            ->modalSubmitActionLabel(__('filament-short-url::default.action_move'))
+                            ->fillForm(fn (ShortUrl $record): array => [
+                                'folder_id' => $record->folder_id,
+                            ])
+                            ->form(fn (ShortUrl $record): array => [
+                                Forms\Components\Select::make('folder_id')
+                                    ->label(__('filament-short-url::default.folder_resource_title'))
+                                    ->relationship('folder', 'name')
+                                    ->preload()
+                                    ->searchable()
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label(__('filament-short-url::default.folder_name'))
+                                            ->required()
+                                            ->maxLength(100)
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', \Illuminate\Support\Str::slug($state))),
+                                        Forms\Components\TextInput::make('slug')
+                                            ->label(__('filament-short-url::default.folder_slug'))
+                                            ->required()
+                                            ->maxLength(100)
+                                            ->unique('short_url_folders', 'slug'),
+                                        Forms\Components\Select::make('color')
+                                            ->label(__('filament-short-url::default.folder_color'))
+                                            ->options([
+                                                'gray' => 'Gray',
+                                                'red' => 'Red',
+                                                'blue' => 'Blue',
+                                                'green' => 'Green',
+                                                'yellow' => 'Yellow',
+                                                'indigo' => 'Indigo',
+                                                'purple' => 'Purple',
+                                                'pink' => 'Pink',
+                                            ])
+                                            ->default('gray')
+                                            ->required()
+                                            ->native(false),
+                                    ])
+                            ])
+                            ->action(function (ShortUrl $record, array $data): void {
+                                $record->update(['folder_id' => $data['folder_id']]);
+                            }),
+
+                        Action::make('archive')
+                            ->label(fn (ShortUrl $record) => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.($record->is_archived ? __('filament-short-url::default.action_restore') : __('filament-short-url::default.action_archive')).'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">'.($record->is_archived ? 'R' : 'A').'</span></div>'))
+                            ->icon(fn (ShortUrl $record) => $record->is_archived
+                                ? 'heroicon-o-arrow-path-rounded-square'
+                                : 'heroicon-o-archive-box')
+                            ->color('warning')
+                            ->action(fn (ShortUrl $record) => $record->update(['is_archived' => ! $record->is_archived])),
+                    ])->dropdown(false),
 
                     ActionGroup::make([
                         DeleteAction::make()
@@ -247,11 +317,25 @@ class ShortUrlsTable
                         ->action(fn ($records) => $records->each->update(['is_enabled' => false]))
                         ->deselectRecordsAfterCompletion(),
 
+                    BulkAction::make('archive')
+                        ->label(__('filament-short-url::default.action_archive_selected'))
+                        ->icon('heroicon-o-archive-box')
+                        ->color('warning')
+                        ->action(fn ($records) => $records->each->update(['is_archived' => true]))
+                        ->deselectRecordsAfterCompletion(),
+
+                    BulkAction::make('restore')
+                        ->label(__('filament-short-url::default.action_restore_selected'))
+                        ->icon('heroicon-o-arrow-path-rounded-square')
+                        ->color('success')
+                        ->action(fn ($records) => $records->each->update(['is_archived' => false]))
+                        ->deselectRecordsAfterCompletion(),
+
                     DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn ($query) => $query->with(['user', 'customDomain']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['user', 'customDomain', 'folder', 'tags']))
             ->recordUrl(fn (ShortUrl $record): string => ShortUrlResource::getUrl('stats', ['record' => $record]))
             ->emptyState(view('filament-short-url::table.empty-state'));
     }

@@ -51,9 +51,9 @@ class ShortUrlSettingsPage extends Page implements HasForms
     public static function getNavigationSort(): ?int
     {
         try {
-            return ShortUrlResource::getNavigationSort() + 3;
+            return ShortUrlResource::getNavigationSort() + 99;
         } catch (\Throwable) {
-            return 53;
+            return 99;
         }
     }
 

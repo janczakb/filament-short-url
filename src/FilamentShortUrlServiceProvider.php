@@ -42,6 +42,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2026_06_05_000001_add_user_id_to_short_urls_table',
                 '2026_06_05_000002_create_short_url_custom_domains_table',
                 '2026_06_05_000003_add_custom_domain_id_to_short_urls_table',
+                '2026_06_06_000001_create_short_url_folders_and_tags_tables',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,

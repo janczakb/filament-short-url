@@ -27,12 +27,22 @@ class AggregateAndPruneVisitsCommand extends Command
             default => 'DATE(visited_at)',
         };
 
-        // 1. Find all unique dates before today that have visits (optimized range and compatible DATE extract)
-        $dates = ShortUrlVisit::where('visited_at', '<', $today)
-            ->selectRaw("{$dateExpression} as visit_date")
-            ->distinct()
-            ->pluck('visit_date')
-            ->toArray();
+        // 1. Find the oldest and newest visit dates before today using highly optimized min/max index scanning
+        $oldestVisit = ShortUrlVisit::where('visited_at', '<', $today)->min('visited_at');
+        if (! $oldestVisit) {
+            $dates = [];
+        } else {
+            $latestVisit = ShortUrlVisit::where('visited_at', '<', $today)->max('visited_at');
+            $startCarbon = Carbon::parse($oldestVisit)->startOfDay();
+            $endCarbon = Carbon::parse($latestVisit)->startOfDay();
+
+            $dates = [];
+            $current = $startCarbon->copy();
+            while ($current->lte($endCarbon)) {
+                $dates[] = $current->toDateString();
+                $current->addDay();
+            }
+        }
 
         if (empty($dates)) {
             $this->info('No historical visits to aggregate.');

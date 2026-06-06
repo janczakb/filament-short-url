@@ -9,15 +9,15 @@
         </x-filament::tabs.item>
 
         <x-filament::tabs.item
-            tag="a"
-            href="{{ \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource::getUrl('stats.live', ['record' => $record]) }}"
+            :active="true"
             icon="heroicon-m-bolt"
         >
             {{ __('filament-short-url::default.stats_tab_live_feed') }}
         </x-filament::tabs.item>
 
         <x-filament::tabs.item
-            :active="true"
+            tag="a"
+            href="{{ \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource::getUrl('stats.logs', ['record' => $record]) }}"
             icon="heroicon-m-list-bullet"
         >
             {{ __('filament-short-url::default.stats_tab_visit_logs') }}
@@ -25,6 +25,11 @@
     </x-filament::tabs>
 
     <div class="mt-2">
-        {{ $this->table }}
+        @livewire(\Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlLiveFeedWidget::class, [
+            'record' => $record,
+            'dateFrom' => null,
+            'dateTo' => null,
+            'filters' => [],
+        ], key('live-feed-page-' . $record->id))
     </div>
 </x-filament-panels::page>

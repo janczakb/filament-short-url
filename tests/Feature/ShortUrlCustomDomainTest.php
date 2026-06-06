@@ -93,3 +93,46 @@ it('returns correct short URL link string based on custom domain association', f
     expect($shortUrl->getShortUrl())->toBe('https://links.acme.com/s/promo');
     expect($standardUrl->getShortUrl())->toBe('https://maindomain.com/s/stdkey');
 });
+
+it('invalidates both old and new custom domain cache keys when domain name is updated', function () {
+    $domain = ShortUrlCustomDomain::create([
+        'domain' => 'old-domain.com',
+        'is_verified' => true,
+        'is_active' => true,
+    ]);
+
+    cache()->remember('filament-short-url:custom-domain:old-domain.com', 300, fn () => $domain);
+
+    expect(cache()->has('filament-short-url:custom-domain:old-domain.com'))->toBeTrue();
+
+    // Now update domain name
+    $domain->update(['domain' => 'new-domain.com']);
+
+    // Both old and new domain cache keys must be cleared
+    expect(cache()->has('filament-short-url:custom-domain:old-domain.com'))->toBeFalse();
+    expect(cache()->has('filament-short-url:custom-domain:new-domain.com'))->toBeFalse();
+});
+
+it('invalidates short URL redirect caches when its custom domain is updated or toggled', function () {
+    $domain = ShortUrlCustomDomain::create([
+        'domain' => 'old-domain.com',
+        'is_verified' => true,
+        'is_active' => true,
+    ]);
+
+    $shortUrl = ShortUrl::create([
+        'destination_url' => 'https://example.com/target',
+        'url_key' => 'promo',
+        'custom_domain_id' => $domain->id,
+    ]);
+
+    cache()->remember('filament-short-url:promo:old-domain.com', 3600, fn () => $shortUrl);
+    expect(cache()->has('filament-short-url:promo:old-domain.com'))->toBeTrue();
+
+    // Update the domain name
+    $domain->update(['domain' => 'new-domain.com']);
+
+    // Redirect cache for the old domain should be invalidated
+    expect(cache()->has('filament-short-url:promo:old-domain.com'))->toBeFalse();
+    expect(cache()->has('filament-short-url:promo:new-domain.com'))->toBeFalse();
+});

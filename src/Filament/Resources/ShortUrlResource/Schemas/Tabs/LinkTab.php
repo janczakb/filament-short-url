@@ -341,6 +341,88 @@ class LinkTab
                             ->hidden(fn (Get $get): bool => (bool) $get('single_use')),
                     ])->columns(2),
 
+                Section::make(__('filament-short-url::default.folders_navigation_label').' & '.__('filament-short-url::default.tags_navigation_label'))
+                    ->schema([
+                        Select::make('folder_id')
+                            ->label(__('filament-short-url::default.folder_resource_title'))
+                            ->relationship('folder', 'name')
+                            ->nullable()
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label(__('filament-short-url::default.folder_name'))
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state))),
+                                TextInput::make('slug')
+                                    ->label(__('filament-short-url::default.folder_slug'))
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->unique('short_url_folders', 'slug'),
+                                Select::make('color')
+                                    ->label(__('filament-short-url::default.folder_color'))
+                                    ->options([
+                                        'gray' => 'Gray',
+                                        'red' => 'Red',
+                                        'blue' => 'Blue',
+                                        'green' => 'Green',
+                                        'yellow' => 'Yellow',
+                                        'indigo' => 'Indigo',
+                                        'purple' => 'Purple',
+                                        'pink' => 'Pink',
+                                    ])
+                                    ->default('gray')
+                                    ->required()
+                                    ->native(false),
+                            ]),
+
+                        Select::make('tags')
+                            ->label(__('filament-short-url::default.tags_navigation_label'))
+                            ->multiple()
+                            ->maxItems(5)
+                            ->relationship('tags', 'name')
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label(__('filament-short-url::default.tag_name'))
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state))),
+                                TextInput::make('slug')
+                                    ->label(__('filament-short-url::default.tag_slug'))
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->unique('short_url_tags', 'slug'),
+                                Select::make('color')
+                                    ->label(__('filament-short-url::default.tag_color'))
+                                    ->options([
+                                        'gray' => 'Gray',
+                                        'red' => 'Red',
+                                        'blue' => 'Blue',
+                                        'green' => 'Green',
+                                        'yellow' => 'Yellow',
+                                        'indigo' => 'Indigo',
+                                        'purple' => 'Purple',
+                                        'pink' => 'Pink',
+                                    ])
+                                    ->default('gray')
+                                    ->required()
+                                    ->native(false),
+                            ]),
+
+                        Toggle::make('is_archived')
+                            ->label(__('filament-short-url::default.is_archived'))
+                            ->helperText(__('filament-short-url::default.is_archived_helper'))
+                            ->default(false)
+                            ->inline(false)
+                            ->hiddenOn('create')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+
                 Section::make(__('filament-short-url::default.form_section_notes'))->schema([
                     Textarea::make('notes')
                         ->label(__('filament-short-url::default.notes'))

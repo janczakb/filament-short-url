@@ -51,7 +51,10 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 - 🌐 **Custom Domain Branding (new in v4.0.0)** — Register custom domains, show dynamic DNS setup instructions (A/CNAME records), verify records in real-time, and route redirects directly at the root of verified custom domains.
 - 🌍 **Multiple Geo-IP Drivers** — Route and analyze traffic with offline MaxMind detection, CDN edge headers (Cloudflare's `CF-IPCountry`, CloudFront), or fallback APIs.
 - 🗺️ **Interactive Visitor World Map** — Showcase geographic click distribution on a beautiful SVG world map widget with real-time hover details.
-- 📈 **Comprehensive Analytics Dashboard** — Monitor total/unique visits, referrers, operating systems, devices, browsers, and top browser languages in real-time.
+- 📈 **Comprehensive Analytics Dashboard** — Monitor total/unique visits, referrers, operating systems, devices, browsers, and top browser languages in real-time with full cross-filtering (e.g., "show only mobile visits from Poland").
+- ⚡ **Live Activity Feed (new in v5.0.0)** — Dedicated real-time visit stream page at `/stats/live`. Polls only when new visits are detected (O(1) `MAX(id)` check + `skipRender()` on no-change), serving `~100-byte` responses when idle. Flags via `flagcdn.com`, precomputed in PHP, CSP-safe Alpine.js fallback.
+- 🗂️ **Folders & Tags (new in v5.0.0)** — Organize links into folders (one folder per link) and tag them with up to 5 labels. Navigate directly from a folder or tag to a filtered link list. Link counts displayed on each folder and tag card.
+- 🗄️ **Link Archiving (new in v5.0.0)** — Archive unused links instead of permanently deleting them. Archived links are hidden from the default view but can be restored at any time.
 - 🛡️ **VPN, Proxy & Bot Filtering** — Exclude scrapers, crawlers, Tor exit nodes, and automated bot clicks to keep your analytics clean and accurate.
 - 🔍 **Google Safe Browsing** — Automatically scan target URLs on creation/edit to block phishing, malware, and social engineering links.
 - 🎨 **SVG QR Code Designer** — Customize dot styles, gradients, margins, and upload custom brand logos with auto-clear backing dots and high-quality SVG/PNG exports.
@@ -70,7 +73,7 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 - 🛡️ **Throttling & Rate Limiting** — Protect your redirection routes from flood attacks with configurable per-IP rate limits.
 - 📊 **Log Aggregation & Pruning** — Compact millions of raw visit logs into daily summaries automatically to prevent database bloat.
 - 🎯 **Central Retargeting Pixel Registry (new in v3.0.0)** — Register Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, and Pinterest Tag centrally and associate them with links via checkboxes.
-- 🔌 **Developer REST API (updated in v3.5.0)** — Full programmatical control with secure API Key authentication to create, read, update, list, delete, and inspect analytics for short links externally.
+- 🔌 **Developer REST API with Scoped Keys (updated in v5.0.0)** — Full programmatical control with API Key authentication. Each key supports `links:read-only` or `links:read-write` scope, and an individual per-key rate limit (requests/minute). Create, read, update, list, delete, and inspect analytics for short links externally.
 - 📡 **Real-Time Webhooks** — Asynchronous HTTP POST notifications on `visited`, `created`, `expired`, and `limit_reached` events with a built-in retry policy.
 - 📱 **Mobile App Deep Linking (new in v3.0.0)** — Detect mobile visitors and open links directly in 24+ native apps (Instagram, YouTube, Spotify, TikTok, etc.) using custom URI schemes.
 - 🔗 **Universal Links & App Links (new in v3.0.0)** — Host iOS `apple-app-site-association` and Android `assetlinks.json` domain configuration files directly from your root domain.
@@ -807,9 +810,26 @@ For security, new API keys are hashed using SHA-256 and stored securely in the d
 
 > If the API is disabled globally, all endpoints return `503 Service Unavailable` regardless of the key provided.
 
+### API Key Scopes
+
+Each API key can be assigned a **scope** that restricts its access level:
+
+| Scope | Allowed Methods | Use Case |
+|---|---|---|
+| `links:read-write` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` | Full control (default) |
+| `links:read-only` | `GET` only | Integrations that only need to read link data (e.g., dashboards, reporting tools) |
+
+A `links:read-only` key attempting a write operation (`POST`, `PUT`, `PATCH`, `DELETE`) will receive a `403 Forbidden` response.
+
+### Per-Key Rate Limiting
+
+Each API key can have its own **individual rate limit** (requests per minute), independent of the global route throttle. This allows high-trust integrations to use a higher limit while restricting untrusted keys more aggressively.
+
+Configure the rate limit for each key in **Settings → API & Webhooks → Developer API Keys**. The default is **60 requests per minute**.
+
 ### Endpoints
 
-All endpoints are prefix-grouped under `/api/short-url/` and are protected by the API Key middleware and rate-limited to **60 requests per minute** (`throttle:60,1`).
+All endpoints are prefix-grouped under `/api/short-url/` and are protected by the API Key middleware. The effective rate limit is the lower of the global route throttle and the per-key rate limit.
 
 #### `GET /api/short-url/links`
 List all short URLs (paginated, 30 per page).
@@ -1393,6 +1413,28 @@ All migrations are compatible with **SQLite**, **MySQL**, and **PostgreSQL**:
 ---
 
 ## Changelog
+
+### v5.0.0
+
+#### Analytics — Live Activity Feed
+- **Dedicated `/stats/live` page** — Live Feed is now a full standalone page at `/{record}/stats/live`, on par with Visit Logs at `/{record}/stats/logs`. Tab navigation is consistent across all three stat sub-pages (Statistics / Live Feed / Visit Logs).
+- **Intelligent no-change skip** — Each poll tick now calls `checkForUpdates()`, which performs a single O(1) `MAX(id)` query against the composite index. If the highest visit ID hasn't changed since the last render, `skipRender()` is called and Livewire returns a ~100-byte "nothing changed" response — zero PHP rendering, zero DOM operations.
+- **Correct cursor initialization** — `$latestVisitId` is initialized to `-1` (sentinel). After the first `getViewData()` call it is set to the actual `MAX(id)`, so the very first poll does not trigger an unnecessary re-render.
+- **Cache key versioned by `latestVisitId`** — Fixed a bug where two concurrent users detecting the same new visit could share a thundering-herd cache entry that didn't include the visit that triggered their render, causing them to permanently miss that visit until the next new visit arrived.
+- **3-second thundering-herd cache** — Collapses N concurrent admin users watching the same URL into one DB query per 3-second window. Cache key includes URL id, date range, active filters, and `latestVisitId` version.
+- **Country flags via `flagcdn.com`** — Flag images are rendered as `<img src="https://flagcdn.com/h20/{cc}.webp">` instead of emoji. The URL is precomputed once in PHP (`getViewData()`), not per-row in Blade. Alpine.js `x-on:error` handles broken images without CSP-unsafe inline `onerror` handlers.
+- **Blade performance** — `time_ago` is precomputed once in PHP using `$visit->visited_at->diffForHumans()` (no `Carbon::parse()` double-instantiation). All per-row presentation values are plain PHP arrays, not Eloquent model calls in Blade.
+- **Optimized DB query** — Selects only 12 needed columns (`id`, `visited_at`, `country`, `country_code`, `city`, `browser`, `operating_system`, `device_type`, `referer_host`, `referer_url`, `ip_address`, `is_qr_scan`, `selected_variant`) instead of `SELECT *`. Limit reduced to 25 rows.
+- **Polling stops when hidden** — `wire:poll.5s.visible` pauses polling completely when the widget is scrolled out of viewport.
+
+#### Link Organization
+- **Folders** — Each short URL can be assigned to one folder. Clicking a folder in the sidebar navigates to a filtered link list showing only that folder's links. Link count displayed per folder.
+- **Tags** — Each short URL can have up to 5 tags. Clicking a tag shows a filtered link list. Link counts displayed per tag.
+- **Archiving** — Short URLs can be archived instead of permanently deleted. Archived links are hidden from the default list view and can be restored at any time via the Filament panel.
+
+#### REST API
+- **Per-key API scopes** — Each API key now supports either `links:read-only` (GET only) or `links:read-write` (full CRUD) scope. Read-only keys return `403 Forbidden` on any write attempt.
+- **Per-key rate limiting** — Each API key can have its own individual rate limit (requests per minute), independent of the global route throttle. Configure in **Settings → API & Webhooks → Developer API Keys**.
 
 ### v4.0.0
 - **Custom Domains Branding** — Let users connect branded custom domains with real-time CNAME/A record DNS verification and automatic prefix-free root routing.

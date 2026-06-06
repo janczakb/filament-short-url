@@ -59,10 +59,10 @@ class ShortUrlWorldMapWidget extends Widget
                 ->where('is_proxy', false);
 
             if ($dateFromClean) {
-                $query->whereDate('visited_at', '>=', $dateFromClean);
+                $query->where('visited_at', '>=', $dateFromClean.' 00:00:00');
             }
             if ($dateToClean) {
-                $query->whereDate('visited_at', '<=', $dateToClean);
+                $query->where('visited_at', '<=', $dateToClean.' 23:59:59');
             }
 
             $this->record->applyStatsFilters($query, $this->filters);

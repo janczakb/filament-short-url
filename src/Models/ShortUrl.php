@@ -10,6 +10,8 @@ namespace Bjanczak\FilamentShortUrl\Models;
 
 use App\Models\User;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlGlobalOverview;
+use Bjanczak\FilamentShortUrl\Http\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlBuilder;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -95,13 +98,17 @@ class ShortUrl extends Model
         'destination_type',
         'rotation_variants',
         'custom_domain_id',
+        'folder_id',
+        'is_archived',
     ];
 
     /** @var array<string, string> */
     protected $casts = [
         'user_id' => 'integer',
         'custom_domain_id' => 'integer',
+        'folder_id' => 'integer',
         'is_enabled' => 'boolean',
+        'is_archived' => 'boolean',
         'single_use' => 'boolean',
         'forward_query_params' => 'boolean',
         'auto_open_app_mobile' => 'boolean',
@@ -126,6 +133,16 @@ class ShortUrl extends Model
     ];
 
     // ─── Relations ───────────────────────────────────────────────────────────
+
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(ShortUrlFolder::class, 'folder_id');
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(ShortUrlTag::class, 'short_url_tag', 'short_url_id', 'tag_id');
+    }
 
     public function customDomain(): BelongsTo
     {
@@ -300,8 +317,11 @@ class ShortUrl extends Model
             }
 
             // Current domain
-            if ($m->custom_domain_id && $m->customDomain) {
-                $hosts[] = $m->customDomain->domain;
+            if ($m->custom_domain_id) {
+                $domain = ShortUrlCustomDomain::find($m->custom_domain_id);
+                if ($domain) {
+                    $hosts[] = $domain->domain;
+                }
             }
 
             // If custom domain changed, clear old domain cache too
@@ -333,6 +353,7 @@ class ShortUrl extends Model
             // Using wasRecentlyCreated avoids the double-forget that the separate created() event caused.
             if ($m->wasRecentlyCreated) {
                 cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY);
+                $m->dispatchWebhook('created');
             }
         });
 
@@ -346,8 +367,11 @@ class ShortUrl extends Model
                 $hosts[] = $appHost;
             }
 
-            if ($m->custom_domain_id && $m->customDomain) {
-                $hosts[] = $m->customDomain->domain;
+            if ($m->custom_domain_id) {
+                $domain = ShortUrlCustomDomain::find($m->custom_domain_id);
+                if ($domain) {
+                    $hosts[] = $domain->domain;
+                }
             }
 
             foreach ($hosts as $host) {
@@ -483,5 +507,70 @@ class ShortUrl extends Model
         }
 
         return rtrim($baseUrl, '/').'/'.$this->url_key;
+    }
+
+    /**
+     * Dispatch webhook if global or per-link webhook is active for the specified event.
+     */
+    public function dispatchWebhook(string $event, array $extraPayload = []): void
+    {
+        $targetUrl = $this->webhook_url;
+        $globalUrl = config('filament-short-url.global_webhook_url');
+        $events = config('filament-short-url.webhook_events', []);
+
+        $webhooksToDispatch = [];
+        if (! empty($targetUrl)) {
+            $webhooksToDispatch[] = $targetUrl;
+        }
+        if (! empty($globalUrl) && in_array($event, $events)) {
+            $webhooksToDispatch[] = $globalUrl;
+        }
+
+        if (empty($webhooksToDispatch)) {
+            return;
+        }
+
+        $shortUrlData = ($event === 'created')
+            ? (new ShortUrlResource($this))->resolve()
+            : [
+                'id' => $this->id,
+                'destination_url' => $this->destination_url,
+                'url_key' => $this->url_key,
+                'short_url' => $this->getShortUrl(),
+                'total_visits' => (int) $this->getRealTimeTotalVisits(),
+                'unique_visits' => (int) $this->unique_visits,
+            ];
+
+        $payload = array_merge([
+            'event' => $event,
+            'timestamp' => now()->toIso8601String(),
+            'short_url' => $shortUrlData,
+        ], $extraPayload);
+
+        $connection = config('filament-short-url.queue_connection', 'sync');
+
+        foreach (array_unique($webhooksToDispatch) as $url) {
+            try {
+                $job = new SendWebhookJob(
+                    url: $url,
+                    event: $event,
+                    payload: $payload
+                );
+
+                if ($connection) {
+                    $job->onConnection($connection);
+                } else {
+                    $job->onConnection('sync');
+                }
+
+                dispatch($job);
+            } catch (\Throwable $e) {
+                Log::error("[FilamentShortUrl] {$event} webhook dispatch failed", [
+                    'url' => $url,
+                    'url_key' => $this->url_key,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }

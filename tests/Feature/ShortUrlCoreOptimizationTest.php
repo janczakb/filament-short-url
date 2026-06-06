@@ -6,6 +6,8 @@ use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlDailyStats;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
+use Bjanczak\FilamentShortUrl\Services\ShortUrlTracker;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -57,19 +59,19 @@ it('forces 302 redirect status code for limited/expiring links', function () {
 
 it('generates a deterministic privacy-safe GA4 client ID', function () {
     $job1 = new TrackShortUrlVisitJob(
-        shortUrl: new ShortUrl(['id' => 1]),
+        shortUrlId: 1,
         ipAddress: '192.168.1.1',
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
     );
 
     $job2 = new TrackShortUrlVisitJob(
-        shortUrl: new ShortUrl(['id' => 1]),
+        shortUrlId: 1,
         ipAddress: '192.168.1.1',
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
     );
 
     $job3 = new TrackShortUrlVisitJob(
-        shortUrl: new ShortUrl(['id' => 1]),
+        shortUrlId: 1,
         ipAddress: '8.8.8.8',
         userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)'
     );
@@ -228,12 +230,12 @@ it('anonymizes IP address correctly for IPv4 and IPv6', function () {
     $ipv4 = '192.168.1.123';
     $ipv6 = '2001:db8:85a3:8d3:1319:8a2e:370:7334';
 
-    expect(\Bjanczak\FilamentShortUrl\Services\ShortUrlTracker::anonymizeIp($ipv4))->toBe('192.168.1.0')
-        ->and(\Bjanczak\FilamentShortUrl\Services\ShortUrlTracker::anonymizeIp($ipv6))->toBe('2001:db8:85a3::');
+    expect(ShortUrlTracker::anonymizeIp($ipv4))->toBe('192.168.1.0')
+        ->and(ShortUrlTracker::anonymizeIp($ipv6))->toBe('2001:db8:85a3::');
 });
 
 it('anonymizes saved IP address when anonymize_ips is enabled but computes hash on raw IP', function () {
-    $mgr = app(\Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager::class);
+    $mgr = app(ShortUrlSettingsManager::class);
     $mgr->set(['tracking_anonymize_ips' => true]);
 
     $link = ShortUrl::create([
@@ -242,11 +244,11 @@ it('anonymizes saved IP address when anonymize_ips is enabled but computes hash 
         'track_ip_address' => true,
     ]);
 
-    $request = \Illuminate\Http\Request::create('/anonkey', 'GET', [], [], [], [
+    $request = Request::create('/anonkey', 'GET', [], [], [], [
         'REMOTE_ADDR' => '1.2.3.4',
     ]);
 
-    $tracker = app(\Bjanczak\FilamentShortUrl\Services\ShortUrlTracker::class);
+    $tracker = app(ShortUrlTracker::class);
     $visit = $tracker->record($link, $request);
 
     expect($visit->ip_address)->toBe('1.2.3.0')

@@ -69,6 +69,13 @@ class ShortUrlRedirectController extends Controller
 
         // Redirect to custom expiration URL if defined, otherwise 410 Gone if disabled or expired
         if (! $shortUrl->isActive()) {
+            if ($shortUrl->isExpired() || ($shortUrl->deactivated_at && $shortUrl->deactivated_at->isPast())) {
+                $expiredKey = "fsu:expired-webhook-sent:{$shortUrl->id}";
+                if (cache()->add($expiredKey, true, 86400 * 30)) {
+                    $shortUrl->dispatchWebhook('expired');
+                }
+            }
+
             if ($shortUrl->expiration_redirect_url && $shortUrl->is_enabled) {
                 return redirect()->away($shortUrl->expiration_redirect_url, 302);
             }
@@ -193,7 +200,7 @@ class ShortUrlRedirectController extends Controller
                 $selectedVariant = app()->bound('resolved_ab_variant') ? app('resolved_ab_variant') : null;
 
                 $job = new TrackShortUrlVisitJob(
-                    shortUrl: $shortUrl,
+                    shortUrlId: $shortUrl->id,
                     ipAddress: $ipAddress,
                     userAgent: $request->userAgent() ?? '',
                     refererUrl: $request->header('Referer'),

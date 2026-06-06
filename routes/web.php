@@ -25,7 +25,6 @@ Route::match(
 Route::prefix('api/short-url')
     ->middleware([
         AuthenticateShortUrlApi::class,
-        'throttle:60,1',
     ])
     ->group(function () {
         Route::get('links', [ShortUrlApiController::class, 'index']);

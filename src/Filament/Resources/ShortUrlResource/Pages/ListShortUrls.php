@@ -9,6 +9,7 @@ use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Support\HtmlString;
 
@@ -393,6 +394,16 @@ HTML;
     {
         return [
             ShortUrlGlobalOverview::class,
+        ];
+    }
+
+    public function getTabs(): array
+    {
+        return [
+            'active' => Tab::make(__('filament-short-url::default.tab_active_links'))
+                ->modifyQueryUsing(fn ($query) => $query->where('is_archived', false)),
+            'archived' => Tab::make(__('filament-short-url::default.tab_archived_links'))
+                ->modifyQueryUsing(fn ($query) => $query->where('is_archived', true)),
         ];
     }
 }

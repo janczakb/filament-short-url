@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 
@@ -265,11 +266,10 @@ return [
     |
     */
     'user' => [
-        'model' => \App\Models\User::class,
+        'model' => User::class,
         'name_column' => 'name',
         'email_column' => 'email',
         'avatar_column' => 'avatar_url', // can be attribute/method on model or null to auto-detect HasAvatar
     ],
 
 ];
-

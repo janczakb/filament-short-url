@@ -17,7 +17,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -127,7 +126,7 @@ describe('complex option interactions', function () {
         // 1. Unauthenticated request as mobile: password prompt must show first, not warning, not redirect
         $response = $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
             ->get('/s/tgt-pw-warn');
-        
+
         $response->assertStatus(200)
             ->assertSee('Password Required')
             ->assertDontSee('Security Redirect Warning')
@@ -190,7 +189,7 @@ describe('complex option interactions', function () {
         // Verification:
         // 1. The old visit should be pruned from database
         $this->assertDatabaseMissing('short_url_visits', ['id' => $oldVisit->id]);
-        
+
         // 2. The recent visit should remain in database
         $this->assertDatabaseHas('short_url_visits', ['id' => $recentVisit->id]);
 
@@ -243,7 +242,7 @@ describe('complex option interactions', function () {
                     'destination_type' => 'single',
                     'url' => 'https://tablet-single.com',
                     'filters' => [['type' => 'device', 'data' => ['devices' => ['tablet']]]],
-                ]
+                ],
             ],
         ]);
 
