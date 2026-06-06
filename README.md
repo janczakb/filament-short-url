@@ -33,15 +33,15 @@ On top of basic link shortening it ships: multi-channel analytics with live acti
 <p align="center">
   <table align="center" style="border-collapse: collapse; border: none;">
     <tr style="border: none;">
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_1.png" alt="Analytics dashboard" style="border-radius: 8px;"></td>
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_2.png" alt="Short URL creation form" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v3_1.png" alt="Analytics dashboard" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v3_2.png" alt="Short URL creation form" style="border-radius: 8px;"></td>
     </tr>
     <tr style="border: none;">
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_3.png" alt="Smart targeting rules" style="border-radius: 8px;"></td>
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_4.png" alt="Settings panel" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v3_3.png" alt="Smart targeting rules" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v3_4.png" alt="Settings panel" style="border-radius: 8px;"></td>
     </tr>
     <tr style="border: none;">
-      <td colspan="2" style="border: none; padding: 5px;"><img src="art/v2_5.png" alt="Visit logs table" style="border-radius: 8px; width: 100%;"></td>
+      <td colspan="2" style="border: none; padding: 5px;"><img src="art/v3_5.png" alt="Visit logs table" style="border-radius: 8px; width: 100%;"></td>
     </tr>
   </table>
 </p>
