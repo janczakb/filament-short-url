@@ -1,58 +1,334 @@
-Custom Source-Available & Dual-Commercial License
+================================================================================
+        SOURCE-AVAILABLE & DUAL-COMMERCIAL LICENSE — VERSION 1.1
+           janczakb/filament-short-url (the "Software")
+================================================================================
 
-Copyright (c) 2026 Bartek Janczak. All rights reserved.
+Copyright (c) 2026 Bartłomiej Janczak. All rights reserved.
+Contact: barek122@gmail.com
 
-IMPORTANT: PLEASE READ THIS LICENSE AGREEMENT CAREFULLY. BY DOWNLOADING, INSTALLING, OR USING THE SOFTWARE, YOU AGREE TO BE BOUND BY ALL THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL, OR USE THE SOFTWARE.
+IMPORTANT — READ CAREFULLY BEFORE DOWNLOADING, INSTALLING, OR USING THIS
+SOFTWARE. BY TAKING ANY OF THOSE ACTIONS, YOU UNCONDITIONALLY ACCEPT EVERY
+TERM AND CONDITION OF THIS AGREEMENT. IF YOU DO NOT ACCEPT, DO NOT DOWNLOAD,
+INSTALL, OR USE THE SOFTWARE IN ANY WAY.
 
--------------------------------------------------------------------------------
-1. DEFINITIONS
--------------------------------------------------------------------------------
-"Software" means the "Short URL Manager" PHP/Filament package, including all source code, modules, documentation, migrations, updates, and modified versions thereof.
-"Copyright Holder" means Bartek Janczak.
-"Commercial Distribution" means selling, renting, leasing, sublicensing, or otherwise distributing the Software (in whole or in part, or embedded into a larger work, boilerplate, theme, SaaS platform, or application) to third parties for monetary gain, fees, or any commercial consideration.
-"Internal Commercial Use" means deploying and using the Software within your own business operations or building a custom website/system for a single client, where the client does not resell the underlying code.
+================================================================================
+SECTION 1 — DEFINITIONS
+================================================================================
 
--------------------------------------------------------------------------------
-2. GRANT OF FREE LICENSE (NON-DISTRIBUTION ONLY)
--------------------------------------------------------------------------------
-Subject to compliance with Section 3 (Restrictions), the Copyright Holder hereby grants you a worldwide, royalty-free, non-exclusive, non-sublicensable license to:
-a) Download, install, and use the Software free of charge for personal, educational, internal business purposes, or Internal Commercial Use across an unlimited number of projects.
-b) Modify the Software solely for your own private, internal, or Internal Commercial Use, provided that any such modifications are kept private and are never distributed publicly.
+1.1  "Software" means the PHP/Laravel/Filament package published by Bartłomiej
+     Janczak under the identifier janczakb/filament-short-url, including all
+     source code, compiled assets, database migrations, configuration files,
+     documentation, and any future updates, patches, or versions thereof.
 
--------------------------------------------------------------------------------
-3. STRICT RESTRICTIONS & PROHIBITIONS
--------------------------------------------------------------------------------
-Unless you have obtained an explicit, written Commercial License from the Copyright Holder pursuant to Section 4, you are STRICTLY PROHIBITED from:
-a) Public Redistribution: Publishing, hosting, or sharing the Software, in whole or in part, or any modified versions thereof, in any public repository (including but not limited to public repositories on GitHub, GitLab, Bitbucket) or public package registries (such as Packagist).
-b) Commercial Exploitation & Bundling: Engaging in any Commercial Distribution. You may not bundle, embed, or include the Software, in whole or in part, or any modified versions thereof, into any product, theme, extension, boilerplate, framework, or software application that is offered for sale, license, subscription, or commercial distribution to third parties.
-c) Relabeling: Publishing, distributing, or sharing the Software under a different author, vendor, or package name.
-d) Sublicensing: Granting any third party the right to resell, redistribute, or further sublicense the Software.
+1.2  "Copyright Holder" means Bartłomiej Janczak, sole and exclusive author
+     and owner of all intellectual property rights in and to the Software.
 
--------------------------------------------------------------------------------
-4. DUAL-LICENSING & COMMERCIAL LICENSING REQUIREMENT
--------------------------------------------------------------------------------
-Any individual, entity, or organization wishing to engage in Commercial Distribution, or use the Software in a manner not expressly permitted by Section 2, MUST secure a separate, written Commercial License from the Copyright Holder prior to such use or distribution. 
+1.3  "You" (or "Your") means the individual or legal entity exercising rights
+     under this License.
 
-To inquire about purchasing a Commercial License or to request written authorization, please contact the Copyright Holder via email at: barek122@gmail.com
+1.4  "Permitted Free Use" means:
+     (a) Personal, educational, research, or internal business use by a single
+         natural person or a single legal entity solely for that entity's own
+         internal operations;
+     (b) Deployment of the Software for a single, uniquely identified client as
+         a work-for-hire or freelance project, provided that:
+         (i)  the client does not receive, resell, or otherwise transfer the
+              Software or any portion thereof to any third party;
+         (ii) the deployment is limited to one (1) production environment per
+              distinct client engagement; and
+         (iii) the monthly tracked-click/redirect volume of the resulting
+               system does not exceed 1,000,000 (one million) events per
+               calendar month across all deployed instances attributable to
+               that engagement.
 
-Commercial Licenses may be subject to a licensing fee, revenue-sharing model, or other terms as agreed upon in writing by the Copyright Holder. Any Commercial Distribution attempted without a valid, active, written Commercial License from the Copyright Holder is null and void, constitutes a material breach of this Agreement, and is a direct infringement of international copyright laws.
+1.5  "Commercial Distribution" means any act of selling, renting, leasing,
+     sublicensing, or otherwise transferring — for monetary gain, in-kind
+     consideration, or any other commercial benefit — the Software, or any
+     Derivative Work, or any Bundled Product, to one or more third parties.
+     For the avoidance of doubt, Commercial Distribution includes but is not
+     limited to:
+     (a) selling or licensing a website, web application, theme, template,
+         boilerplate, starter kit, or codebase that embeds or depends upon the
+         Software, whether the Software is disclosed or concealed;
+     (b) offering link-management, URL-shortening, QR-code, or redirect
+         services as a paid SaaS, subscription, or multi-tenant product in
+         which the Software's functionality is a material component;
+     (c) providing the Software to a client under a contract where the client
+         subsequently resells, licenses, or distributes the resulting product
+         to end users.
 
--------------------------------------------------------------------------------
-5. INTELLECTUAL PROPERTY & COPYRIGHT NOTICE
--------------------------------------------------------------------------------
-The Software is licensed, not sold. The Copyright Holder retains all right, title, and interest in and to the Software, including all copyrights, patents, trade secrets, and other intellectual property rights. The original copyright notice, author attribution, and this entire permission notice must be included in all copies, substantial portions, or private forks of the Software.
+1.6  "Derivative Work" means any work that is based upon, incorporates,
+     modifies, adapts, translates, or is otherwise derived from the Software
+     or any substantial part thereof, regardless of the programming language,
+     file format, or packaging used.
 
--------------------------------------------------------------------------------
-6. TERMINATION
--------------------------------------------------------------------------------
-This License and your right to use the Software will terminate automatically and immediately, without notice from the Copyright Holder, if you fail to comply with any of its terms or restrictions. Upon termination, you must immediately cease all use of the Software and destroy all copies, full or partial, in your possession.
+1.7  "Bundled Product" means any software application, plugin, extension,
+     theme, template, framework, boilerplate, starter kit, digital product, or
+     service offering in which the Software — in whole or in any part, modified
+     or unmodified — is included, embedded, required as a dependency, or
+     integrated in any manner, irrespective of whether the Software constitutes
+     the primary component or a minor ancillary element.
 
--------------------------------------------------------------------------------
-7. GOVERNING LAW AND JURISDICTION
--------------------------------------------------------------------------------
-This License Agreement shall be governed by, and construed in accordance with, the substantive laws of Poland, without regard to its conflict of laws principles. Any legal action, suit, or proceeding arising out of or relating to this License shall be instituted exclusively in the competent courts located in Warsaw, Poland.
+1.8  "High-Volume Use" means any deployment — whether by a single entity or
+     across multiple instances — that generates more than 1,000,000 (one
+     million) combined tracked clicks, redirects, or link events per calendar
+     month attributable to the Software's functionality.
 
--------------------------------------------------------------------------------
-8. DISCLAIMER OF WARRANTY
--------------------------------------------------------------------------------
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+1.9  "Repository" means any version-control hosting service or platform,
+     including without limitation GitHub, GitLab, Bitbucket, Codeberg, or any
+     self-hosted equivalent, whether public, private, or restricted.
+
+1.10 "Package Registry" means any software distribution index, including
+     without limitation Packagist, npm, PyPI, or any equivalent service.
+
+================================================================================
+SECTION 2 — GRANT OF FREE LICENSE
+================================================================================
+
+Subject strictly to the conditions and restrictions in Sections 3 and 4, the
+Copyright Holder grants You a worldwide, royalty-free, non-exclusive,
+non-sublicensable, non-transferable license to:
+
+2.1  Download, install, and use the Software solely for Permitted Free Use as
+     defined in Section 1.4.
+
+2.2  Modify the Software solely for Your own private or internal use under
+     Section 1.4(a) or (b), provided that all such modifications:
+     (a) are kept strictly private and are never distributed, published,
+         shared, disclosed, or made accessible to any third party in any form;
+     (b) retain this entire License and all copyright notices without
+         alteration.
+
+No rights are granted except those expressly set out in this Section 2.
+All other rights are reserved exclusively by the Copyright Holder.
+
+================================================================================
+SECTION 3 — STRICT RESTRICTIONS AND PROHIBITIONS
+================================================================================
+
+The following acts are CATEGORICALLY AND UNCONDITIONALLY PROHIBITED unless
+You hold a valid, current, written Commercial License issued by the Copyright
+Holder under Section 5:
+
+3.1  REDISTRIBUTION IN ANY FORM. You may not publish, upload, transmit,
+     broadcast, mirror, host, or otherwise make available the Software — in
+     whole or in any part, modified or unmodified — through any means,
+     including but not limited to:
+     (a) any public or private Repository, regardless of access controls;
+     (b) any Package Registry;
+     (c) file-sharing platforms, cloud storage, or peer-to-peer networks;
+     (d) email, instant messaging, or any other communication channel.
+
+     SOLE EXCEPTION — CONTRIBUTION FORKS: A single public fork of the
+     official repository on GitHub is permitted exclusively to submit a Pull
+     Request to the original repository. Such a fork:
+     (i)   must be created solely for the purpose of the specific contribution;
+     (ii)  must not be used for any other purpose, including personal hosting
+           or showcase;
+     (iii) must reproduce this License in full without modification;
+     (iv)  must be deleted or converted to private within thirty (30) calendar
+           days of the earlier of: (A) the Pull Request being closed, merged,
+           or rejected; or (B) ninety (90) calendar days of inactivity. Failure
+           to do so constitutes a material breach of this License.
+
+3.2  BUNDLING AND COMMERCIAL EXPLOITATION. You may not:
+     (a) include, embed, bundle, or integrate the Software, in whole or in any
+         part, into any Bundled Product that is or will be subject to
+         Commercial Distribution;
+     (b) sell, license, rent, or otherwise commercially transfer any
+         application, website, codebase, or digital product that contains or
+         depends upon the Software, even if the Software represents only a
+         minor or incidental component of the total offering;
+     (c) use the Software as a component of any product offered as a template,
+         boilerplate, or starter kit sold or licensed to multiple clients or
+         end users, whether individually priced or as part of a bundle or
+         subscription.
+
+3.3  COMMERCIAL DISTRIBUTION. You may not engage in any act constituting
+     Commercial Distribution as defined in Section 1.5.
+
+3.4  HIGH-VOLUME USE without a Commercial License. You may not operate any
+     system or service that constitutes High-Volume Use as defined in
+     Section 1.8.
+
+3.5  RELABELING AND MISATTRIBUTION. You may not:
+     (a) publish, distribute, or otherwise make available the Software under a
+         different package name, author name, or vendor identity;
+     (b) remove, obscure, alter, or misrepresent the copyright notice or author
+         attribution in any copy or portion of the Software;
+     (c) represent, imply, or permit others to believe that the Software was
+         created by anyone other than Bartłomiej Janczak.
+
+3.6  SUBLICENSING AND TRANSFER. You may not grant any sublicense, assign any
+     rights, or otherwise transfer this License or any rights granted hereunder
+     to any third party.
+
+3.7  CIRCUMVENTION. You may not structure any transaction, arrangement, or
+     technical implementation with the intent or effect of circumventing any
+     restriction in this Section 3, including without limitation by splitting a
+     Bundled Product into artificially separate components or by using an
+     intermediary entity.
+
+================================================================================
+SECTION 4 — CONTRIBUTOR LICENSE AGREEMENT (CLA)
+================================================================================
+
+4.1  By submitting any contribution (including but not limited to Pull
+     Requests, patches, bug fixes, documentation edits, or any other
+     modification) to the Software or to the official repository, You
+     irrevocably grant to Bartłomiej Janczak a perpetual, worldwide,
+     royalty-free, non-exclusive, sublicensable license to use, reproduce,
+     modify, distribute, and sublicense Your contribution under any license
+     terms the Copyright Holder deems appropriate, including proprietary terms.
+
+4.2  You represent and warrant that:
+     (a) You are the sole author of the contribution and have the full legal
+         right to grant the license in Section 4.1;
+     (b) the contribution does not infringe any third-party intellectual
+         property rights;
+     (c) the contribution is not subject to any license, agreement, or
+         obligation that would conflict with the grant in Section 4.1.
+
+4.3  The Copyright Holder retains the right to reject any contribution without
+     giving reasons and without incurring any obligation to the contributor.
+
+================================================================================
+SECTION 5 — COMMERCIAL LICENSING
+================================================================================
+
+5.1  Any use not expressly permitted by Section 2 — including Commercial
+     Distribution, Bundled Product distribution, High-Volume Use, or any
+     other commercial exploitation of the Software — requires a separate,
+     written Commercial License issued by the Copyright Holder prior to such
+     use.
+
+5.2  To inquire about or obtain a Commercial License, contact:
+
+         Bartłomiej Janczak
+         E-mail: barek122@gmail.com
+
+5.3  Commercial Licenses are issued at the Copyright Holder's sole discretion
+     and may be subject to a one-time fee, recurring royalty, revenue-sharing
+     arrangement, or other terms as agreed in writing. No Commercial License
+     is effective until signed in writing by the Copyright Holder.
+
+5.4  Any act of Commercial Distribution, Bundled Product distribution, or
+     High-Volume Use without a valid Commercial License:
+     (a) is null and void ab initio;
+     (b) constitutes a material breach of this License;
+     (c) constitutes direct infringement of the Copyright Holder's exclusive
+         rights under the Act of 4 February 1994 on Copyright and Related
+         Rights (Dz.U. 2022 poz. 2509, as amended) and applicable
+         international copyright treaties, including the Berne Convention and
+         the TRIPS Agreement;
+     (d) entitles the Copyright Holder to seek all available remedies,
+         including injunctive relief, actual damages, disgorgement of profits,
+         and statutory damages to the maximum extent permitted by applicable law.
+
+================================================================================
+SECTION 6 — INTELLECTUAL PROPERTY
+================================================================================
+
+6.1  The Software is licensed, not sold. Bartłomiej Janczak retains all right,
+     title, and interest in and to the Software, including all copyrights,
+     moral rights, trade secrets, and any other intellectual property rights,
+     worldwide.
+
+6.2  This License does not transfer to You any ownership interest in or to the
+     Software, any trademarks, trade names, or service marks of the Copyright
+     Holder, or any goodwill associated therewith.
+
+6.3  You must preserve and reproduce in all permitted copies and portions of
+     the Software:
+     (a) this entire License text, unmodified;
+     (b) the copyright notice: "Copyright (c) 2026 Bartłomiej Janczak."
+
+6.4  The Software incorporates third-party libraries (including but not limited
+     to Laravel, Filament, and their respective dependencies). Those components
+     are governed exclusively by their own licenses. This License applies only
+     to the original code authored by Bartłomiej Janczak within the
+     janczakb/filament-short-url package and does not modify or supersede the
+     terms of any third-party license.
+
+================================================================================
+SECTION 7 — TERMINATION
+================================================================================
+
+7.1  This License and all rights granted hereunder terminate automatically and
+     immediately, without notice and without judicial action, if You breach any
+     term or condition of this License.
+
+7.2  Upon termination, You must:
+     (a) immediately cease all use, reproduction, and distribution of the
+         Software;
+     (b) permanently delete all copies, full or partial, of the Software in
+         Your possession or control, including backups and archived copies;
+     (c) upon request, certify in writing to the Copyright Holder that You have
+         complied with Section 7.2(b).
+
+7.3  Sections 4, 5.4, 6, 7, 8, 9, and 10 survive termination of this License.
+
+================================================================================
+SECTION 8 — DISCLAIMER OF WARRANTIES
+================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. THE COPYRIGHT
+HOLDER DOES NOT WARRANT THAT THE SOFTWARE WILL MEET YOUR REQUIREMENTS, OPERATE
+WITHOUT INTERRUPTION, OR BE FREE FROM ERRORS OR SECURITY VULNERABILITIES.
+YOU ASSUME ALL RISKS ASSOCIATED WITH YOUR USE OF THE SOFTWARE.
+
+================================================================================
+SECTION 9 — LIMITATION OF LIABILITY
+================================================================================
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+CONSEQUENTIAL, OR PUNITIVE DAMAGES (INCLUDING BUT NOT LIMITED TO LOSS OF
+PROFITS, LOSS OF DATA, BUSINESS INTERRUPTION, OR COST OF SUBSTITUTE GOODS OR
+SERVICES) ARISING OUT OF OR IN CONNECTION WITH THIS LICENSE OR THE USE OR
+INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGES. THE COPYRIGHT HOLDER'S TOTAL LIABILITY FOR ANY CLAIM ARISING UNDER
+THIS LICENSE SHALL NOT EXCEED EUR 100 (ONE HUNDRED EURO).
+
+================================================================================
+SECTION 10 — GENERAL PROVISIONS
+================================================================================
+
+10.1 GOVERNING LAW. This License is governed by and construed in accordance
+     with the substantive law of Poland, in particular the Act of 4 February
+     1994 on Copyright and Related Rights (Dz.U. 2022 poz. 2509, as amended),
+     without regard to its conflict-of-laws rules.
+
+10.2 JURISDICTION. Any dispute arising out of or in connection with this
+     License shall be submitted to the exclusive jurisdiction of the competent
+     courts in Warsaw, Poland.
+
+10.3 SEVERABILITY. If any provision of this License is held invalid, illegal,
+     or unenforceable by a court of competent jurisdiction, that provision
+     shall be modified to the minimum extent necessary to make it enforceable,
+     or if modification is not possible, severed from this License, while the
+     remaining provisions continue in full force and effect.
+
+10.4 ENTIRE AGREEMENT. This License constitutes the entire agreement between
+     the parties with respect to the Software and supersedes all prior or
+     contemporaneous agreements, representations, or understandings relating
+     to the Software.
+
+10.5 WAIVER. The Copyright Holder's failure to enforce any provision of this
+     License does not constitute a waiver of the right to enforce that
+     provision in the future.
+
+10.6 MODIFICATIONS TO THIS LICENSE. The Copyright Holder reserves the right to
+     publish revised versions of this License. Each version will be identified
+     by a version number. The version under which You obtained the Software
+     governs Your use unless the Copyright Holder expressly states otherwise.
+     This is version 1.1, effective 1 January 2026.
+
+10.7 LANGUAGE. This License is written in English. Any translation is provided
+     for convenience only; in the event of a conflict the English text prevails.
+
+================================================================================
+END OF LICENSE
+================================================================================
