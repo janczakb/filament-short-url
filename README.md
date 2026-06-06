@@ -22,7 +22,7 @@ On top of basic link shortening it ships: multi-channel analytics with live acti
 ## Video Walkthrough
 
 <p align="center">
-  <video src="art/preview.webm" width="100%" autoplay loop muted controls style="max-width: 100%; border-radius: 8px;"></video>
+  <video src="https://github.com/user-attachments/assets/136a4f5a-a50c-47cc-9afd-19c1fb2d64ab" width="100%" autoplay loop muted controls style="max-width: 100%; border-radius: 8px;"></video>
 </p>
 
 ---
