@@ -1,11 +1,13 @@
 <p align="center">
-    <img src="https://cdn3d.iconscout.com/3d/premium/thumb/url-3d-icon-png-download-9292351.png" width="180" alt="Filament Short URL Logo">
+    <img src="https://cdn3d.iconscout.com/3d/premium/thumb/url-3d-icon-png-download-9292351.png" width="180" alt="Filament Short URL — Laravel link shortener plugin for Filament">
 </p>
 
 <h1 align="center">Filament Short URL</h1>
 
+<p align="center"><strong>The most complete open-source link management plugin for Laravel & Filament.</strong><br>Short URLs · QR codes · Analytics · Targeting · Deep links · Webhooks · REST API</p>
+
 <p align="center">
-    <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/v/janczakb/filament-short-url.svg?style=flat-square" alt="Latest Version"></a>
+    <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/v/janczakb/filament-short-url.svg?style=flat-square" alt="Latest Version on Packagist"></a>
     <a href="https://github.com/janczakb/filament-short-url/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-proprietary-7c3aed.svg?style=flat-square" alt="License"></a>
     <a href="https://packagist.org/packages/janczakb/filament-short-url"><img src="https://img.shields.io/packagist/dt/janczakb/filament-short-url.svg?style=flat-square" alt="Total Downloads"></a>
     <a href="https://github.com/janczakb/filament-short-url/stargazers"><img src="https://img.shields.io/github/stars/janczakb/filament-short-url.svg?style=flat-square" alt="GitHub Stars"></a>
@@ -13,32 +15,26 @@
     <a href="https://github.com/janczakb/filament-short-url/actions"><img src="https://img.shields.io/badge/tests-passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
-A professional, high-performance **Short URL Manager, Redirect Engine & QR Code Generator** plugin for [Filament v5](https://filamentphp.com). 
+A self-hosted **URL shortener, redirect engine, and QR code manager** built as a [Filament v5](https://filamentphp.com) plugin. Drop it into any Laravel 13 application to replace Bitly, Dub.co, or Rebrandly subscriptions — with full data ownership, no click limits, and no monthly fees.
 
-Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, this package provides advanced link shortening, mobile app deep linking (Universal Links & Android App Links), client-side retargeting pixels, offline Geo-IP country routing, real-time analytics, and webhooks—with zero external API dependencies.
+On top of basic link shortening it ships: multi-channel analytics with live activity feed, cross-filtering, and cross-domain retargeting pixels; advanced routing rules (device, country, language, A/B); mobile deep linking into 24+ native apps; a REST API with scoped keys; HMAC-signed webhooks; and offline GDPR-safe Geo-IP — all managed from a polished Filament admin panel.
 
-### Why choose Filament Short URL?
-* **Save on SaaS Costs**: Replace expensive Bitly or Rebrandly subscriptions with a self-hosted solution that has zero click or creation limits.
-* **Custom Domain Branding**: Connect your own custom domains with dynamic DNS checks and automatic routing redirection at the root level.
-* **Server-Side GA4 Tracking**: Bypasses browser-side ad blockers completely to ensure 100% accurate traffic data.
-* **Retarget on External Sites**: Inject tracking pixels (Meta, Google Ads, LinkedIn, TikTok, Pinterest) on a beautiful glassmorphic redirect page before forwarding visitors.
-* **Seamless Mobile App Redirects**: Launch native mobile applications (Instagram, YouTube, Spotify, WhatsApp) automatically using deep links.
-* **GDPR-Friendly Geo-IP**: Resolve visitor countries offline using local MaxMind databases or trust your CDN headers (Cloudflare, CloudFront).
+---
 
 ## Screenshots
 
 <p align="center">
   <table align="center" style="border-collapse: collapse; border: none;">
     <tr style="border: none;">
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_1.png" alt="Dashboard Stats" style="border-radius: 8px;"></td>
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_2.png" alt="Short URL Creation Form" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_1.png" alt="Analytics dashboard" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_2.png" alt="Short URL creation form" style="border-radius: 8px;"></td>
     </tr>
     <tr style="border: none;">
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_3.png" alt="Targeting and Rules" style="border-radius: 8px;"></td>
-      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_4.png" alt="Interactive Settings Panel" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_3.png" alt="Smart targeting rules" style="border-radius: 8px;"></td>
+      <td width="50%" style="border: none; padding: 5px;"><img src="art/v2_4.png" alt="Settings panel" style="border-radius: 8px;"></td>
     </tr>
     <tr style="border: none;">
-      <td colspan="2" style="border: none; padding: 5px;"><img src="art/v2_5.png" alt="Visit Logs Table" style="border-radius: 8px; width: 100%;"></td>
+      <td colspan="2" style="border: none; padding: 5px;"><img src="art/v2_5.png" alt="Visit logs table" style="border-radius: 8px; width: 100%;"></td>
     </tr>
   </table>
 </p>
@@ -47,41 +43,65 @@ Acting as a self-hosted, enterprise-grade alternative to Bitly and Rebrandly, th
 
 ## Features
 
-- 🔗 **Base62 Short Link Generation** — Create clean, custom short links or let the system auto-generate collision-free Base62 keys.
-- 🌐 **Custom Domain Branding (new in v4.0.0)** — Register custom domains, show dynamic DNS setup instructions (A/CNAME records), verify records in real-time, and route redirects directly at the root of verified custom domains.
-- 🌍 **Multiple Geo-IP Drivers** — Route and analyze traffic with offline MaxMind detection, CDN edge headers (Cloudflare's `CF-IPCountry`, CloudFront), or fallback APIs.
-- 🗺️ **Interactive Visitor World Map** — Showcase geographic click distribution on a beautiful SVG world map widget with real-time hover details.
-- 📈 **Comprehensive Analytics Dashboard** — Monitor total/unique visits, referrers, operating systems, devices, browsers, and top browser languages in real-time with full cross-filtering (e.g., "show only mobile visits from Poland").
-- ⚡ **Live Activity Feed (new in v5.0.0)** — Dedicated real-time visit stream page at `/stats/live`. Polls only when new visits are detected (O(1) `MAX(id)` check + `skipRender()` on no-change), serving `~100-byte` responses when idle. Flags via `flagcdn.com`, precomputed in PHP, CSP-safe Alpine.js fallback.
-- 🗂️ **Folders & Tags (new in v5.0.0)** — Organize links into folders (one folder per link) and tag them with up to 5 labels. Navigate directly from a folder or tag to a filtered link list. Link counts displayed on each folder and tag card.
-- 🗄️ **Link Archiving (new in v5.0.0)** — Archive unused links instead of permanently deleting them. Archived links are hidden from the default view but can be restored at any time.
-- 🛡️ **VPN, Proxy & Bot Filtering** — Exclude scrapers, crawlers, Tor exit nodes, and automated bot clicks to keep your analytics clean and accurate.
-- 🔍 **Google Safe Browsing** — Automatically scan target URLs on creation/edit to block phishing, malware, and social engineering links.
-- 🎨 **SVG QR Code Designer** — Customize dot styles, gradients, margins, and upload custom brand logos with auto-clear backing dots and high-quality SVG/PNG exports.
-- 📊 **Dedicated QR Code Tracking** — Differentiate physical QR scans from direct web clicks with automatically appended query parameters (`?source=qr`).
-- 🌐 **Browser Language Targeting** — Route visitors dynamically based on their browser language preferences (e.g., redirect Polish speakers to a Polish landing page).
-- ⚡ **Ultra-Fast Redirections** — Redirections resolve in milliseconds. Logging, GA4 payloads, and webhooks are processed asynchronously in the background.
-- 🎯 **Server-Side GA4 Integration** — Send server-side `short_url_visit` hits using the Google Analytics 4 Measurement Protocol to bypass ad-blockers.
-- ⚙️ **Dual-way UTM Builder** — Build campaign URLs with a real-time synchronized UTM builder directly in the link creation form.
-- 🔒 **Link Expiration & Fallbacks** — Set activation date ranges, click-limit caps, single-use restrictions, and custom redirection fallbacks on expiration.
-- ➡️ **Query Parameter Forwarding** — Automatically forward client query strings (e.g., ad tokens, UTM parameters, discount codes) to the destination.
-- 🛠️ **Central Settings Panel** — Manage routes, Geo-IP, GA4, caching, rate limiting, and retention directly inside your Filament panel.
-- 🔑 **Password-Protected Links** — Secure sensitive links with a customizable, session-based password entry interstitial.
-- ⚠️ **Redirect Warning Interstitials** — Show a security warning page to verify external links (phishing and NSFW protection).
-- 🎯 **Advanced Smart Targeting** — Redirect visitors dynamically based on device type (iOS, Android, Desktop), country (Geo-IP), or browser language.
-- ⚖️ **A/B Split Testing Rotation** — Distribute traffic randomly across multiple landing pages using custom weighted rotation rules.
-- 🛡️ **Throttling & Rate Limiting** — Protect your redirection routes from flood attacks with configurable per-IP rate limits.
-- 📊 **Log Aggregation & Pruning** — Compact millions of raw visit logs into daily summaries automatically to prevent database bloat.
-- 🎯 **Central Retargeting Pixel Registry (new in v3.0.0)** — Register Meta Pixel, Google Tag, LinkedIn Insight, TikTok Pixel, and Pinterest Tag centrally and associate them with links via checkboxes.
-- 🔌 **Developer REST API with Scoped Keys (updated in v5.0.0)** — Full programmatical control with API Key authentication. Each key supports `links:read-only` or `links:read-write` scope, and an individual per-key rate limit (requests/minute). Create, read, update, list, delete, and inspect analytics for short links externally.
-- 📡 **Real-Time Webhooks** — Asynchronous HTTP POST notifications on `visited`, `created`, `expired`, and `limit_reached` events with a built-in retry policy.
-- 📱 **Mobile App Deep Linking (new in v3.0.0)** — Detect mobile visitors and open links directly in 24+ native apps (Instagram, YouTube, Spotify, TikTok, etc.) using custom URI schemes.
-- 🔗 **Universal Links & App Links (new in v3.0.0)** — Host iOS `apple-app-site-association` and Android `assetlinks.json` domain configuration files directly from your root domain.
-- 🎨 **Branded Expiry Pages (new in v3.0.0)** — Display a premium, dark-mode compatible custom expiry page when a link is deactivated or limit-reached, falling back to a clean site-name greeting instead of a generic browser error.
-- 👤 **User Attribution (new in v3.5.0)** — Automatically assign the authenticated user's ID to every new short URL. Show their avatar and hover card (name + email) directly in the list table.
-- 🕒 **Relative Time Badges (new in v3.5.0)** — Display compact relative timestamps (e.g., `2h`, `5d`, `3mo`) for link creation dates with rich Alpine.js hover popovers showing precise absolute dates and timezone offsets.
-- ⌨️ **Keyboard Shortcuts (new in v3.5.0)** — Hover over any table row to enable shortcut keys: `E` (edit), `Q` (QR code), `I` (share/copy), `S` (statistics), `X` (delete). Shortcuts are safely ignored when focus is inside modals or text inputs.
-- 🔘 **Unified 3-dot Action Dropdown (new in v3.5.0)** — All per-row actions are consolidated under a single icon button that opens a styled dropdown with shortcut key badges on the right.
+- 🔗 **Short Link Generation** — Auto-generate collision-free Base62 keys or set your own custom slugs.
+- 🌐 **Custom Domain Branding** — Register your own domains, verify DNS in real-time (A/CNAME), and serve links directly from the domain root — no `/s/` prefix needed.
+- 🌍 **Multiple Geo-IP Drivers** — Resolve visitor countries offline via MaxMind, from CDN headers (Cloudflare `CF-IPCountry`, CloudFront), or via ip-api.com fallback.
+- 🗺️ **Visitor World Map** — Visualize click distribution on an interactive SVG world map with per-country hover stats.
+- 📈 **Full Analytics Dashboard** — Track total/unique visits, referrers, devices, browsers, OSes, and browser languages. Fully cross-filterable (e.g., "only mobile visits from Poland in May").
+- ⚡ **Live Activity Feed** — Standalone real-time visit stream at `/stats/live`. Uses `MAX(id)` polling — returns a ~100-byte response when nothing changed, full render only on new visits.
+- 🗂️ **Folders & Tags** — Assign each link to a folder and up to 5 tags. Click any folder or tag to navigate to a filtered link list.
+- 🗄️ **Link Archiving** — Soft-archive links instead of deleting them. Archived links are hidden by default and fully restorable.
+- 🛡️ **VPN, Proxy & Bot Filtering** — Filter out Tor nodes, VPNs, anonymous proxies, and known bot user agents from visit stats.
+- 🔍 **Google Safe Browsing** — All target URLs are checked against Google's threat database on create and edit.
+- 🎨 **SVG QR Code Designer** — Full dot style, gradient, margin, and logo customization. Export as SVG or high-resolution PNG.
+- 📊 **QR Scan Tracking** — QR scans are recorded separately from regular web clicks via `?source=qr`. Shown as a distinct metric in analytics.
+- ✈️ **Browser Language Targeting** — Route visitors to different destinations based on their browser's `Accept-Language` header.
+- 🚀 **Fast Redirects** — Sub-20ms redirect response time. All logging, Geo-IP lookups, GA4 hits, and webhooks run asynchronously via queued jobs.
+- 🎯 **Server-Side GA4** — Send `short_url_visit` events via GA4 Measurement Protocol, completely bypassing browser ad-blockers.
+- ⚙️ **UTM Builder** — Build and preview campaign URLs with a real-time UTM form that syncs bidirectionally with the destination URL field.
+- 🔒 **Link Expiration & Caps** — Set `activated_at`, `expires_at`, `max_visits`, single-use mode, and a custom fallback URL for when any of these conditions are met.
+- ➡️ **Query Parameter Forwarding** — Automatically append incoming query strings (UTM parameters, ad tokens, discount codes) to the destination.
+- 🛠️ **Settings Panel** — All configuration in a dedicated Filament settings page — no `.env` editing required for day-to-day changes.
+- 🔑 **Password-Protected Links** — Visitors enter a password before being redirected. Session-persisted, so they only see the prompt once.
+- ⚠️ **Redirect Warning Pages** — Show a confirmation screen before sending visitors off to external domains.
+- 🎲 **A/B Split Testing** — Distribute traffic across 2–5 weighted variants. Works at the root level or nested inside targeting rules.
+- 📉 **Log Aggregation & Pruning** — A nightly command aggregates raw visits into daily summaries and prunes records older than the configured retention window. Keeps the database lean even at millions of visits.
+- 🏷️ **Retargeting Pixel Registry** — Define Meta Pixel, Google Tag, LinkedIn Insight, TikTok, and Pinterest pixels once, then attach them to any link via a simple checkbox list.
+- 🔌 **REST API with Scoped Keys** — Full CRUD API, SHA-256 hashed key storage, `links:read-only` / `links:read-write` scopes, and per-key rate limits.
+- 📡 **Webhooks** — HMAC-SHA256 signed HTTP POST callbacks on `visited`, `created`, `expired`, and `limit_reached` events. Dispatched asynchronously with 3-attempt exponential retry.
+- 📱 **Mobile Deep Linking** — Detect mobile visitors and launch the link directly inside 24+ native apps (Instagram, YouTube, Spotify, TikTok, WhatsApp, etc.).
+- 🍎 **Universal Links & Android App Links** — Serve `apple-app-site-association` and `assetlinks.json` directly from your domain to enable OS-level native app integration.
+- 💀 **Branded Expiry Pages** — When a link expires or hits its limit, visitors see a styled page with your site name instead of a bare 410 error.
+- 👤 **User Attribution** — Each link records its creator. Avatar and name/email hover card visible in the table.
+- 🕒 **Relative Time Badges** — Compact timestamps (`2h`, `5d`, `3mo`) with exact date on hover.
+- ⌨️ **Keyboard Shortcuts** — `E` edit, `Q` QR, `I` copy, `S` stats, `X` delete — available on any row hover.
+- ⋯ **Unified Action Menu** — All row actions in one 3-dot dropdown with shortcut badges.
+
+---
+
+## vs. Bitly, Dub.co & Rebrandly
+
+| Feature | Filament Short URL | Bitly | Dub.co | Rebrandly |
+|---|:---:|:---:|:---:|:---:|
+| Self-hosted | ✅ | ❌ | ❌ | ❌ |
+| Unlimited links & clicks | ✅ | ❌ | ❌ | ❌ |
+| Custom domains | ✅ | 💰 | 💰 | 💰 |
+| QR code designer | ✅ | 💰 | basic | 💰 |
+| A/B split testing | ✅ | ❌ | ❌ | ❌ |
+| Retargeting pixels (5 providers) | ✅ | ❌ | ❌ | ❌ |
+| Mobile deep linking (24+ apps) | ✅ | ❌ | partial | ❌ |
+| Server-side GA4 (bypasses ad-block) | ✅ | ❌ | ❌ | ❌ |
+| Live activity feed | ✅ | ❌ | ✅ | ❌ |
+| Cross-filtering analytics | ✅ | ❌ | partial | ❌ |
+| REST API with per-key scopes | ✅ | 💰 | ✅ | 💰 |
+| HMAC-signed webhooks | ✅ | 💰 | ✅ | 💰 |
+| Offline GDPR Geo-IP (MaxMind) | ✅ | ❌ | ❌ | ❌ |
+| VPN & bot filtering | ✅ | ❌ | ❌ | ❌ |
+| Google Safe Browsing on save | ✅ | ❌ | ❌ | ❌ |
+| Data stays on your server | ✅ | ❌ | ❌ | ❌ |
+| Monthly cost | **$0** | $0–$199+ | $0–$190+ | $0–$499+ |
+
+> 💰 = available on paid plans only
 
 ---
 
@@ -112,48 +132,32 @@ php artisan migrate
 
 ## Publishing Package Assets
 
-Customize and override views, translations, or configuration files by publishing the package assets:
+All assets are optional. Publish only what you need to customize:
 
-### 1. Publish Config File
-Copies the default config file to `config/filament-short-url.php`:
 ```bash
+# Config file → config/filament-short-url.php
 php artisan vendor:publish --tag=filament-short-url-config
-```
 
-### 2. Publish Translation Files
-Copies localization files to `lang/vendor/filament-short-url/` (English and Polish included by default):
-```bash
+# Translations → lang/vendor/filament-short-url/ (EN + PL included)
 php artisan vendor:publish --tag=filament-short-url-translations
-```
 
-### 3. Publish Blade Views & Templates
-Copies the dashboard components, charts, and QR designer templates to `resources/views/vendor/filament-short-url/`:
-```bash
+# Blade views (dashboard, QR designer, interstitials)
 php artisan vendor:publish --tag=filament-short-url-views
-```
 
-### 4. Publish CSS Assets
-
-The plugin ships with a pre-compiled stylesheet. Copy it to your application's public directory so the browser can load it:
-
-```bash
+# Pre-compiled CSS → public/css/janczakb/filament-short-url/
 php artisan filament:assets
 ```
 
-That's all. The plugin's CSS will be served from `public/css/janczakb/filament-short-url/filament-short-url.css` and Filament registers it automatically.
+The CSS file is pre-compiled and bundled in the package — you don't need to run `npm` or Tailwind for it.
 
-> **You do not need to run Tailwind, Vite, or npm for the plugin styles.** The compiled file is included in the package.
-> 
-> **Using a Custom Filament Theme (Tailwind CSS v4)?**
-> If you are compiling your own Filament panel theme stylesheet, you can optionally tell Tailwind to scan the plugin's views by adding the `@source` directive to your theme's CSS file (e.g., `resources/css/filament/admin/theme.css`):
-> 
-> ```css
-> @source './vendor/janczakb/filament-short-url/resources/views/**/*.blade.php';
-> ```
+**If you compile your own Filament theme** (Tailwind CSS v4), add an `@source` directive so Tailwind scans the plugin views:
 
-**Tip — automate on every `composer install` / `composer update`:**
+```css
+/* resources/css/filament/admin/theme.css */
+@source './vendor/janczakb/filament-short-url/resources/views/**/*.blade.php';
+```
 
-Add `filament:assets` to the `post-autoload-dump` scripts in your application's `composer.json` so the assets are always up to date without manual steps:
+**Tip:** Add `filament:assets` to `post-autoload-dump` in your `composer.json` so CSS stays up to date on every `composer install`:
 
 ```json
 "scripts": {
