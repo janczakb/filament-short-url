@@ -161,8 +161,6 @@ return [
     | Default design settings for newly generated QR codes.
     */
     'qr_defaults' => [
-        'size' => 300,
-        'margin' => 1,
         'dot_style' => 'square',
         'foreground_color' => '#000000',
         'background_color' => '#ffffff',

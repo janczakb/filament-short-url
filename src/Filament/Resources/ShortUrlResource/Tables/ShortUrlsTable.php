@@ -27,19 +27,16 @@ class ShortUrlsTable
         return $table
             ->columns([
                 Stack::make([
-                    // ROW 1: Favicon + Short URL with copy capability on click of text or icon (vertically centered!)
                     TextColumn::make('url_key')
                         ->label(__('filament-short-url::default.col_short_url'))
                         ->view('filament-short-url::table.url-key-column')
                         ->searchable(query: fn ($query, string $search) => $query->where('url_key', 'like', "%{$search}%")),
 
-                    // ROW 2: Sub-arrow + Destination URL
                     TextColumn::make('destination_url')
                         ->label(__('filament-short-url::default.col_destination_url'))
                         ->view('filament-short-url::table.destination-column')
                         ->searchable(),
 
-                    // ROW 3: Bottom Metadata (Total clicks / Unique clicks / Date added / Expiry / Redirect code)
                     TextColumn::make('metadata_badges')
                         ->view('filament-short-url::table.metadata-badges'),
                 ]),
@@ -80,12 +77,16 @@ class ShortUrlsTable
                     EditAction::make()
                         ->icon('heroicon-o-pencil-square')
                         ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_edit').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">E</span></div>'))
+                        ->modalWidth('5xl')
                         ->modalAutofocus(false)
                         ->closeModalByClickingAway(false)
-                        ->modalSubmitAction(false)
-                        ->extraModalFooterActions(static fn (EditAction $action): array => [
+                        ->stickyModalFooter()
+                        ->stickyModalHeader()
+                        ->modalCancelAction(false)
+                        ->extraModalWindowAttributes(['class' => 'update-link-modal modal-fsl'])
+                        ->modalFooterActions(static fn (EditAction $action): array => [
                             Action::make('save_changes')
-                                ->label(__('filament-actions::edit.single.modal.actions.save.label') ?: 'Save changes')
+                                ->label(__('filament-actions::edit.single.modal.actions.save.label'))
                                 ->color('primary')
                                 ->modal(static function () use ($action): bool {
                                     /** @var ShortUrl $record */
@@ -103,8 +104,8 @@ class ShortUrlsTable
 
                                     return $newKey && $newKey !== $record->url_key;
                                 })
-                                ->modalHeading(__('filament-short-url::default.url_key_change_confirmation_heading') ?: 'Replace link?')
-                                ->modalDescription(__('filament-short-url::default.url_key_change_confirmation') ?: 'You have modified the short key of this link. Saving these changes will make the original short URL stop working.')
+                                ->modalHeading(__('filament-short-url::default.url_key_change_confirmation_heading'))
+                                ->modalDescription(__('filament-short-url::default.url_key_change_confirmation'))
                                 ->action(static function () use ($action) {
                                     /** @var ShortUrl $record */
                                     $record = $action->getRecord();
@@ -124,6 +125,7 @@ class ShortUrlsTable
 
                     Action::make('qrCode')
                         ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_qr').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">Q</span></div>'))
+                        ->modalHeading(__('filament-short-url::default.action_qr'))
                         ->icon('heroicon-o-qr-code')
                         ->modalWidth('md')
                         ->modalSubmitAction(false)
@@ -170,6 +172,8 @@ class ShortUrlsTable
                                 Forms\Components\Select::make('folder_id')
                                     ->label(__('filament-short-url::default.folder_resource_title'))
                                     ->relationship('folder', 'name')
+                                    ->allowHtml()
+                                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->getOptionHtml())
                                     ->preload()
                                     ->searchable()
                                     ->createOptionForm([
@@ -186,16 +190,8 @@ class ShortUrlsTable
                                             ->unique('short_url_folders', 'slug'),
                                         Forms\Components\Select::make('color')
                                             ->label(__('filament-short-url::default.folder_color'))
-                                            ->options([
-                                                'gray' => 'Gray',
-                                                'red' => 'Red',
-                                                'blue' => 'Blue',
-                                                'green' => 'Green',
-                                                'yellow' => 'Yellow',
-                                                'indigo' => 'Indigo',
-                                                'purple' => 'Purple',
-                                                'pink' => 'Pink',
-                                            ])
+                                            ->allowHtml()
+                                            ->options(ShortUrlFolder::getColorOptions())
                                             ->default('gray')
                                             ->required()
                                             ->native(false),

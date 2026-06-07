@@ -94,8 +94,6 @@ class ShortUrlSettingsManager
             'tracking_fields_referer_url' => config('filament-short-url.tracking.fields.referer_url', true),
             'tracking_fields_device_type' => config('filament-short-url.tracking.fields.device_type', true),
             'tracking_fields_browser_language' => config('filament-short-url.tracking.fields.browser_language', true),
-            'qr_size' => config('filament-short-url.qr_defaults.size', 300),
-            'qr_margin' => config('filament-short-url.qr_defaults.margin', 1),
             'qr_dot_style' => config('filament-short-url.qr_defaults.dot_style', 'square'),
             'qr_foreground_color' => config('filament-short-url.qr_defaults.foreground_color', '#000000'),
             'qr_background_color' => config('filament-short-url.qr_defaults.background_color', '#ffffff'),
@@ -181,8 +179,6 @@ class ShortUrlSettingsManager
             'tracking_fields_referer_url',
             'tracking_fields_device_type',
             'tracking_fields_browser_language',
-            'qr_size',
-            'qr_margin',
             'qr_dot_style',
             'qr_foreground_color',
             'qr_background_color',
@@ -289,13 +285,6 @@ class ShortUrlSettingsManager
             $filtered['tracking_fields_browser_language'] = (bool) $filtered['tracking_fields_browser_language'];
         }
 
-        // QR defaults
-        if (isset($filtered['qr_size'])) {
-            $filtered['qr_size'] = (int) $filtered['qr_size'];
-        }
-        if (isset($filtered['qr_margin'])) {
-            $filtered['qr_margin'] = (int) $filtered['qr_margin'];
-        }
         if (isset($filtered['qr_gradient_enabled'])) {
             $filtered['qr_gradient_enabled'] = (bool) $filtered['qr_gradient_enabled'];
         }
@@ -449,8 +438,6 @@ class ShortUrlSettingsManager
             'filament-short-url.tracking.fields.referer_url' => $settings['tracking_fields_referer_url'],
             'filament-short-url.tracking.fields.device_type' => $settings['tracking_fields_device_type'],
             'filament-short-url.tracking.fields.browser_language' => $settings['tracking_fields_browser_language'],
-            'filament-short-url.qr_defaults.size' => $settings['qr_size'],
-            'filament-short-url.qr_defaults.margin' => $settings['qr_margin'],
             'filament-short-url.qr_defaults.dot_style' => $settings['qr_dot_style'],
             'filament-short-url.qr_defaults.foreground_color' => $settings['qr_foreground_color'],
             'filament-short-url.qr_defaults.background_color' => $settings['qr_background_color'],

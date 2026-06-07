@@ -36,7 +36,8 @@ class MarketingTab
                             ->preload()
                             ->searchable()
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->contained(false),
 
                 Section::make(__('filament-short-url::default.marketing_webhooks_title'))
                     ->description(__('filament-short-url::default.marketing_webhooks_desc'))
@@ -69,7 +70,8 @@ class MarketingTab
                         ViewField::make('webhook_payload_example')
                             ->view('filament-short-url::webhook-payload-example')
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->contained(false),
             ]);
     }
 }

@@ -12,10 +12,10 @@ use Bjanczak\FilamentShortUrl\Filament\Forms\Components\TrafficSplitter;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Support\WeightBalancer;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlCustomDomain;
+use Bjanczak\FilamentShortUrl\Models\ShortUrlTag;
 use Bjanczak\FilamentShortUrl\Rules\SafeUrl;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -29,6 +29,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class LinkTab
@@ -59,6 +60,7 @@ class LinkTab
                         ->default('single')
                         ->live()
                         ->inline()
+                        ->grouped()
                         ->columnSpanFull()
                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
                             if ($state === 'split' && empty($get('rotation_variants'))) {
@@ -71,15 +73,43 @@ class LinkTab
 
                     TextInput::make('destination_url')
                         ->label(__('filament-short-url::default.destination_url'))
-                        ->helperText(__('filament-short-url::default.destination_url_helper'))
                         ->required(fn (Get $get): bool => $get('destination_type') === 'single' || ! $get('destination_type'))
                         ->visible(fn (Get $get): bool => $get('destination_type') === 'single' || ! $get('destination_type'))
                         ->url()
+                        ->hintIcon('heroicon-o-information-circle', tooltip: __('filament-short-url::default.destination_url_helper'))
+                        ->hint(function (Get $get) {
+                            $isScraping = $get('is_scraping') ? 'true' : 'false';
+                            $label = e(__('filament-short-url::default.fetching_metadata'));
+
+                            return new HtmlString(
+                                '<span'
+                                .' x-data="{ scraping: '.$isScraping.' }"'
+                                .' x-on:fsu-scraping-start.window="scraping = true"'
+                                .' x-on:fsu-scraping-end.window="scraping = false"'
+                                .' x-show="scraping"'
+                                .' x-cloak'
+                                .' class="flex items-center gap-x-1.5 text-xs text-primary-600 dark:text-primary-400 font-semibold"'
+                                .'>'
+                                .'<svg class="animate-spin h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">'
+                                .'<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>'
+                                .'<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>'
+                                .'</svg>'
+                                .$label
+                                .'</span>'
+                            );
+                        })
+                        ->placeholder('https://example.com/site-url')
                         ->maxLength(2048)
                         ->rules([
                             app(SafeUrl::class),
                         ])
-                        ->live(onBlur: true)
+                        ->live(debounce: 500)
+                        ->afterStateUpdatedJs(<<<'JS'
+                            window.fsuInitScrape($get, $el.querySelector('input'));
+                            if ($state) {
+                                window.fsuScrape($state, $get, $set, $el.querySelector('input'));
+                            }
+                        JS)
                         ->afterStateHydrated(function (TextInput $component, $state, Set $set) {
                             if (! $state) {
                                 return;
@@ -94,7 +124,7 @@ class LinkTab
                                 $set('utm_content', $query['utm_content'] ?? null);
                             }
                         })
-                        ->afterStateUpdated(function ($state, Set $set) {
+                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
                             if (! $state) {
                                 return;
                             }
@@ -231,9 +261,10 @@ class LinkTab
 
                         TextInput::make('url_key')
                             ->hiddenLabel()
-                            ->helperText(__('filament-short-url::default.url_key_helper'))
+                            ->hintIcon('heroicon-o-information-circle', tooltip: __('filament-short-url::default.url_key_helper'))
                             ->alphaDash()
                             ->maxLength(32)
+                            ->default(fn (ShortUrlService $service) => $service->generateKey())
                             ->unique('short_urls', 'url_key', ignoreRecord: true)
                             ->disabled(fn (?ShortUrl $record) => $record && $record->exists && config('filament-short-url.lock_url_key', false))
                             ->placeholder('auto-generated')
@@ -258,131 +289,33 @@ class LinkTab
                             302 => __('filament-short-url::default.redirect_code_302'),
                             301 => __('filament-short-url::default.redirect_code_301'),
                         ])
+                        ->native(false)
                         ->default(fn () => config('filament-short-url.redirect_status_code', 302))
-                        ->required(),
-                ])->columns(2),
+                        ->required()->columnSpanFull(),
+                ])->contained(false)->columns(2),
 
                 Section::make(__('filament-short-url::default.form_section_options'))->schema([
                     Toggle::make('is_enabled')
                         ->label(__('filament-short-url::default.status'))
                         ->default(true)
-                        ->inline(false),
+                        ->inline(),
 
                     Toggle::make('forward_query_params')
                         ->label(__('filament-short-url::default.forward_query_params'))
-                        ->helperText(__('filament-short-url::default.forward_query_params_helper'))
+                        ->hintIcon('heroicon-o-information-circle', tooltip: __('filament-short-url::default.forward_query_params_helper'))
                         ->default(false)
-                        ->inline(false),
-                ])->columns(2),
+                        ->inline(),
+                ])->contained(false)->columns(2),
 
-                Section::make(__('filament-short-url::default.form_section_validity'))
+                Section::make()
                     ->schema([
-                        Toggle::make('use_date_validity')
-                            ->label(__('filament-short-url::default.use_date_validity'))
-                            ->dehydrated(false)
-                            ->live()
-                            ->afterStateHydrated(function (Toggle $component, $state, Get $get, Set $set) {
-                                $set('use_date_validity', $get('activated_at') !== null || $get('expires_at') !== null);
-                            })
-                            ->afterStateUpdated(function ($state, Set $set) {
-                                if ($state) {
-                                    $set('activated_at', now()->startOfMinute());
-                                } else {
-                                    $set('activated_at', null);
-                                    $set('expires_at', null);
-                                    $set('expiration_redirect_url', null);
-                                }
-                            })
-                            ->columnSpanFull(),
-
-                        DateTimePicker::make('activated_at')
-                            ->label(__('filament-short-url::default.activated_at'))
-                            ->nullable()
-                            ->native(false)
-                            ->withoutSeconds()
-                            ->live(onBlur: true)
-                            ->required(fn (Get $get): bool => (bool) $get('use_date_validity'))
-                            ->visible(fn (Get $get): bool => (bool) $get('use_date_validity'))
-                            ->minDate(now()->startOfDay())
-                            ->maxDate(fn (Get $get) => $get('expires_at')),
-
-                        DateTimePicker::make('expires_at')
-                            ->label(__('filament-short-url::default.expires_at'))
-                            ->nullable()
-                            ->native(false)
-                            ->withoutSeconds()
-                            ->live(onBlur: true)
-                            ->visible(fn (Get $get): bool => (bool) $get('use_date_validity'))
-                            ->minDate(fn (Get $get) => $get('activated_at') ?: now()->startOfDay()),
-
-                        TextInput::make('expiration_redirect_url')
-                            ->label(__('filament-short-url::default.expiration_redirect_url'))
-                            ->helperText(__('filament-short-url::default.expiration_redirect_url_helper'))
-                            ->url()
-                            ->maxLength(2048)
-                            ->nullable()
-                            ->visible(fn (Get $get): bool => (bool) $get('use_date_validity'))
-                            ->columnSpanFull(),
-
-                        Toggle::make('single_use')
-                            ->label(__('filament-short-url::default.single_use'))
-                            ->helperText(__('filament-short-url::default.single_use_helper'))
-                            ->default(false)
-                            ->inline(false)
-                            ->live(),
-
-                        TextInput::make('max_visits')
-                            ->label(__('filament-short-url::default.max_visits'))
-                            ->helperText(__('filament-short-url::default.max_visits_helper'))
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1)
-                            ->nullable()
-                            ->hidden(fn (Get $get): bool => (bool) $get('single_use')),
-                    ])->columns(2),
-
-                Section::make(__('filament-short-url::default.folders_navigation_label').' & '.__('filament-short-url::default.tags_navigation_label'))
-                    ->schema([
-                        Select::make('folder_id')
-                            ->label(__('filament-short-url::default.folder_resource_title'))
-                            ->relationship('folder', 'name')
-                            ->nullable()
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                TextInput::make('name')
-                                    ->label(__('filament-short-url::default.folder_name'))
-                                    ->required()
-                                    ->maxLength(100)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state))),
-                                TextInput::make('slug')
-                                    ->label(__('filament-short-url::default.folder_slug'))
-                                    ->required()
-                                    ->maxLength(100)
-                                    ->unique('short_url_folders', 'slug'),
-                                Select::make('color')
-                                    ->label(__('filament-short-url::default.folder_color'))
-                                    ->options([
-                                        'gray' => 'Gray',
-                                        'red' => 'Red',
-                                        'blue' => 'Blue',
-                                        'green' => 'Green',
-                                        'yellow' => 'Yellow',
-                                        'indigo' => 'Indigo',
-                                        'purple' => 'Purple',
-                                        'pink' => 'Pink',
-                                    ])
-                                    ->default('gray')
-                                    ->required()
-                                    ->native(false),
-                            ]),
-
                         Select::make('tags')
                             ->label(__('filament-short-url::default.tags_navigation_label'))
                             ->multiple()
                             ->maxItems(5)
                             ->relationship('tags', 'name')
+                            ->allowHtml()
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->getOptionHtml())
                             ->preload()
                             ->createOptionForm([
                                 TextInput::make('name')
@@ -398,37 +331,24 @@ class LinkTab
                                     ->unique('short_url_tags', 'slug'),
                                 Select::make('color')
                                     ->label(__('filament-short-url::default.tag_color'))
-                                    ->options([
-                                        'gray' => 'Gray',
-                                        'red' => 'Red',
-                                        'blue' => 'Blue',
-                                        'green' => 'Green',
-                                        'yellow' => 'Yellow',
-                                        'indigo' => 'Indigo',
-                                        'purple' => 'Purple',
-                                        'pink' => 'Pink',
-                                    ])
+                                    ->allowHtml()
+                                    ->options(ShortUrlTag::getColorOptions())
                                     ->default('gray')
                                     ->required()
                                     ->native(false),
-                            ]),
-
-                        Toggle::make('is_archived')
-                            ->label(__('filament-short-url::default.is_archived'))
-                            ->helperText(__('filament-short-url::default.is_archived_helper'))
-                            ->default(false)
-                            ->inline(false)
-                            ->hiddenOn('create')
+                            ])
                             ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->contained(false)
+                    ->columns(1),
 
-                Section::make(__('filament-short-url::default.form_section_notes'))->schema([
-                    Textarea::make('notes')
-                        ->label(__('filament-short-url::default.notes'))
-                        ->rows(3)
-                        ->columnSpanFull(),
-                ]),
+                Section::make()
+                    ->schema([
+                        Textarea::make('notes')
+                            ->label(__('filament-short-url::default.notes'))
+                            ->rows(3)
+                            ->columnSpanFull(),
+                    ])->contained(false),
             ]);
     }
 

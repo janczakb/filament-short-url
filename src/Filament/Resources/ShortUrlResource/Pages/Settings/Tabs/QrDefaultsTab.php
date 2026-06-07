@@ -10,7 +10,6 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\Se
 
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -31,19 +30,6 @@ class QrDefaultsTab
                     ->description(__('filament-short-url::default.settings_section_qr_defaults_helper'))
                     ->columns(2)
                     ->schema([
-                        TextInput::make('qr_size')
-                            ->label(__('filament-short-url::default.settings_qr_size'))
-                            ->numeric()
-                            ->integer()
-                            ->minValue(100)
-                            ->maxValue(2000)
-                            ->required(),
-
-                        Select::make('qr_margin')
-                            ->label(__('filament-short-url::default.settings_qr_margin'))
-                            ->options(array_combine(range(0, 10), range(0, 10)))
-                            ->required(),
-
                         Select::make('qr_dot_style')
                             ->label(__('filament-short-url::default.settings_qr_dot_style'))
                             ->options([

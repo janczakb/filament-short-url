@@ -187,17 +187,12 @@
         });
     },
     loadScript() {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             if (window.QRCodeStyling) return resolve();
             const s = document.createElement('script');
-            s.src = 'https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js';
+            s.src = '/js/janczakb/filament-short-url/qr-code-styling.js';
             s.onload = () => resolve();
-            s.onerror = () => {
-                const s2 = document.createElement('script');
-                s2.src = 'https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js';
-                s2.onload = () => resolve();
-                document.head.appendChild(s2);
-            };
+            s.onerror = reject;
             document.head.appendChild(s);
         });
     }

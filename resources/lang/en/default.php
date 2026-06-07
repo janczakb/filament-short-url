@@ -13,7 +13,7 @@ return [
 
     // Form Tabs
     'tab_link' => 'Link Details',
-    'tab_tracking' => 'Tracking Settings',
+    'tab_tracking' => 'Tracking',
     'tab_qr_design' => 'QR Code Design',
     'tab_app_linking' => 'App Linking',
 
@@ -112,8 +112,10 @@ return [
     'qr_label_eye_dot_style' => 'Eye Dot Style',
     'qr_label_eye_color' => 'Eye Color',
     'qr_label_preview' => 'Preview',
+    'qr_option_none' => 'None',
     'qr_option_square' => 'Square',
     'qr_option_dots' => 'Dots',
+    'qr_option_dot' => 'Dot',
     'qr_option_rounded' => 'Rounded',
     'qr_option_classy' => 'Classy',
     'qr_option_classy_rounded' => 'Classy Rounded',
@@ -138,6 +140,7 @@ return [
     'qr_option_circle' => 'Circle',
     'qr_label_png' => 'PNG',
     'qr_label_svg' => 'SVG',
+    'qr_save_design' => 'Save Design',
 
     // Table Columns
     'col_short_url' => 'Short URL',
@@ -327,7 +330,11 @@ return [
     'stats_no_utm_data' => 'No UTM data recorded.',
 
     // New Targeting & Security Tab and fields
-    'tab_targeting' => 'Targeting & Security',
+    'tab_targeting' => 'Targeting',
+    'tab_password' => 'Password',
+    'tab_validity' => 'Expiration',
+    'expiration_dates_section_title' => 'Date & Time Expiration',
+    'visit_limits_section_title' => 'Visit Limits',
     'security_section_title' => 'Security Controls',
     'password' => 'Access Password',
     'password_helper' => 'Require visitors to enter a password before being redirected.',
@@ -747,4 +754,28 @@ return [
     'color_indigo' => 'Indigo',
     'color_purple' => 'Purple',
     'color_pink' => 'Pink',
+
+    // SEO & Social
+    'tab_seo_social' => 'SEO & Social',
+    'is_cloaked' => 'Link Cloaking',
+    'is_cloaked_helper' => 'Mask the destination URL in the address bar using an iframe on your short link domain.',
+    'do_index' => 'Search Engine Indexing',
+    'do_index_helper' => 'Allow search engines (like Google) to index this short URL. Otherwise, it is served with a noindex tag.',
+    'og_title' => 'Custom Title',
+    'og_description' => 'Custom Description',
+    'og_image' => 'Custom Image',
+    'og_section_title' => 'Social Media Preview (Open Graph)',
+    'og_section_desc' => 'Customize how this link looks when shared on Facebook, X, LinkedIn, WhatsApp, and Slack.',
+    'seo_section_title' => 'Search Engine Indexing & Cloaking',
+    'seo_section_desc' => 'Manage search engine crawling settings and stealth cloaking parameters.',
+    'live_social_preview' => 'Social Card Preview',
+    'live_qr_preview' => 'QR Code Preview',
+    'advanced_options_section' => 'Advanced Redirect & State Options',
+
+    // Social Card Preview sidebar
+    'og_title_placeholder' => 'Page title will appear here',
+    'og_description_placeholder' => 'Page description will appear here',
+    'og_empty_state_hint' => 'Paste a link to auto-generate preview',
+    'password_prompt_preview_desc' => 'Visitors will see a password prompt before being redirected.',
+    'fetching_metadata' => 'Fetching preview...',
 ];

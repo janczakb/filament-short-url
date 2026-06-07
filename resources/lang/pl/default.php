@@ -13,7 +13,7 @@ return [
 
     // Form Tabs
     'tab_link' => 'Szczegóły linku',
-    'tab_tracking' => 'Ustawienia śledzenia',
+    'tab_tracking' => 'Śledzenie',
     'tab_qr_design' => 'Wygląd kodu QR',
     'tab_app_linking' => 'Autootwieranie aplikacji',
 
@@ -108,8 +108,10 @@ return [
     'qr_label_eye_dot_style' => 'Styl punktu oka',
     'qr_label_eye_color' => 'Kolor oka',
     'qr_label_preview' => 'Podgląd',
+    'qr_option_none' => 'Brak',
     'qr_option_square' => 'Kwadrat',
     'qr_option_dots' => 'Kropki',
+    'qr_option_dot' => 'Okrągły',
     'qr_option_rounded' => 'Zaokrąglony',
     'qr_option_classy' => 'Elegancki',
     'qr_option_classy_rounded' => 'Zaokrąglony elegancki',
@@ -134,6 +136,7 @@ return [
     'qr_option_circle' => 'Koło',
     'qr_label_png' => 'PNG',
     'qr_label_svg' => 'SVG',
+    'qr_save_design' => 'Zapisz projekt',
 
     // Table Columns
     'col_short_url' => 'Krótki URL',
@@ -324,7 +327,11 @@ return [
     'stats_no_utm_data' => 'Brak danych o parametrach UTM.',
 
     // New Targeting & Security Tab and fields
-    'tab_targeting' => 'Targetowanie i bezpieczeństwo',
+    'tab_targeting' => 'Targetowanie',
+    'tab_password' => 'Hasło',
+    'tab_validity' => 'Wygasanie',
+    'expiration_dates_section_title' => 'Wygasanie czasowe',
+    'visit_limits_section_title' => 'Limity wizyt',
     'security_section_title' => 'Kontrola bezpieczeństwa',
     'password' => 'Hasło dostępu',
     'password_helper' => 'Wymagaj od odwiedzających wprowadzenia hasła przed przekierowaniem.',
@@ -745,4 +752,22 @@ return [
     'color_indigo' => 'Indygo',
     'color_purple' => 'Fioletowy',
     'color_pink' => 'Różowy',
+
+    // SEO & Social
+    'tab_seo_social' => 'SEO i Social',
+    'is_cloaked' => 'Maskowanie linku (Cloaking)',
+    'is_cloaked_helper' => 'Maskuj adres docelowy w pasku adresu przeglądarki za pomocą ramki iframe na domenie krótkiego linku.',
+    'do_index' => 'Indeksowanie w wyszukiwarkach',
+    'do_index_helper' => 'Zezwól wyszukiwarkom (np. Google) na indeksowanie tego krótkiego linku. W przeciwnym razie będzie on serwowany z tagiem noindex.',
+    'og_title' => 'Niestandardowy tytuł',
+    'og_description' => 'Niestandardowy opis',
+    'og_image' => 'Niestandardowy obrazek',
+    'og_section_title' => 'Podgląd w mediach społecznościowych (Open Graph)',
+    'og_section_desc' => 'Dostosuj wygląd tego linku po udostępnieniu na Facebooku, X (Twitterze), LinkedIn, WhatsApp czy Slacku.',
+    'seo_section_title' => 'Indeksowanie i maskowanie linków',
+    'seo_section_desc' => 'Zarządzaj widocznością w wyszukiwarkach oraz parametrami maskowania linków docelowych.',
+    'live_social_preview' => 'Podgląd karty społecznościowej',
+    'live_qr_preview' => 'Podgląd kodu QR',
+    'advanced_options_section' => 'Zaawansowane opcje przekierowań i stanu',
+    'fetching_metadata' => 'Pobieranie podglądu...',
 ];

@@ -32,7 +32,7 @@ class QrDesignTab
                             'id' => 'qr-options-json-input',
                         ])
                         ->hiddenLabel()
-                        ->dehydrateStateUsing(fn (?string $state): array => json_decode($state ?? '{}', true) ?: [])
+                        ->dehydrateStateUsing(fn (mixed $state): array => is_array($state) ? $state : (json_decode($state ?? '{}', true) ?: []))
                         ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                             $component->state(is_array($state) ? json_encode($state) : ($state ?? '{}'));
                         }),

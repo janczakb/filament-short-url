@@ -1255,3 +1255,51 @@ describe('performance: redirect hot path', function () {
         DB::disableQueryLog();
     });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 22. QR DESIGNER ACTION: fields, sliders, and defaults validation
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('qr designer action options and fields', function () {
+    it('has correct sliders and configuration', function () {
+        $action = \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Fields\QrDesignerSidebarField::buildDesignQrAction();
+
+        expect($action)->not->toBeNull();
+
+        $ref = new \ReflectionProperty($action, 'schema');
+        $ref->setAccessible(true);
+        $formSchema = $ref->getValue($action) ?: [];
+        $sliders = [];
+        $hasHideBackground = false;
+
+        $searchComponents = function ($components) use (&$sliders, &$hasHideBackground, &$searchComponents) {
+            foreach ($components as $component) {
+                if ($component instanceof \Filament\Forms\Components\Slider) {
+                    $sliders[$component->getName()] = $component;
+                }
+                if (method_exists($component, 'getName') && $component->getName() === 'logo_hide_background') {
+                    $hasHideBackground = true;
+                }
+                if (method_exists($component, 'getDefaultChildComponents')) {
+                    $searchComponents($component->getDefaultChildComponents());
+                }
+            }
+        };
+
+        $searchComponents($formSchema);
+
+        expect($hasHideBackground)->toBeFalse();
+        expect(array_keys($sliders))->toContain('logo_size', 'logo_margin');
+
+        $logoSizeSlider = $sliders['logo_size'];
+        expect($logoSizeSlider->getMinValue())->toBe(0.4)
+            ->and($logoSizeSlider->getMaxValue())->toBe(0.6)
+            ->and($logoSizeSlider->getStep())->toBe(0.05);
+
+        $logoMarginSlider = $sliders['logo_margin'];
+        expect($logoMarginSlider->getMinValue())->toBe(1)
+            ->and($logoMarginSlider->getMaxValue())->toBe(20)
+            ->and($logoMarginSlider->getStep())->toBe(1);
+    });
+});
+

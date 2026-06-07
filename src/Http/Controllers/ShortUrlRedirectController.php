@@ -234,9 +234,34 @@ class ShortUrlRedirectController extends Controller
             }
         }
 
+        $isBot = $this->uaParser->getDeviceType($request->userAgent() ?? '') === 'robot';
+        $hasCustomOg = ! empty($shortUrl->og_title) || ! empty($shortUrl->og_description) || ! empty($shortUrl->og_image);
+
+        if ($shortUrl->is_cloaked || ($isBot && $hasCustomOg)) {
+            $activePixels = $shortUrl->pixels->where('is_active', true);
+            $pixelFired = $request->has('pixel_fired') || $request->has('confirmed');
+
+            if ($activePixels->isNotEmpty() && ! $pixelFired && ! $isBot) {
+                $queryString = $request->getQueryString();
+                $append = 'pixel_fired=1';
+                $nextUrl = $request->url().'?'.($queryString ? $queryString.'&'.$append : $append);
+
+                return response(view('filament-short-url::pixel-loading', [
+                    'destination' => $nextUrl,
+                    'pixels' => $activePixels,
+                ]))->header('Content-Type', 'text/html');
+            }
+
+            return response(view('filament-short-url::redirect-html', [
+                'shortUrl' => $shortUrl,
+                'destination' => $destination,
+                'isBot' => $isBot,
+            ]))->header('Content-Type', 'text/html');
+        }
+
         $activePixels = $shortUrl->pixels->where('is_active', true);
 
-        if ($activePixels->isNotEmpty()) {
+        if ($activePixels->isNotEmpty() && ! $request->has('confirmed')) {
             return response(view('filament-short-url::pixel-loading', [
                 'destination' => $destination,
                 'pixels' => $activePixels,
@@ -310,6 +335,21 @@ class ShortUrlRedirectController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Access-Control-Allow-Origin' => '*',
         ]);
+    }
+
+    /**
+     * Async endpoint to scrape metadata for a URL.
+     */
+    public function scrapeMeta(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $url = $request->query('url');
+        if (empty($url) || ! filter_var($url, FILTER_VALIDATE_URL)) {
+            return response()->json(['error' => 'Invalid URL'], 400);
+        }
+
+        $meta = $this->service->scrapeMetaTags($url);
+
+        return response()->json($meta);
     }
 
     /**
@@ -518,9 +558,34 @@ class ShortUrlRedirectController extends Controller
             }
         }
 
+        $isBot = $this->uaParser->getDeviceType($request->userAgent() ?? '') === 'robot';
+        $hasCustomOg = ! empty($shortUrl->og_title) || ! empty($shortUrl->og_description) || ! empty($shortUrl->og_image);
+
+        if ($shortUrl->is_cloaked || ($isBot && $hasCustomOg)) {
+            $activePixels = $shortUrl->pixels->where('is_active', true);
+            $pixelFired = $request->has('pixel_fired') || $request->has('confirmed');
+
+            if ($activePixels->isNotEmpty() && ! $pixelFired && ! $isBot) {
+                $queryString = $request->getQueryString();
+                $append = 'pixel_fired=1';
+                $nextUrl = $request->url().'?'.($queryString ? $queryString.'&'.$append : $append);
+
+                return response(view('filament-short-url::pixel-loading', [
+                    'destination' => $nextUrl,
+                    'pixels' => $activePixels,
+                ]))->header('Content-Type', 'text/html');
+            }
+
+            return response(view('filament-short-url::redirect-html', [
+                'shortUrl' => $shortUrl,
+                'destination' => $destination,
+                'isBot' => $isBot,
+            ]))->header('Content-Type', 'text/html');
+        }
+
         $activePixels = $shortUrl->pixels->where('is_active', true);
 
-        if ($activePixels->isNotEmpty()) {
+        if ($activePixels->isNotEmpty() && ! $request->has('confirmed')) {
             return response(view('filament-short-url::pixel-loading', [
                 'destination' => $destination,
                 'pixels' => $activePixels,

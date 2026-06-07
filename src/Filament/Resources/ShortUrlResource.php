@@ -48,8 +48,6 @@ class ShortUrlResource extends Resource
         return __('filament-short-url::default.navigation_label');
     }
 
-    // ─── Plugin-aware navigation overrides ───────────────────────────────────
-
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
         try {
@@ -89,8 +87,6 @@ class ShortUrlResource extends Resource
             return static::$navigationSort;
         }
     }
-
-    // ─── Resource definition ─────────────────────────────────────────────────
 
     public static function form(Schema $schema): Schema
     {

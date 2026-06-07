@@ -14,6 +14,7 @@ use Bjanczak\FilamentShortUrl\Http\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlBuilder;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
+use Bjanczak\FilamentShortUrl\Services\ShortUrlTempStorage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -100,6 +101,11 @@ class ShortUrl extends Model
         'custom_domain_id',
         'folder_id',
         'is_archived',
+        'og_title',
+        'og_description',
+        'og_image',
+        'is_cloaked',
+        'do_index',
     ];
 
     /** @var array<string, string> */
@@ -109,6 +115,8 @@ class ShortUrl extends Model
         'folder_id' => 'integer',
         'is_enabled' => 'boolean',
         'is_archived' => 'boolean',
+        'is_cloaked' => 'boolean',
+        'do_index' => 'boolean',
         'single_use' => 'boolean',
         'forward_query_params' => 'boolean',
         'auto_open_app_mobile' => 'boolean',
@@ -283,17 +291,21 @@ class ShortUrl extends Model
                 $m->webhook_url = null;
             }
 
-            if ($m->isDirty('qr_logo') && ! empty($m->qr_logo)) {
-                if (str_starts_with($m->qr_logo, 'short-urls/tmp/')) {
-                    $tmpPath = $m->qr_logo;
-                    $filename = basename($tmpPath);
-                    $newPath = 'short-urls/logos/'.$filename;
+            $tempStorage = app(ShortUrlTempStorage::class);
 
-                    $disk = Storage::disk('public');
-                    if ($disk->exists($tmpPath)) {
-                        $disk->move($tmpPath, $newPath);
-                        $m->qr_logo = $newPath;
-                    }
+            if ($m->isDirty('qr_logo') && ! empty($m->qr_logo)) {
+                $promoted = $tempStorage->promote($m->qr_logo, ShortUrlTempStorage::LOGO_PERMANENT);
+
+                if ($promoted !== null) {
+                    $m->qr_logo = $promoted;
+                }
+            }
+
+            if ($m->isDirty('og_image') && ! empty($m->og_image)) {
+                $promoted = $tempStorage->promote($m->og_image, ShortUrlTempStorage::OG_PERMANENT);
+
+                if ($promoted !== null) {
+                    $m->og_image = $promoted;
                 }
             }
         });
@@ -301,8 +313,17 @@ class ShortUrl extends Model
         static::updating(function (self $m) {
             if ($m->isDirty('qr_logo')) {
                 $oldLogo = $m->getOriginal('qr_logo');
+
                 if (! empty($oldLogo)) {
                     Storage::disk('public')->delete($oldLogo);
+                }
+            }
+
+            if ($m->isDirty('og_image')) {
+                $oldImage = $m->getOriginal('og_image');
+
+                if (! empty($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
                 }
             }
         });
@@ -380,6 +401,10 @@ class ShortUrl extends Model
 
             if (! empty($m->qr_logo)) {
                 Storage::disk('public')->delete($m->qr_logo);
+            }
+
+            if (! empty($m->og_image)) {
+                Storage::disk('public')->delete($m->og_image);
             }
         });
 

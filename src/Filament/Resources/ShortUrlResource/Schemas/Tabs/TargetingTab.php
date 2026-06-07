@@ -10,22 +10,17 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\
 
 use Bjanczak\FilamentShortUrl\Filament\Forms\Components\TrafficSplitter;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Support\WeightBalancer;
-use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Rules\SafeUrl;
-use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Actions;
-use Filament\Schemas\Components\Group;
+use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
@@ -41,164 +36,8 @@ class TargetingTab
     public static function make(): Tab
     {
         return Tab::make(__('filament-short-url::default.tab_targeting'))
-            ->icon('heroicon-o-shield-check')
+            ->icon('heroicon-o-funnel')
             ->schema([
-                Section::make(__('filament-short-url::default.security_section_title'))
-                    ->schema([
-                        Hidden::make('password'),
-
-                        Hidden::make('password_active_flag')
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function (Hidden $component, $state, ?ShortUrl $record) {
-                                $component->state($record && ! empty($record->password));
-                            }),
-
-                        Hidden::make('is_entering_password')
-                            ->dehydrated(false)
-                            ->default(false),
-
-                        // State 1: Password is active (password_active_flag is true)
-                        Group::make([
-                            Placeholder::make('password_status')
-                                ->label(__('filament-short-url::default.password'))
-                                ->content(new HtmlString(
-                                    '<div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">'.
-                                    '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>'.
-                                    '<span>'.__('filament-short-url::default.password_status_active').'</span>'.
-                                    '</div>'
-                                ))
-                                ->columnSpan(1),
-
-                            Actions::make([
-                                Action::make('change_password')
-                                    ->label(__('filament-short-url::default.change_password'))
-                                    ->icon('heroicon-o-pencil')
-                                    ->color('primary')
-                                    ->action(function (Set $set) {
-                                        $set('password_active_flag', false);
-                                        $set('is_entering_password', true);
-                                        $set('new_password_input', null);
-                                        $set('new_password_confirmation_input', null);
-                                    }),
-                                Action::make('remove_password')
-                                    ->label(__('filament-short-url::default.remove_password'))
-                                    ->icon('heroicon-o-trash')
-                                    ->color('danger')
-                                    ->requiresConfirmation()
-                                    ->action(function (Set $set, ?ShortUrl $record) {
-                                        $set('password', null);
-                                        $set('new_password_input', null);
-                                        $set('new_password_confirmation_input', null);
-                                        $set('password_active_flag', false);
-                                        $set('is_entering_password', false);
-                                        if ($record) {
-                                            $record->password = null;
-                                        }
-                                    }),
-                            ])
-                                ->columnSpan(1),
-                        ])
-                            ->columns(2)
-                            ->columnSpanFull()
-                            ->visible(fn (Get $get): bool => (bool) $get('password_active_flag')),
-
-                        // State 2: No Password, Setup Button Group (password_active_flag is false, is_entering_password is false)
-                        Group::make([
-                            Actions::make([
-                                Action::make('setup_password')
-                                    ->label(__('filament-short-url::default.set_password'))
-                                    ->icon('heroicon-o-key')
-                                    ->color('primary')
-                                    ->action(function (Set $set) {
-                                        $set('is_entering_password', true);
-                                    }),
-                            ])
-                                ->columnSpanFull(),
-                        ])
-                            ->columnSpanFull()
-                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password')),
-
-                        // State 3: Entering Password Group (password_active_flag is false, is_entering_password is true)
-                        Group::make([
-                            Group::make([
-                                TextInput::make('new_password_input')
-                                    ->label(__('filament-short-url::default.new_password'))
-                                    ->password()
-                                    ->revealable()
-                                    ->live()
-                                    ->maxLength(255)
-                                    ->dehydrated(false)
-                                    ->required(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password'))
-                                    ->columnSpan(1),
-
-                                TextInput::make('new_password_confirmation_input')
-                                    ->label(__('filament-short-url::default.confirm_password'))
-                                    ->password()
-                                    ->revealable()
-                                    ->same('new_password_input')
-                                    ->maxLength(255)
-                                    ->dehydrated(false)
-                                    ->required(fn (Get $get): bool => ! empty($get('new_password_input')))
-                                    ->columnSpan(1),
-                            ])
-                                ->columns(2)
-                                ->columnSpanFull(),
-
-                            Actions::make([
-                                Action::make('confirm_password')
-                                    ->label(__('filament-short-url::default.confirm'))
-                                    ->icon('heroicon-o-check')
-                                    ->color('success')
-                                    ->action(function (Get $get, Set $set) {
-                                        $password = $get('new_password_input');
-                                        $confirm = $get('new_password_confirmation_input');
-                                        if (empty($password)) {
-                                            Notification::make()
-                                                ->title(__('filament-short-url::default.password_required_error'))
-                                                ->danger()
-                                                ->send();
-
-                                            return;
-                                        }
-                                        if ($password !== $confirm) {
-                                            Notification::make()
-                                                ->title(__('filament-short-url::default.password_mismatch_error'))
-                                                ->danger()
-                                                ->send();
-
-                                            return;
-                                        }
-                                        $set('password', $password);
-                                        $set('password_active_flag', true);
-                                        $set('is_entering_password', false);
-                                    }),
-
-                                Action::make('cancel_password')
-                                    ->label(__('filament-short-url::default.cancel'))
-                                    ->icon('heroicon-o-x-mark')
-                                    ->color('gray')
-                                    ->action(function (Get $get, Set $set, ?ShortUrl $record) {
-                                        if ($record && ! empty($record->password)) {
-                                            $set('password_active_flag', true);
-                                        } else {
-                                            $set('password_active_flag', false);
-                                        }
-                                        $set('is_entering_password', false);
-                                        $set('new_password_input', null);
-                                        $set('new_password_confirmation_input', null);
-                                    }),
-                            ])
-                                ->columnSpanFull(),
-                        ])
-                            ->columnSpanFull()
-                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password')),
-
-                        Toggle::make('show_warning_page')
-                            ->label(__('filament-short-url::default.show_warning_page'))
-                            ->helperText(__('filament-short-url::default.show_warning_page_helper'))
-                            ->default(false)
-                            ->inline(false),
-                    ])->columns(2),
 
                 Section::make(__('filament-short-url::default.targeting_rules'))
                     ->compact()
@@ -542,7 +381,25 @@ class TargetingTab
                             ])
                             ->columnSpanFull()
                             ->default([]),
-                    ]),
+                    ])->contained(false),
+
+                Section::make(__('filament-short-url::default.form_section_app_linking'))
+                    ->schema([
+                        Toggle::make('auto_open_app_mobile')
+                            ->label(__('filament-short-url::default.auto_open_app_mobile'))
+                            ->hintIcon('heroicon-o-information-circle', tooltip: __('filament-short-url::default.auto_open_app_mobile_helper'))
+                            ->default(false)
+                            ->inline(false)
+                            ->live(),
+
+                        ViewField::make('app_linking_preview')
+                            ->view('filament-short-url::app-linking-preview')
+                            ->viewData(fn (Get $get) => [
+                                'destinationUrl' => $get('destination_url'),
+                            ])
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => (bool) $get('auto_open_app_mobile')),
+                    ])->contained(false),
             ]);
     }
 }

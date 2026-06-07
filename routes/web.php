@@ -44,12 +44,19 @@ Route::prefix('api/short-url')
         Route::delete('links/{idOrKey}', [ShortUrlApiController::class, 'destroy']);
     });
 
-Route::post('admin/short-url/upload-logo', [ShortUrlLogoController::class, 'uploadLogo'])
-    ->name('short-url.upload-logo')
-    ->middleware(['web']);
-
 Route::get('short-url/logo/{filename}', [ShortUrlLogoController::class, 'serveLogo'])
     ->name('short-url.logo');
+
+Route::middleware(['web'])
+    ->post('short-url/log-error', function (\Illuminate\Http\Request $request) {
+        \Illuminate\Support\Facades\Log::error('Client JS Error: ' . $request->input('message') . ' in ' . $request->input('file') . ' on line ' . $request->input('line') . ' col ' . $request->input('col') . ' stack: ' . $request->input('stack'));
+        return response()->json(['status' => 'ok']);
+    })
+    ->name('short-url.log-error');
+
+Route::middleware(['web', 'auth'])
+    ->get('short-url/scrape-meta', [ShortUrlRedirectController::class, 'scrapeMeta'])
+    ->name('short-url.scrape-meta');
 
 if (config('filament-short-url.enable_fallback_route', true)) {
     Route::fallback(ShortUrlRedirectController::class)

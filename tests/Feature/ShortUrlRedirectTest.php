@@ -903,3 +903,53 @@ it('invalidates redirect cache keys when the url_key is updated', function () {
     expect(cache()->has('filament-short-url:old-key:default'))->toBeFalse();
     expect(cache()->has('filament-short-url:new-key:default'))->toBeFalse();
 });
+
+it('serves cloaked iframe redirect page for users', function () {
+    $shortUrl = createShortUrl([
+        'url_key' => 'cloaked1',
+        'is_cloaked' => true,
+        'track_visits' => false,
+    ]);
+
+    $this->get('/s/cloaked1')
+        ->assertStatus(200)
+        ->assertSee('<iframe src="https://example.com"')
+        ->assertSee('noindex, nofollow');
+});
+
+it('serves og tags to bot user agent', function () {
+    $shortUrl = createShortUrl([
+        'url_key' => 'ogbot1',
+        'og_title' => 'My Branded Shortlink',
+        'og_description' => 'A custom metadata description.',
+        'do_index' => true,
+        'track_visits' => false,
+    ]);
+
+    // Regular users: redirect directly
+    $this->get('/s/ogbot1')
+        ->assertRedirect('https://example.com');
+
+    // Bot/Crawler users: serve OG tags view instead of redirecting
+    $this->get('/s/ogbot1', [
+        'User-Agent' => 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_voiced_ade.php)',
+    ])
+        ->assertStatus(200)
+        ->assertSee('My Branded Shortlink')
+        ->assertSee('A custom metadata description.')
+        ->assertSee('index, follow');
+
+    // Bot with lowercase
+    $this->get('/s/ogbot1', [
+        'User-Agent' => 'googlebot',
+    ])
+        ->assertStatus(200)
+        ->assertSee('My Branded Shortlink');
+
+    // Bot with mixed case
+    $this->get('/s/ogbot1', [
+        'User-Agent' => 'Discordbot',
+    ])
+        ->assertStatus(200)
+        ->assertSee('My Branded Shortlink');
+});

@@ -9,14 +9,19 @@
 namespace Bjanczak\FilamentShortUrl;
 
 use Bjanczak\FilamentShortUrl\Assets\ShortUrlCss;
+use Bjanczak\FilamentShortUrl\Assets\ShortUrlJs;
 use Bjanczak\FilamentShortUrl\Console\Commands\SyncBufferedCountersCommand;
 use Bjanczak\FilamentShortUrl\Services\GeoIpService;
+use Bjanczak\FilamentShortUrl\Services\OgImageImporter;
+use Bjanczak\FilamentShortUrl\Services\OgImageProcessor;
 use Bjanczak\FilamentShortUrl\Services\ProxyDetectionService;
 use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTracker;
+use Bjanczak\FilamentShortUrl\Services\UrlMetaScraper;
 use Bjanczak\FilamentShortUrl\Services\UserAgentParser;
+use BladeUI\Icons\Factory;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Console\Scheduling\Schedule;
 use Spatie\LaravelPackageTools\Package;
@@ -43,6 +48,7 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
                 '2026_06_05_000002_create_short_url_custom_domains_table',
                 '2026_06_05_000003_add_custom_domain_id_to_short_urls_table',
                 '2026_06_06_000001_create_short_url_folders_and_tags_tables',
+                '2026_06_06_000002_add_og_metadata_to_short_urls_table',
             ])
             ->hasCommands([
                 SyncBufferedCountersCommand::class,
@@ -58,10 +64,20 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
         // Bind services as singletons for efficient reuse
         $this->app->singleton(UserAgentParser::class);
         $this->app->singleton(GeoIpService::class);
+        $this->app->singleton(UrlMetaScraper::class);
+        $this->app->singleton(OgImageProcessor::class);
+        $this->app->singleton(OgImageImporter::class);
         $this->app->singleton(ShortUrlService::class);
         $this->app->singleton(ShortUrlTracker::class);
         $this->app->singleton(ProxyDetectionService::class);
         $this->app->singleton(SafeBrowsingService::class);
+
+        $this->callAfterResolving(Factory::class, function (Factory $factory) {
+            $factory->add('filament-short-url', [
+                'path' => __DIR__.'/../resources/svg',
+                'prefix' => 'fsu',
+            ]);
+        });
     }
 
     public function packageBooted(): void
@@ -70,6 +86,9 @@ class FilamentShortUrlServiceProvider extends PackageServiceProvider
 
         FilamentAsset::register([
             ShortUrlCss::make('filament-short-url', __DIR__.'/../resources/dist/filament-short-url.css'),
+            ShortUrlJs::make('qr-code-styling', __DIR__.'/../resources/dist/qr-code-styling.js'),
+            ShortUrlJs::make('filament-short-url-js', __DIR__.'/../resources/dist/filament-short-url.js'),
+            ShortUrlJs::make('filament-short-url-meta-scraper', __DIR__.'/../resources/dist/meta-scraper.js'),
         ], package: 'janczakb/filament-short-url');
 
         // Automatically register scheduled tasks in the application scheduler

@@ -158,7 +158,7 @@ class UserAgentParser
     private function parseDeviceType(string $ua): string
     {
         // Robots first
-        $robots = ['Googlebot', 'bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebookexternalhit', 'Twitterbot', 'Applebot', 'curl', 'python-requests', 'Go-http-client'];
+        $robots = ['Googlebot', 'bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebookexternalhit', 'Twitterbot', 'Applebot', 'linkedinbot', 'slackbot', 'discordbot', 'telegrambot', 'whatsapp', 'curl', 'python-requests', 'Go-http-client'];
         foreach ($robots as $robot) {
             if (stripos($ua, $robot) !== false) {
                 return 'robot';

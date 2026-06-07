@@ -52,6 +52,7 @@ class DeveloperTab
                                     ->label(__('filament-short-url::default.api_key'))
                                     ->disabled()
                                     ->dehydrated()
+                                    ->copyable(copyMessage: 'Copied!', copyMessageDuration: 1500)
                                     ->default(fn () => 'sh_key_'.bin2hex(random_bytes(16))),
                                 Select::make('scope')
                                     ->label(__('filament-short-url::default.api_key_scope'))

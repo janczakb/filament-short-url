@@ -15,6 +15,10 @@ use Illuminate\Support\Carbon;
 
 class ShortUrlService
 {
+    public function __construct(
+        private readonly UrlMetaScraper $metaScraper,
+    ) {}
+
     /**
      * Start building a ShortUrl programmatically using a fluent interface.
      */
@@ -145,5 +149,15 @@ class ShortUrlService
         $separator = str_contains($destination, '?') ? '&' : '?';
 
         return $destination.$separator.http_build_query($queryParams);
+    }
+
+    /**
+     * Scrape Open Graph / Twitter Card metadata from the destination URL.
+     *
+     * @return array{title?: string, description?: string, image?: string}
+     */
+    public function scrapeMetaTags(string $url): array
+    {
+        return $this->metaScraper->scrape($url);
     }
 }

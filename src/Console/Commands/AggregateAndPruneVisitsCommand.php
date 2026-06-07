@@ -4,10 +4,10 @@ namespace Bjanczak\FilamentShortUrl\Console\Commands;
 
 use Bjanczak\FilamentShortUrl\Models\ShortUrlDailyStats;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
+use Bjanczak\FilamentShortUrl\Services\ShortUrlTempStorage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class AggregateAndPruneVisitsCommand extends Command
 {
@@ -192,24 +192,11 @@ class AggregateAndPruneVisitsCommand extends Command
             $this->info("Successfully pruned {$deleted} raw visit records older than {$retentionDays} days.");
         }
 
-        // 3. Prune old temporary logo files (older than 24 hours)
-        $disk = Storage::disk('public');
-        if ($disk->exists('short-urls/tmp')) {
-            $files = $disk->files('short-urls/tmp');
-            $now = time();
-            $prunedCount = 0;
+        // 3. Prune old temporary uploads (older than 24 hours) by hour bucket
+        $prunedCount = app(ShortUrlTempStorage::class)->pruneBucketsOlderThanHours(24);
 
-            foreach ($files as $file) {
-                $lastModified = $disk->lastModified($file);
-                if (($now - $lastModified) > 86400) { // 86400 seconds = 24 hours
-                    $disk->delete($file);
-                    $prunedCount++;
-                }
-            }
-
-            if ($prunedCount > 0) {
-                $this->info("Successfully pruned {$prunedCount} temporary logo files older than 24 hours.");
-            }
+        if ($prunedCount > 0) {
+            $this->info("Successfully pruned {$prunedCount} temporary files older than 24 hours.");
         }
 
         return 0;
