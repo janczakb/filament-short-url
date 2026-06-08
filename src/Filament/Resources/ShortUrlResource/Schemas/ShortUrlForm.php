@@ -17,6 +17,7 @@ use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Tabs\T
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Tabs\TrackingTab;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Tabs\ValidityAndLimitsTab;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlFolder;
+use Bjanczak\FilamentShortUrl\Services\OgFormImageResolver;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -71,7 +72,7 @@ class ShortUrlForm
                                 ->extraFieldWrapperAttributes([
                                     'class' => 'create-link-sidebar-select-wrapper',
                                 ])
-                                ->label(new HtmlString('<span class="font-semibold">' . __('filament-short-url::default.folder_resource_title') . '</span>'))
+                                ->label(new HtmlString('<span class="font-semibold">'.__('filament-short-url::default.folder_resource_title').'</span>'))
                                 ->relationship('folder', 'name')
                                 ->allowHtml()
                                 ->getOptionLabelFromRecordUsing(fn ($record) => $record->getOptionHtml())
@@ -119,9 +120,45 @@ class ShortUrlForm
 
                             ViewField::make('sidebar_social_preview')
                                 ->view('filament-short-url::sidebar.social-preview')
-                                ->viewData(fn (?Get $get = null) => [
-                                    'isPasswordProtected' => $get ? (bool) $get('password_active_flag') : false,
-                                ])
+                                ->viewData(function (ViewField $component, ?Get $get = null) {
+                                    $formState = [];
+
+                                    if (method_exists($component, 'getContainer')) {
+                                        $formState = $component->getContainer()->getState();
+                                    }
+
+                                    if ($get) {
+                                        $formState = array_merge($formState, [
+                                            'og_title' => $get('og_title'),
+                                            'og_description' => $get('og_description'),
+                                            'og_image' => $get('og_image'),
+                                            'og_image_scraped' => $get('og_image_scraped'),
+                                            'is_scraping' => $get('is_scraping'),
+                                        ]);
+                                    }
+
+                                    if (method_exists($component, 'getLivewire')) {
+                                        $livewire = $component->getLivewire();
+
+                                        if (isset($livewire->data) && is_array($livewire->data)) {
+                                            $formState = array_merge($livewire->data, $formState);
+                                        }
+                                    }
+
+                                    $resolver = app(OgFormImageResolver::class);
+
+                                    return [
+                                        'isPasswordProtected' => (bool) ($formState['password_active_flag'] ?? false)
+                                            || filled($formState['password'] ?? null),
+                                        'ogTitle' => filled($formState['og_title'] ?? null) ? $formState['og_title'] : null,
+                                        'ogDescription' => filled($formState['og_description'] ?? null) ? $formState['og_description'] : null,
+                                        'ogImageUrl' => $resolver->resolvePreviewUrl(
+                                            $formState['og_image'] ?? null,
+                                            $formState['og_image_scraped'] ?? null,
+                                        ),
+                                        'isScraping' => (bool) ($formState['is_scraping'] ?? false),
+                                    ];
+                                })
                                 ->dehydrated(false)
                                 ->columnSpanFull(),
                         ])

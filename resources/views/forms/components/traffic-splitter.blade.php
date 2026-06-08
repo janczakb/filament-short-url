@@ -134,7 +134,7 @@
                         <div class="w-1.5" x-show="index > 0"></div>
 
                         <!-- Segment Box -->
-                        <div class="flex h-full grow items-center justify-center gap-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs shadow-sm select-none">
+                        <div class="traffic-splitter-segment flex h-full grow items-center justify-center gap-2 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs select-none">
                             <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100" x-text="index + 1"></span>
                             <span class="font-medium text-neutral-600 dark:text-neutral-400" x-show="item.weight >= 12" x-text="item.weight + '%'"></span>
                         </div>

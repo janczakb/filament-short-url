@@ -2,9 +2,12 @@
 
 namespace Bjanczak\FilamentShortUrl\Console\Commands;
 
+use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlDailyStats;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTempStorage;
+use Bjanczak\FilamentShortUrl\Services\Stats\CrossDimensionalStatsEngine;
+use Bjanczak\FilamentShortUrl\Services\StatsSqlHelper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,20 +30,52 @@ class AggregateAndPruneVisitsCommand extends Command
             default => 'DATE(visited_at)',
         };
 
-        // 1. Find the oldest and newest visit dates before today using highly optimized min/max index scanning
-        $oldestVisit = ShortUrlVisit::where('visited_at', '<', $today)->min('visited_at');
-        if (! $oldestVisit) {
-            $dates = [];
-        } else {
-            $latestVisit = ShortUrlVisit::where('visited_at', '<', $today)->max('visited_at');
-            $startCarbon = Carbon::parse($oldestVisit)->startOfDay();
-            $endCarbon = Carbon::parse($latestVisit)->startOfDay();
+        $lastAggregationDate = DB::table('short_url_settings')
+            ->where('key', 'last_aggregation_date')
+            ->value('value');
 
-            $dates = [];
-            $current = $startCarbon->copy();
-            while ($current->lte($endCarbon)) {
-                $dates[] = $current->toDateString();
-                $current->addDay();
+        $candidateDates = DB::table('short_url_visits')
+            ->where('visited_at', '<', $today)
+            ->where('is_bot', false)
+            ->where('is_proxy', false)
+            ->when($lastAggregationDate, fn ($query) => $query->where('visited_at', '>', Carbon::parse($lastAggregationDate)->endOfDay()))
+            ->selectRaw("{$dateExpression} as aggregate_date")
+            ->distinct()
+            ->orderBy('aggregate_date')
+            ->pluck('aggregate_date')
+            ->map(function ($value): string {
+                return Carbon::parse($value)->toDateString();
+            })
+            ->all();
+
+        $dates = [];
+        foreach ($candidateDates as $date) {
+            $nextDate = Carbon::parse($date)->addDay()->toDateString();
+            $start = $date.' 00:00:00';
+            $end = $nextDate.' 00:00:00';
+
+            $rawCount = (int) DB::table('short_url_visits')
+                ->where('visited_at', '>=', $start)
+                ->where('visited_at', '<', $end)
+                ->where('is_bot', false)
+                ->where('is_proxy', false)
+                ->count();
+
+            $dailyCountQuery = DB::table('short_url_daily_stats');
+            StatsSqlHelper::applyDailyStatsDateEquals($dailyCountQuery, $date);
+            $dailyCount = (int) $dailyCountQuery->sum('visits_count');
+
+            $missingCrossRollupsQuery = DB::table('short_url_daily_stats');
+            StatsSqlHelper::applyDailyStatsDateEquals($missingCrossRollupsQuery, $date);
+            $missingCrossRollups = $missingCrossRollupsQuery
+                ->where(function ($query): void {
+                    $query->whereNull('cross_dimensional_stats')
+                        ->orWhereNull('cross_filter_pairs');
+                })
+                ->exists();
+
+            if ($dailyCount === 0 || $rawCount !== $dailyCount || $missingCrossRollups) {
+                $dates[] = $date;
             }
         }
 
@@ -49,23 +84,31 @@ class AggregateAndPruneVisitsCommand extends Command
         } else {
             $this->info('Found '.count($dates).' days to aggregate.');
 
+            $maxAggregatedDate = null;
+            $affectedShortUrlIds = [];
+
             foreach ($dates as $date) {
-                // Wrap date aggregation in a database transaction for data integrity
-                DB::transaction(function () use ($date): void {
+                DB::transaction(function () use ($date, &$affectedShortUrlIds): void {
                     $nextDate = Carbon::parse($date)->addDay()->toDateString();
                     $start = $date.' 00:00:00';
                     $end = $nextDate.' 00:00:00';
 
-                    // Driver-aware boolean count: MySQL/SQLite store booleans as TINYINT (= 1),
-                    // PostgreSQL uses a native boolean type (cast to int for aggregation).
                     $driver = DB::connection()->getDriverName();
                     $qrExpr = $driver === 'pgsql'
                         ? 'count(case when is_qr_scan::int = 1 then 1 end) as qr_scans'
                         : 'count(case when is_qr_scan = 1 then 1 end) as qr_scans';
+                    $botExpr = $driver === 'pgsql'
+                        ? 'count(case when is_bot::int = 1 then 1 end) as bot_visits'
+                        : 'count(case when is_bot = 1 then 1 end) as bot_visits';
+                    $proxyExpr = $driver === 'pgsql'
+                        ? 'count(case when is_proxy::int = 1 then 1 end) as proxy_visits'
+                        : 'count(case when is_proxy = 1 then 1 end) as proxy_visits';
 
                     $totals = DB::table('short_url_visits')
                         ->where('visited_at', '>=', $start)
                         ->where('visited_at', '<', $end)
+                        ->where('is_bot', false)
+                        ->where('is_proxy', false)
                         ->select([
                             'short_url_id',
                             DB::raw('count(*) as total'),
@@ -75,124 +118,172 @@ class AggregateAndPruneVisitsCommand extends Command
                         ->groupBy('short_url_id')
                         ->get();
 
-                    if ($totals->isEmpty()) {
+                    $securityTotals = DB::table('short_url_visits')
+                        ->where('visited_at', '>=', $start)
+                        ->where('visited_at', '<', $end)
+                        ->select([
+                            'short_url_id',
+                            DB::raw('count(*) as all_visits'),
+                            DB::raw($botExpr),
+                            DB::raw($proxyExpr),
+                        ])
+                        ->groupBy('short_url_id')
+                        ->get()
+                        ->keyBy('short_url_id');
+
+                    if ($totals->isEmpty() && $securityTotals->isEmpty()) {
                         return;
                     }
 
                     $statsByUrl = [];
+
                     foreach ($totals as $row) {
-                        $statsByUrl[$row->short_url_id] = [
+                        $statsByUrl[$row->short_url_id] = array_merge(CrossDimensionalStatsEngine::emptyBucket(), [
                             'total' => (int) $row->total,
                             'uniques' => (int) $row->uniques,
                             'qr_scans' => (int) $row->qr_scans,
-                            'device_stats' => [],
-                            'browser_stats' => [],
-                            'os_stats' => [],
-                            'country_stats' => [],
-                            'city_stats' => [],
-                            'referer_stats' => [],
-                            'utm_source_stats' => [],
-                            'utm_medium_stats' => [],
-                            'utm_campaign_stats' => [],
-                            'language_stats' => [],
-                            'variant_stats' => [],
-                        ];
+                            'all_visits' => 0,
+                            'bot_visits' => 0,
+                            'proxy_visits' => 0,
+                        ]);
                     }
 
-                    // Helper to fetch and populate category stats natively in database GROUP BY
-                    $populateStats = function (string $column, string $statsKey) use ($start, $end, &$statsByUrl): void {
-                        $urlIds = array_keys($statsByUrl);
-                        if (empty($urlIds)) {
-                            return;
+                    foreach ($securityTotals as $urlId => $secRow) {
+                        if (! isset($statsByUrl[$urlId])) {
+                            $statsByUrl[$urlId] = array_merge(CrossDimensionalStatsEngine::emptyBucket(), [
+                                'total' => 0,
+                                'uniques' => 0,
+                                'qr_scans' => 0,
+                                'all_visits' => (int) $secRow->all_visits,
+                                'bot_visits' => (int) $secRow->bot_visits,
+                                'proxy_visits' => (int) $secRow->proxy_visits,
+                            ]);
+
+                            continue;
                         }
 
-                        $query = DB::table('short_url_visits')
-                            ->where('visited_at', '>=', $start)
-                            ->where('visited_at', '<', $end)
-                            ->whereIn('short_url_id', $urlIds)
-                            ->whereNotNull($column)
-                            ->where($column, '<>', '');
+                        $statsByUrl[$urlId]['all_visits'] = (int) $secRow->all_visits;
+                        $statsByUrl[$urlId]['bot_visits'] = (int) $secRow->bot_visits;
+                        $statsByUrl[$urlId]['proxy_visits'] = (int) $secRow->proxy_visits;
+                    }
 
-                        if ($statsKey === 'city_stats') {
-                            $query->select(['short_url_id', 'city', 'country_code', DB::raw('count(*) as count')])
-                                ->groupBy(['short_url_id', 'city', 'country_code']);
+                    $cursor = DB::table('short_url_visits')
+                        ->where('visited_at', '>=', $start)
+                        ->where('visited_at', '<', $end)
+                        ->where('is_bot', false)
+                        ->where('is_proxy', false)
+                        ->select([
+                            'short_url_id',
+                            'country_code',
+                            'city',
+                            'device_type',
+                            'browser',
+                            'browser_version',
+                            'operating_system',
+                            'operating_system_version',
+                            'referer_host',
+                            'utm_source',
+                            'utm_medium',
+                            'utm_campaign',
+                            'utm_term',
+                            'utm_content',
+                            'browser_language',
+                            'selected_variant',
+                            'is_qr_scan',
+                        ])
+                        ->orderBy('id')
+                        ->cursor();
+
+                    foreach ($cursor as $row) {
+                        $urlId = $row->short_url_id;
+
+                        if (! isset($statsByUrl[$urlId])) {
+                            $statsByUrl[$urlId] = array_merge(CrossDimensionalStatsEngine::emptyBucket(), [
+                                'total' => 0,
+                                'uniques' => 0,
+                                'qr_scans' => 0,
+                                'all_visits' => 0,
+                                'bot_visits' => 0,
+                                'proxy_visits' => 0,
+                            ]);
+                        }
+
+                        CrossDimensionalStatsEngine::accumulateHumanVisit($row, $statsByUrl[$urlId]);
+                    }
+
+                    foreach ($statsByUrl as $urlId => $bucket) {
+                        $exported = CrossDimensionalStatsEngine::exportForPersistence($bucket);
+                        $payload = [
+                            'visits_count' => $bucket['total'],
+                            'unique_visits_count' => $bucket['uniques'],
+                            'all_visits_count' => $bucket['all_visits'],
+                            'bot_visits_count' => $bucket['bot_visits'],
+                            'proxy_visits_count' => $bucket['proxy_visits'],
+                            'qr_visits_count' => $bucket['qr_scans'],
+                            ...$exported,
+                        ];
+
+                        $existingDaily = ShortUrlDailyStats::query()
+                            ->where('short_url_id', $urlId);
+
+                        StatsSqlHelper::applyDailyStatsDateEquals($existingDaily, $date);
+                        $existingDaily = $existingDaily->first();
+
+                        if ($existingDaily !== null) {
+                            $existingDaily->update($payload);
                         } else {
-                            $query->select(['short_url_id', $column, DB::raw('count(*) as count')])
-                                ->groupBy(['short_url_id', $column]);
+                            ShortUrlDailyStats::query()->create([
+                                'short_url_id' => $urlId,
+                                'date' => $date,
+                                ...$payload,
+                            ]);
                         }
 
-                        $rows = $query->get();
-
-                        foreach ($rows as $row) {
-                            $urlId = $row->short_url_id;
-                            if (! isset($statsByUrl[$urlId])) {
-                                continue;
-                            }
-
-                            if ($statsKey === 'city_stats') {
-                                $cityVal = $row->city;
-                                $countryCode = $row->country_code;
-                                $val = $countryCode ? "{$cityVal} ({$countryCode})" : $cityVal;
-                            } else {
-                                $val = $row->$column;
-                            }
-
-                            $statsByUrl[$urlId][$statsKey][$val] = (int) $row->count;
-                        }
-                    };
-
-                    // Populate all categories via 11 quick indexed database aggregations
-                    $populateStats('device_type', 'device_stats');
-                    $populateStats('browser', 'browser_stats');
-                    $populateStats('operating_system', 'os_stats');
-                    $populateStats('country_code', 'country_stats');
-                    $populateStats('city', 'city_stats');
-                    $populateStats('referer_host', 'referer_stats');
-                    $populateStats('utm_source', 'utm_source_stats');
-                    $populateStats('utm_medium', 'utm_medium_stats');
-                    $populateStats('utm_campaign', 'utm_campaign_stats');
-                    $populateStats('browser_language', 'language_stats');
-                    $populateStats('selected_variant', 'variant_stats');
-
-                    // Write aggregated stats to ShortUrlDailyStats
-                    foreach ($statsByUrl as $urlId => $s) {
-                        ShortUrlDailyStats::updateOrCreate([
-                            'short_url_id' => $urlId,
-                            'date' => $date,
-                        ], [
-                            'visits_count' => $s['total'],
-                            'unique_visits_count' => $s['uniques'],
-                            'device_stats' => $s['device_stats'],
-                            'browser_stats' => $s['browser_stats'],
-                            'os_stats' => $s['os_stats'],
-                            'country_stats' => $s['country_stats'],
-                            'city_stats' => $s['city_stats'],
-                            'referer_stats' => $s['referer_stats'],
-                            'utm_source_stats' => $s['utm_source_stats'],
-                            'utm_medium_stats' => $s['utm_medium_stats'],
-                            'utm_campaign_stats' => $s['utm_campaign_stats'],
-                            'qr_visits_count' => $s['qr_scans'],
-                            'language_stats' => $s['language_stats'],
-                            'variant_stats' => $s['variant_stats'],
-                        ]);
+                        $affectedShortUrlIds[] = (int) $urlId;
                     }
                 });
 
                 $this->info("Aggregated stats for {$date}.");
+                $maxAggregatedDate = $date;
+            }
+
+            if ($maxAggregatedDate !== null) {
+                DB::table('short_url_settings')->updateOrInsert(
+                    ['key' => 'last_aggregation_date'],
+                    [
+                        'value' => $maxAggregatedDate,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+            }
+
+            $affectedShortUrlIds = array_values(array_unique($affectedShortUrlIds));
+            if (! empty($affectedShortUrlIds)) {
+                ShortUrl::whereIn('id', $affectedShortUrlIds)
+                    ->get()
+                    ->each(function (ShortUrl $shortUrl): void {
+                        $shortUrl->clearStatsCache();
+                    });
             }
         }
 
-        // 2. Prune old visits if enabled
         if (config('filament-short-url.pruning.enabled', true)) {
             $retentionDays = (int) config('filament-short-url.pruning.retention_days', 90);
             $cutoff = Carbon::now()->subDays($retentionDays)->toDateTimeString();
 
-            $deleted = ShortUrlVisit::where('visited_at', '<', $cutoff)->delete();
+            $deleted = 0;
+            do {
+                $chunkDeleted = ShortUrlVisit::where('visited_at', '<', $cutoff)
+                    ->orderBy('id')
+                    ->limit(5000)
+                    ->delete();
+                $deleted += $chunkDeleted;
+            } while ($chunkDeleted > 0);
 
             $this->info("Successfully pruned {$deleted} raw visit records older than {$retentionDays} days.");
         }
 
-        // 3. Prune old temporary uploads (older than 24 hours) by hour bucket
         $prunedCount = app(ShortUrlTempStorage::class)->pruneBucketsOlderThanHours(24);
 
         if ($prunedCount > 0) {

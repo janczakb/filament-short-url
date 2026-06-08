@@ -9,6 +9,7 @@
 namespace Bjanczak\FilamentShortUrl\Models;
 
 use App\Models\User;
+use Bjanczak\FilamentShortUrl\Support\HostNormalizer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -64,43 +65,125 @@ class ShortUrlCustomDomain extends Model
      */
     protected static function booted(): void
     {
+        static::saving(function (self $m): void {
+            $m->domain = HostNormalizer::normalize($m->domain) ?? trim(strtolower($m->domain));
+
+            if (! config('filament-short-url.custom_domains.enforce_dns_on_activate', true)) {
+                return;
+            }
+
+            if ($m->is_active && ($m->isDirty('is_active') || $m->isDirty('domain') || ! $m->is_verified)) {
+                $verified = $m->evaluateDnsVerification();
+                $m->is_verified = $verified;
+
+                if (! $verified) {
+                    $m->is_active = false;
+                }
+            }
+        });
+
         static::saved(function (self $m): void {
-            cache()->forget("filament-short-url:custom-domain:{$m->domain}");
+            $normalizedDomain = HostNormalizer::normalize($m->domain) ?? $m->domain;
+            cache()->forget("filament-short-url:custom-domain:{$normalizedDomain}");
 
             $domainChanged = $m->wasChanged('domain');
+            $verifiedChanged = $m->wasChanged('is_verified');
             if ($domainChanged) {
                 $oldDomain = $m->getOriginal('domain');
                 if ($oldDomain) {
-                    cache()->forget("filament-short-url:custom-domain:{$oldDomain}");
+                    $oldNormalized = HostNormalizer::normalize($oldDomain) ?? $oldDomain;
+                    cache()->forget("filament-short-url:custom-domain:{$oldNormalized}");
                 }
             }
 
             // Invalidate the redirect cache keys for all short URLs mapped to this domain
             // if the domain name changes or its active status is toggled.
-            if ($domainChanged || $m->wasChanged('is_active')) {
-                $hosts = [$m->domain];
+            if ($domainChanged || $m->wasChanged('is_active') || $verifiedChanged) {
+                $hosts = [$normalizedDomain];
                 if ($domainChanged && isset($oldDomain)) {
-                    $hosts[] = $oldDomain;
+                    $hosts[] = HostNormalizer::normalize($oldDomain) ?? $oldDomain;
                 }
 
-                $shortUrls = $m->shortUrls()->get(['url_key']);
-                foreach ($shortUrls as $url) {
-                    foreach ($hosts as $host) {
-                        cache()->forget("filament-short-url:{$url->url_key}:{$host}");
-                    }
-                }
+                $m->shortUrls()
+                    ->select('url_key')
+                    ->chunk(100, function ($shortUrls) use ($hosts): void {
+                        foreach ($shortUrls as $url) {
+                            foreach ($hosts as $host) {
+                                cache()->forget("filament-short-url:{$url->url_key}:{$host}");
+                            }
+                        }
+                    });
             }
         });
 
         static::deleted(function (self $m): void {
-            cache()->forget("filament-short-url:custom-domain:{$m->domain}");
+            $normalizedDomain = HostNormalizer::normalize($m->domain) ?? $m->domain;
+            cache()->forget("filament-short-url:custom-domain:{$normalizedDomain}");
 
             // Clear redirect caches for all URLs mapped to this deleted domain
-            $shortUrls = $m->shortUrls()->get(['url_key']);
-            foreach ($shortUrls as $url) {
-                cache()->forget("filament-short-url:{$url->url_key}:{$m->domain}");
-            }
+            $m->shortUrls()
+                ->select('url_key')
+                ->chunk(100, function ($shortUrls): void {
+                    foreach ($shortUrls as $url) {
+                        cache()->forget("filament-short-url:{$url->url_key}:{$normalizedDomain}");
+                    }
+                });
         });
+    }
+
+    public static function resolveForHost(string $host): ?self
+    {
+        $normalizedHost = HostNormalizer::normalize($host);
+
+        if (! $normalizedHost) {
+            return null;
+        }
+
+        return static::where('domain', $normalizedHost)
+            ->where('is_active', true)
+            ->where('is_verified', true)
+            ->first();
+    }
+
+    /**
+     * Evaluate DNS without persisting — used during save hooks and manual checks.
+     */
+    public function evaluateDnsVerification(): bool
+    {
+        $domain = HostNormalizer::normalize($this->domain) ?? trim(strtolower($this->domain));
+        if ($domain === '') {
+            return false;
+        }
+
+        $hostDomain = HostNormalizer::normalize(parse_url(config('app.url'), PHP_URL_HOST));
+        if (empty($hostDomain)) {
+            $hostDomain = HostNormalizer::normalize(request()?->getHost());
+        }
+
+        if (empty($hostDomain)) {
+            return false;
+        }
+
+        $hostIps = $this->resolveHostIps($hostDomain);
+        $domainIps = $this->resolveHostIps($domain);
+
+        if (! empty($hostIps) && ! empty($domainIps) && ! empty(array_intersect($hostIps, $domainIps))) {
+            return true;
+        }
+
+        foreach ($this->resolveCnameTargets($domain) as $cnameTarget) {
+            $normalizedTarget = HostNormalizer::normalize($cnameTarget) ?? strtolower($cnameTarget);
+
+            if ($normalizedTarget === $hostDomain) {
+                return true;
+            }
+
+            if (HostNormalizer::normalize('www.'.$normalizedTarget) === $hostDomain) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -109,104 +192,88 @@ class ShortUrlCustomDomain extends Model
      */
     public function verifyDns(): bool
     {
-        $domain = trim(strtolower($this->domain));
-        if (empty($domain)) {
-            return false;
-        }
-
-        // Get target host domain dynamically from configuration
-        $hostDomain = parse_url(config('app.url'), PHP_URL_HOST);
-        if (empty($hostDomain)) {
-            $hostDomain = request()?->getHost();
-        }
-
-        if (empty($hostDomain)) {
-            return false;
-        }
-
-        $hostDomain = trim(strtolower($hostDomain));
-
-        // 1. Resolve host server IP dynamically
-        $hostIp = null;
-        try {
-            if (function_exists('dns_get_record')) {
-                $records = @dns_get_record($hostDomain, DNS_A);
-                if (is_array($records) && ! empty($records)) {
-                    $hostIp = $records[0]['ip'] ?? null;
-                }
-            }
-
-            if (empty($hostIp)) {
-                $output = shell_exec('dig +short +time=1 +tries=1 A '.escapeshellarg($hostDomain));
-                if ($output) {
-                    $ips = array_filter(array_map('trim', explode("\n", trim($output))));
-                    $hostIp = reset($ips) ?: null;
-                }
-            }
-        } catch (\Throwable $e) {
-            // ignore
-        }
-
-        if (empty($hostIp)) {
-            $hostIp = $_SERVER['SERVER_ADDR'] ?? null;
-        }
-
-        $isVerified = false;
-
-        // 2. Resolve domain A records
-        $aIps = [];
-        try {
-            if (function_exists('dns_get_record')) {
-                $records = @dns_get_record($domain, DNS_A);
-                if (is_array($records)) {
-                    $aIps = array_filter(array_column($records, 'ip'));
-                }
-            }
-
-            if (empty($aIps)) {
-                $output = shell_exec('dig +short +time=1 +tries=1 A '.escapeshellarg($domain));
-                if ($output) {
-                    $aIps = array_filter(array_map('trim', explode("\n", trim($output))));
-                }
-            }
-        } catch (\Throwable $e) {
-            // ignore
-        }
-
-        if (! empty($aIps) && $hostIp && in_array($hostIp, $aIps)) {
-            $isVerified = true;
-        }
-
-        // 3. Check CNAME record
-        if (! $isVerified) {
-            $cnameTarget = null;
-            try {
-                if (function_exists('dns_get_record')) {
-                    $records = @dns_get_record($domain, DNS_CNAME);
-                    if (is_array($records) && ! empty($records)) {
-                        $cnameTarget = trim(strtolower(rtrim($records[0]['target'] ?? '', '.')));
-                    }
-                }
-
-                if (empty($cnameTarget)) {
-                    $output = shell_exec('dig +short +time=1 +tries=1 CNAME '.escapeshellarg($domain));
-                    if ($output) {
-                        $cnameTarget = trim(strtolower(rtrim(trim($output), '.')));
-                    }
-                }
-            } catch (\Throwable $e) {
-                // ignore
-            }
-
-            if ($cnameTarget && strcasecmp($cnameTarget, $hostDomain) === 0) {
-                $isVerified = true;
-            }
-        }
+        $isVerified = $this->evaluateDnsVerification();
 
         if ($this->exists && $this->is_verified !== $isVerified) {
             $this->update(['is_verified' => $isVerified]);
         }
 
         return $isVerified;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveHostIps(string $host): array
+    {
+        $host = HostNormalizer::normalize($host) ?? strtolower(trim($host));
+        $ips = [];
+
+        try {
+            if (function_exists('dns_get_record')) {
+                $records = @dns_get_record($host, DNS_A);
+                if (is_array($records)) {
+                    foreach ($records as $record) {
+                        if (! empty($record['ip'])) {
+                            $ips[] = $record['ip'];
+                        }
+                    }
+                }
+            }
+
+            if (empty($ips)) {
+                $resolved = @gethostbynamel($host);
+                if (is_array($resolved)) {
+                    $ips = array_merge($ips, $resolved);
+                } elseif ($ip = @gethostbyname($host)) {
+                    if ($ip !== $host) {
+                        $ips[] = $ip;
+                    }
+                }
+            }
+
+            if (empty($ips)) {
+                $output = @shell_exec('dig +short +time=1 +tries=1 A '.escapeshellarg($host));
+                if (is_string($output) && $output !== '') {
+                    $ips = array_merge($ips, array_filter(array_map('trim', explode("\n", trim($output)))));
+                }
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        return array_values(array_unique(array_filter($ips)));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveCnameTargets(string $domain): array
+    {
+        $targets = [];
+
+        try {
+            if (function_exists('dns_get_record')) {
+                $records = @dns_get_record($domain, DNS_CNAME);
+                if (is_array($records)) {
+                    foreach ($records as $record) {
+                        if (! empty($record['target'])) {
+                            $targets[] = trim(strtolower(rtrim($record['target'], '.')));
+                        }
+                    }
+                }
+            }
+
+            if (empty($targets)) {
+                $output = @shell_exec('dig +short +time=1 +tries=1 CNAME '.escapeshellarg($domain));
+                if (is_string($output) && trim($output) !== '') {
+                    $targets[] = trim(strtolower(rtrim(trim($output), '.')));
+                }
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        return array_values(array_unique(array_filter($targets)));
     }
 }

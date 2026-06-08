@@ -8,6 +8,8 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Tabs;
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Support\PasswordOpenGraphGuard;
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Support\TabCardHeader;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -16,13 +18,16 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\HtmlString;
+use Livewire\Component;
 
 class PasswordTab
 {
@@ -45,149 +50,221 @@ class PasswordTab
                     ->default(false),
 
                 Section::make()
-                    ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password'))
-                    ->extraAttributes([
-                        'class' => 'rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 transition duration-200 ring-0 shadow-none [&>div]:bg-transparent',
-                    ])
+                    ->contained(false)
+                    ->extraAttributes(['class' => 'validity-tab-card password-tab-card'])
                     ->schema([
-                        Group::make([
-                            Placeholder::make('empty_state_icon')
-                                ->hiddenLabel()
-                                ->content(new HtmlString('
-                                    <div class="flex flex-col items-center justify-center text-center">
-                                        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                                            <svg class="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                                            </svg>
-                                        </div>
-                                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Brak zabezpieczeń</h3>
-                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">Dodaj hasło, aby ograniczyć dostęp do tego skróconego linku tylko dla wybranych osób.</p>
-                                    </div>
-                                ')),
+                        Placeholder::make('password_card_header')
+                            ->hiddenLabel()
+                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') || $get('is_entering_password'))
+                            ->content(TabCardHeader::make(
+                                'heroicon-o-lock-closed',
+                                'validity-tab-card-icon--password',
+                                'password_card_title',
+                                'password_card_subtitle',
+                            )),
 
-                            Actions::make([
-                                Action::make('setup_password')
-                                    ->label(__('filament-short-url::default.set_password'))
-                                    ->icon('heroicon-m-plus')
-                                    ->color('primary')
-                                    ->action(fn (Set $set) => $set('is_entering_password', true)),
-                            ])->alignment(Alignment::Center),
-                        ]),
-                    ]),
-
-                Section::make(__('filament-short-url::default.password_status_active'))
-                    ->visible(fn (Get $get): bool => (bool) $get('password_active_flag'))
-                    ->icon('heroicon-m-shield-check')
-                    ->iconColor('success')
-                    ->description('Link jest zabezpieczony. Dostęp wymaga podania prawidłowego hasła.')
-                    ->extraAttributes([
-                        'class' => 'bg-white dark:bg-white/5 ring-1 ring-gray-950/5 dark:ring-white/10 rounded-xl shadow-sm',
-                    ])
-                    ->headerActions([
-                        Action::make('change_password')
-                            ->label('Zmień')
-                            ->icon('heroicon-m-pencil-square')
-                            ->color('gray')
-                            ->button()
-                            ->outlined()
-                            ->size('sm')
-                            ->action(function (Set $set) {
-                                $set('password_active_flag', false);
-                                $set('is_entering_password', true);
-                                $set('new_password_input', null);
-                                $set('new_password_confirmation_input', null);
-                            }),
-
-                        Action::make('remove_password')
-                            ->label('Usuń')
-                            ->icon('heroicon-m-trash')
-                            ->color('danger')
-                            ->button()
-                            ->outlined()
-                            ->size('sm')
-                            ->requiresConfirmation()
-                            ->action(function (Set $set, ?ShortUrl $record) {
-                                $set('password', null);
-                                $set('new_password_input', null);
-                                $set('new_password_confirmation_input', null);
-                                $set('password_active_flag', false);
-                                $set('is_entering_password', false);
-                                if ($record) {
-                                    $record->password = null;
-                                }
-                            }),
-                    ])
-                    ->schema([]),
-
-                Section::make('Ustawienia hasła')
-                    ->visible(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password'))
-                    ->schema([
-                        Group::make([
-                            TextInput::make('new_password_input')
-                                ->label(__('filament-short-url::default.new_password'))
-                                ->password()
-                                ->revealable()
-                                ->live()
-                                ->maxLength(255)
-                                ->dehydrated(false)
-                                ->required(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password')),
-
-                            TextInput::make('new_password_confirmation_input')
-                                ->label(__('filament-short-url::default.confirm_password'))
-                                ->password()
-                                ->revealable()
-                                ->same('new_password_input')
-                                ->maxLength(255)
-                                ->dehydrated(false)
-                                ->required(fn (Get $get): bool => ! empty($get('new_password_input'))),
-                        ])->columns(2),
+                        Placeholder::make('password_empty_state')
+                            ->hiddenLabel()
+                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password'))
+                            ->content(new HtmlString(
+                                '<div class="validity-tab-empty">'.
+                                '<div class="validity-tab-empty-icon">'.
+                                '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>'.
+                                '</div>'.
+                                '<p class="validity-tab-empty-title">'.e(__('filament-short-url::default.password_empty_state_title')).'</p>'.
+                                '<p class="validity-tab-empty-desc">'.e(__('filament-short-url::default.password_empty_state_desc')).'</p>'.
+                                '</div>'
+                            )),
 
                         Actions::make([
-                            Action::make('cancel_password')
-                                ->label(__('filament-short-url::default.cancel'))
-                                ->color('gray')
-                                ->action(function (Get $get, Set $set, ?ShortUrl $record) {
-                                    $set('password_active_flag', $record && ! empty($record->password));
-                                    $set('is_entering_password', false);
-                                    $set('new_password_input', null);
-                                    $set('new_password_confirmation_input', null);
-                                }),
+                            Action::make('setup_password')
+                                ->label(__('filament-short-url::default.set_password'))
+                                ->icon(Heroicon::Plus)
+                                ->outlined()
+                                ->extraAttributes(['class' => 'password-tab-setup-btn'])
+                                ->action(fn (Set $set) => $set('is_entering_password', true)),
+                        ])
+                            ->alignment(Alignment::Center)
+                            ->extraAttributes(['class' => 'password-tab-setup-action'])
+                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && ! $get('is_entering_password')),
 
-                            Action::make('confirm_password')
-                                ->label('Zapisz hasło')
-                                ->color('primary')
-                                ->action(function (Get $get, Set $set) {
-                                    $password = $get('new_password_input');
-                                    $confirm = $get('new_password_confirmation_input');
+                        Grid::make(['default' => 1, 'md' => 12])
+                            ->visible(fn (Get $get): bool => (bool) $get('password_active_flag') && ! $get('is_entering_password'))
+                            ->extraAttributes(['class' => 'validity-tab-card-toolbar-grid password-tab-active-toolbar-grid'])
+                            ->schema([
+                                Placeholder::make('password_active_status')
+                                    ->hiddenLabel()
+                                    ->content(TabCardHeader::make(
+                                        'heroicon-o-shield-check',
+                                        'validity-tab-card-icon--password-active',
+                                        'password_status_active',
+                                        'password_status_active_desc',
+                                    ))
+                                    ->columnSpan(['default' => 12, 'md' => 9]),
 
-                                    if (empty($password)) {
-                                        Notification::make()->title(__('filament-short-url::default.password_required_error'))->danger()->send();
+                                Actions::make([
+                                    Action::make('change_password')
+                                        ->label(__('filament-short-url::default.password_change_short'))
+                                        ->icon(Heroicon::PencilSquare)
+                                        ->color('gray')
+                                        ->outlined()
+                                        ->size('sm')
+                                        ->action(function (Set $set, Get $get, Component $livewire) {
+                                            $set('password_active_flag', false);
+                                            $set('is_entering_password', true);
+                                            $set('new_password_input', null);
+                                            $set('new_password_confirmation_input', null);
+                                            self::syncPasswordPreview($livewire, self::isPasswordProtected($get));
+                                        }),
 
-                                        return;
-                                    }
-                                    if ($password !== $confirm) {
-                                        Notification::make()->title(__('filament-short-url::default.password_mismatch_error'))->danger()->send();
+                                    Action::make('remove_password')
+                                        ->label(__('filament-short-url::default.password_remove_short'))
+                                        ->icon(Heroicon::Trash)
+                                        ->color('danger')
+                                        ->outlined()
+                                        ->size('sm')
+                                        ->requiresConfirmation()
+                                        ->action(function (Set $set, ?ShortUrl $record, Component $livewire) {
+                                            $set('password', null);
+                                            $set('new_password_input', null);
+                                            $set('new_password_confirmation_input', null);
+                                            $set('password_active_flag', false);
+                                            $set('is_entering_password', false);
 
-                                        return;
-                                    }
+                                            if ($record) {
+                                                $record->password = null;
+                                            }
 
-                                    $set('password', $password);
-                                    $set('password_active_flag', true);
-                                    $set('is_entering_password', false);
-                                }),
-                        ])->alignment(Alignment::End),
+                                            self::syncPasswordPreview($livewire, false);
+                                        }),
+                                ])
+                                    ->alignment(Alignment::End)
+                                    ->extraAttributes(['class' => 'password-tab-active-actions password-tab-toolbar-actions'])
+                                    ->columnSpan(['default' => 12, 'md' => 3]),
+                            ]),
+
+                        Group::make()
+                            ->visible(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password'))
+                            ->extraAttributes(['class' => 'password-tab-form-panel'])
+                            ->schema([
+                                Placeholder::make('password_form_heading')
+                                    ->hiddenLabel()
+                                    ->content(new HtmlString(
+                                        '<p class="password-tab-section-title">'.e(__('filament-short-url::default.password_settings_section')).'</p>'
+                                    ))
+                                    ->columnSpanFull(),
+
+                                Grid::make(['default' => 1, 'md' => 2])
+                                    ->schema([
+                                        TextInput::make('new_password_input')
+                                            ->label(__('filament-short-url::default.new_password'))
+                                            ->password()
+                                            ->revealable()
+                                            ->live()
+                                            ->maxLength(255)
+                                            ->dehydrated(false)
+                                            ->required(fn (Get $get): bool => ! $get('password_active_flag') && $get('is_entering_password')),
+
+                                        TextInput::make('new_password_confirmation_input')
+                                            ->label(__('filament-short-url::default.confirm_password'))
+                                            ->password()
+                                            ->revealable()
+                                            ->same('new_password_input')
+                                            ->maxLength(255)
+                                            ->dehydrated(false)
+                                            ->required(fn (Get $get): bool => ! empty($get('new_password_input'))),
+                                    ]),
+
+                                Actions::make([
+                                    Action::make('cancel_password')
+                                        ->label(__('filament-short-url::default.cancel'))
+                                        ->color('gray')
+                                        ->outlined()
+                                        ->action(function (Get $get, Set $set, ?ShortUrl $record, Component $livewire) {
+                                            $wasProtected = (bool) ($record && ! empty($record->password));
+                                            $set('password_active_flag', $wasProtected);
+                                            $set('is_entering_password', false);
+                                            $set('new_password_input', null);
+                                            $set('new_password_confirmation_input', null);
+                                            self::syncPasswordPreview($livewire, $wasProtected || filled($get('password')));
+                                        }),
+
+                                    Action::make('confirm_password')
+                                        ->label(__('filament-short-url::default.save_password'))
+                                        ->color('primary')
+                                        ->action(function (Get $get, Set $set, Component $livewire) {
+                                            $password = $get('new_password_input');
+                                            $confirm = $get('new_password_confirmation_input');
+
+                                            if (empty($password)) {
+                                                Notification::make()->title(__('filament-short-url::default.password_required_error'))->danger()->send();
+
+                                                return;
+                                            }
+
+                                            if ($password !== $confirm) {
+                                                Notification::make()->title(__('filament-short-url::default.password_mismatch_error'))->danger()->send();
+
+                                                return;
+                                            }
+
+                                            $set('password', $password);
+                                            $set('password_active_flag', true);
+                                            $set('is_entering_password', false);
+                                            $set('new_password_input', null);
+                                            $set('new_password_confirmation_input', null);
+                                            PasswordOpenGraphGuard::clearFormState($set, $livewire);
+                                        }),
+                                ])
+                                    ->alignment(Alignment::End)
+                                    ->extraAttributes(['class' => 'password-tab-form-actions']),
+                            ]),
                     ]),
 
                 Section::make()
+                    ->contained(false)
+                    ->extraAttributes(['class' => 'validity-tab-card password-warning-card'])
                     ->schema([
-                        Toggle::make('show_warning_page')
-                            ->label(__('filament-short-url::default.show_warning_page'))
-                            ->hintIcon('heroicon-o-information-circle', tooltip: __('filament-short-url::default.show_warning_page_helper'))
-                            ->default(false)
-                            ->inline(false),
-                    ])
-                    ->compact()
-                    ->extraAttributes(['class' => 'bg-transparent border-none shadow-none mt-4']),
+                        Grid::make(['default' => 1, 'md' => 12])
+                            ->extraAttributes(['class' => 'validity-tab-card-toolbar-grid'])
+                            ->schema([
+                                Placeholder::make('warning_page_card_header')
+                                    ->hiddenLabel()
+                                    ->content(TabCardHeader::make(
+                                        'heroicon-o-exclamation-triangle',
+                                        'validity-tab-card-icon--warning',
+                                        'warning_page_card_title',
+                                        'warning_page_card_subtitle',
+                                    ))
+                                    ->columnSpan(['default' => 12, 'md' => 9]),
+
+                                Toggle::make('show_warning_page')
+                                    ->label(__('filament-short-url::default.show_warning_page'))
+                                    ->hiddenLabel()
+                                    ->default(false)
+                                    ->live()
+                                    ->inline(false)
+                                    ->extraFieldWrapperAttributes([
+                                        'class' => 'validity-tab-card-toolbar-action tracking-card-toolbar-action',
+                                    ])
+                                    ->extraAttributes([
+                                        'aria-label' => __('filament-short-url::default.show_warning_page'),
+                                    ])
+                                    ->columnSpan(['default' => 12, 'md' => 3]),
+                            ]),
+                    ]),
             ]);
+    }
+
+    private static function isPasswordProtected(Get $get): bool
+    {
+        return PasswordOpenGraphGuard::isFormPasswordProtected($get);
+    }
+
+    private static function syncPasswordPreview(Component $livewire, bool $protected): void
+    {
+        $protectedJs = $protected ? 'true' : 'false';
+
+        $livewire->js('window.dispatchEvent(new CustomEvent("fsu-password-protection-changed", { detail: { protected: '.$protectedJs.' } }))');
     }
 }

@@ -6,7 +6,7 @@
     - $destHost        string  Host of destination URL (for favicon)
     - $urlKey          string  URL key (used for QR download filenames)
     - $eid             string  Unique element ID prefix
-    - $escapedQrOptions string JSON-encoded & HTML-escaped QR options
+    - $qrOptions        array   QR styling options for QRCodeStyling
     - $successTitle    string  Modal heading text
     - $successSubtitle string  Modal subtitle text
     - $successHelper   string  Modal helper text
@@ -65,7 +65,7 @@
         </button>
 
         {{-- QR toggle button --}}
-        <button id="{{ $eid }}_qr_btn" type="button" data-qr-options="{{ $escapedQrOptions }}"
+        <button id="{{ $eid }}_qr_btn" type="button" data-qr-options='@json($qrOptions)'
                 onclick="
                     event.preventDefault();
                     event.stopPropagation();

@@ -58,38 +58,54 @@ class ShortUrlPixelResource extends Resource
         }
     }
 
+    /**
+     * @return array<int, TextInput|Select|Toggle>
+     */
+    public static function formComponents(): array
+    {
+        return [
+            TextInput::make('name')
+                ->label(__('filament-short-url::default.pixel_name'))
+                ->required()
+                ->maxLength(150)
+                ->placeholder('e.g. Meta Ads - Yacht Promo'),
+
+            Select::make('type')
+                ->label(__('filament-short-url::default.pixel_type'))
+                ->options(self::typeOptions())
+                ->required()
+                ->native(false),
+
+            TextInput::make('pixel_id')
+                ->label(__('filament-short-url::default.pixel_id_label'))
+                ->required()
+                ->maxLength(100)
+                ->placeholder('e.g. 1234567890 or G-XXXXXXXXXX'),
+
+            Toggle::make('is_active')
+                ->label(__('filament-short-url::default.pixel_status_active'))
+                ->default(true),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function typeOptions(): array
+    {
+        return [
+            'meta' => 'Meta / Facebook Pixel',
+            'google' => 'Google Tag (GA4 / GTM)',
+            'linkedin' => 'LinkedIn Insight Tag',
+            'tiktok' => 'TikTok Pixel',
+            'pinterest' => 'Pinterest Tag',
+        ];
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                TextInput::make('name')
-                    ->label(__('filament-short-url::default.pixel_name'))
-                    ->required()
-                    ->maxLength(150)
-                    ->placeholder('e.g. Meta Ads - Yacht Promo'),
-
-                Select::make('type')
-                    ->label(__('filament-short-url::default.pixel_type'))
-                    ->options([
-                        'meta' => 'Meta / Facebook Pixel',
-                        'google' => 'Google Tag (GA4 / GTM)',
-                        'linkedin' => 'LinkedIn Insight Tag',
-                        'tiktok' => 'TikTok Pixel',
-                        'pinterest' => 'Pinterest Tag',
-                    ])
-                    ->required()
-                    ->native(false),
-
-                TextInput::make('pixel_id')
-                    ->label(__('filament-short-url::default.pixel_id_label'))
-                    ->required()
-                    ->maxLength(100)
-                    ->placeholder('e.g. 1234567890 or G-XXXXXXXXXX'),
-
-                Toggle::make('is_active')
-                    ->label(__('filament-short-url::default.pixel_status_active'))
-                    ->default(true),
-            ])
+            ->components(static::formComponents())
             ->columns(1);
     }
 

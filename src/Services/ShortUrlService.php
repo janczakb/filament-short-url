@@ -49,9 +49,15 @@ class ShortUrlService
         return $key;
     }
 
-    public function keyExists(string $key): bool
+    public function keyExists(string $key, ?int $domainScopeId = null): bool
     {
-        return ShortUrl::where('url_key', $key)->exists();
+        $query = ShortUrl::query()->where('url_key', $key);
+
+        if ($domainScopeId !== null) {
+            $query->where('domain_scope_id', $domainScopeId);
+        }
+
+        return $query->exists();
     }
 
     /**
@@ -128,19 +134,20 @@ class ShortUrlService
     }
 
     /**
-     * Resolve the final redirect target URL, optionally forwarding query params.
+     * Resolve redirect URL with query forwarding and link-level UTMs.
      */
     public function resolveRedirectUrl(ShortUrl $shortUrl, Request $request): string
     {
         $destination = $shortUrl->resolveDestinationUrl($request);
+
+        $destination = app(LinkUtmMerger::class)->merge($destination, $shortUrl);
 
         if (! $shortUrl->forward_query_params) {
             return $destination;
         }
 
         $queryParams = $request->query();
-        // Remove routing/auth parameters so they don't leak to destination
-        unset($queryParams['confirmed'], $queryParams['password']);
+        unset($queryParams['confirmed'], $queryParams['password'], $queryParams['source'], $queryParams['qr']);
 
         if (empty($queryParams)) {
             return $destination;

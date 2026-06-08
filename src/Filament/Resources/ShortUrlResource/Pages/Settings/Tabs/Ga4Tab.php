@@ -8,6 +8,8 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\Settings\Tabs;
 
+use Bjanczak\FilamentShortUrl\Services\Ga4MeasurementProtocolService;
+use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -15,7 +17,6 @@ use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
-use Illuminate\Support\Facades\Http;
 
 class Ga4Tab
 {
@@ -43,6 +44,12 @@ class Ga4Tab
                             ->helperText(__('filament-short-url::default.settings_ga4_firebase_app_id_helper'))
                             ->placeholder('1:1234567890:android:abcdef123456'),
 
+                        TextInput::make('ga4_verify_measurement_id')
+                            ->label(__('filament-short-url::default.settings_ga4_verify_measurement_id'))
+                            ->helperText(__('filament-short-url::default.settings_ga4_verify_measurement_id_helper'))
+                            ->placeholder('G-XXXXXXXXXX')
+                            ->rule('nullable|regex:/^G-[A-Z0-9]+$/i'),
+
                         Actions::make([
                             Action::make('verifyGa4ApiSecret')
                                 ->label(__('filament-short-url::default.settings_ga4_verify'))
@@ -51,7 +58,11 @@ class Ga4Tab
                                 ->action(function (Get $get): void {
                                     $secret = trim($get('ga4_api_secret') ?? '');
 
-                                    if (empty($secret)) {
+                                    if ($secret === '' || str_contains($secret, '••••')) {
+                                        $secret = (string) app(ShortUrlSettingsManager::class)->get('ga4_api_secret', '');
+                                    }
+
+                                    if ($secret === '') {
                                         Notification::make()
                                             ->title(__('filament-short-url::default.settings_ga4_verify_empty'))
                                             ->warning()
@@ -60,45 +71,43 @@ class Ga4Tab
                                         return;
                                     }
 
-                                    try {
-                                        $response = Http::timeout(5)
-                                            ->withHeaders(['Content-Type' => 'application/json'])
-                                            ->post(
-                                                'https://www.google-analytics.com/debug/mp/collect?measurement_id=G-XXXXXXXXXX&api_secret='.urlencode($secret),
-                                                [
-                                                    'client_id' => 'short-url-plugin-verify',
-                                                    'events' => [
-                                                        ['name' => 'page_view', 'params' => []],
-                                                    ],
-                                                ]
-                                            );
+                                    $measurementId = strtoupper(trim($get('ga4_verify_measurement_id') ?? ''));
+                                    $firebaseAppId = trim($get('ga4_firebase_app_id') ?? '');
 
-                                        $body = $response->json();
-                                        $messages = $body['validationMessages'] ?? [];
-
-                                        $hasAuthError = collect($messages)->contains(fn ($m) => str_contains(
-                                            strtolower($m['description'] ?? ''),
-                                            'api_secret'
-                                        ));
-
-                                        if ($hasAuthError || $response->status() === 401) {
-                                            Notification::make()
-                                                ->title(__('filament-short-url::default.settings_ga4_verify_fail'))
-                                                ->danger()
-                                                ->send();
-                                        } else {
-                                            Notification::make()
-                                                ->title(__('filament-short-url::default.settings_ga4_verify_ok'))
-                                                ->success()
-                                                ->send();
-                                        }
-                                    } catch (\Throwable $e) {
+                                    if ($firebaseAppId === '' && $measurementId === '') {
                                         Notification::make()
-                                            ->title(__('filament-short-url::default.settings_ga4_verify_error'))
-                                            ->body($e->getMessage())
-                                            ->danger()
+                                            ->title(__('filament-short-url::default.settings_ga4_verify_measurement_required'))
+                                            ->warning()
                                             ->send();
+
+                                        return;
                                     }
+
+                                    $result = app(Ga4MeasurementProtocolService::class)->validateCredentials(
+                                        $measurementId,
+                                        $secret,
+                                        $firebaseAppId !== '' ? $firebaseAppId : null,
+                                    );
+
+                                    if ($result['valid']) {
+                                        Notification::make()
+                                            ->title(__('filament-short-url::default.settings_ga4_verify_ok'))
+                                            ->success()
+                                            ->send();
+
+                                        return;
+                                    }
+
+                                    $firstMessage = collect($result['messages'])
+                                        ->pluck('description')
+                                        ->filter()
+                                        ->first();
+
+                                    Notification::make()
+                                        ->title(__('filament-short-url::default.settings_ga4_verify_fail'))
+                                        ->body(is_string($firstMessage) ? $firstMessage : null)
+                                        ->danger()
+                                        ->send();
                                 }),
                         ]),
                     ]),

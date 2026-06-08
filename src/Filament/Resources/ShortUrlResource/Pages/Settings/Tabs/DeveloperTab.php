@@ -75,8 +75,12 @@ class DeveloperTab
                                 Toggle::make('is_active')
                                     ->label(__('filament-short-url::default.active'))
                                     ->default(true),
+                                TextInput::make('owner_user_id')
+                                    ->label(__('filament-short-url::default.api_key_owner_user_id'))
+                                    ->numeric()
+                                    ->nullable(),
                             ])
-                            ->columns(5)
+                            ->columns(6)
                             ->default([]),
                     ]),
 
@@ -104,11 +108,12 @@ class DeveloperTab
                             ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
 
                         TextInput::make('webhook_signing_secret')
-                            ->label('Webhook Signing Secret')
-                            ->helperText('If configured, outgoing webhook requests will include the HMAC signature in X-ShortUrl-Signature.')
+                            ->label(__('filament-short-url::default.webhook_signing_secret'))
+                            ->helperText(__('filament-short-url::default.webhook_signing_secret_helper'))
                             ->password()
                             ->revealable()
                             ->placeholder('••••••••••••••••••••')
+                            ->required(fn (Get $get): bool => (bool) $get('global_webhook_enabled'))
                             ->columnSpanFull()
                             ->visible(fn (Get $get): bool => (bool) $get('global_webhook_enabled')),
 

@@ -174,7 +174,7 @@
         });
 
         setTimeout(function() {
-            window.location.replace("{!! addslashes($destination) !!}");
+            window.location.replace(@json($destination));
         }, 250);
     </script>
 </body>

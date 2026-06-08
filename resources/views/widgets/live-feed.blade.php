@@ -1,13 +1,54 @@
 <x-filament-widgets::widget>
     {{--
-        wire:poll calls checkForUpdates() instead of blindly re-rendering.
-        checkForUpdates() does a single MAX(id) query; if nothing changed it
-        calls skipRender() and Livewire returns a ~100-byte "no diff" response.
-        Only when a new visit is detected does the full render happen.
-        .visible stops polling entirely when the widget is scrolled out of view.
+        Server-Sent Events push visit cursor updates to the browser.
+        onStreamUpdate() advances latestVisitId and triggers a render only when needed.
     --}}
-    <div wire:poll.5s.visible="checkForUpdates"
-         class="fi-section rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 overflow-hidden">
+    <div
+        x-data="{
+            source: null,
+            cursor: @js(max($latestVisitId, 0)),
+            reconnectTimer: null,
+            connect() {
+                if (this.reconnectTimer) {
+                    clearTimeout(this.reconnectTimer);
+                    this.reconnectTimer = null;
+                }
+
+                this.source?.close();
+
+                const url = @js(route('short-url.live-feed.stream', ['shortUrl' => $record->id]))
+                    + '&cursor=' + encodeURIComponent(this.cursor);
+
+                this.source = new EventSource(url);
+
+                this.source.addEventListener('update', (event) => {
+                    const payload = JSON.parse(event.data);
+
+                    if (payload.latest_id !== undefined) {
+                        this.cursor = payload.latest_id;
+                        $wire.onStreamUpdate(payload.latest_id);
+                    }
+                });
+
+                this.source.onerror = () => {
+                    this.source?.close();
+                    this.reconnectTimer = setTimeout(() => this.connect(), 2000);
+                };
+            },
+            init() {
+                this.connect();
+            },
+            destroy() {
+                if (this.reconnectTimer) {
+                    clearTimeout(this.reconnectTimer);
+                }
+
+                this.source?.close();
+            },
+        }"
+        x-init="init()"
+        @disconnect.window="destroy()"
+        class="fi-section rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 overflow-hidden">
 
         <!-- Header -->
         <div class="flex items-center justify-between border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 px-6 py-4">
@@ -21,7 +62,11 @@
                 </h3>
             </div>
             <span class="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                {{ __('filament-short-url::default.stats_live_feed_poll_interval') }}
+                @if ($usesRedisPush ?? false)
+                    {{ __('filament-short-url::default.stats_live_feed_mode_redis') }}
+                @else
+                    {{ __('filament-short-url::default.stats_live_feed_mode_poll') }}
+                @endif
             </span>
         </div>
 

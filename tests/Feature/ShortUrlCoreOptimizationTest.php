@@ -1,10 +1,10 @@
 <?php
 
 use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
-use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlDailyStats;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
+use Bjanczak\FilamentShortUrl\Services\Ga4MeasurementProtocolService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTracker;
 use Illuminate\Http\Request;
@@ -57,34 +57,20 @@ it('forces 302 redirect status code for limited/expiring links', function () {
     expect($url2->redirect_status_code)->toBe(302); // Enforced to 302
 });
 
-it('generates a deterministic privacy-safe GA4 client ID', function () {
-    $job1 = new TrackShortUrlVisitJob(
-        shortUrlId: 1,
-        ipAddress: '192.168.1.1',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
-    );
+it('generates a deterministic privacy-safe GA4 client ID and enterprise MP payload', function () {
+    $ga4 = app(Ga4MeasurementProtocolService::class);
 
-    $job2 = new TrackShortUrlVisitJob(
-        shortUrlId: 1,
-        ipAddress: '192.168.1.1',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
-    );
+    $clientId1 = $ga4->buildClientId('192.168.1.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)');
+    $clientId2 = $ga4->buildClientId('192.168.1.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)');
+    $clientId3 = $ga4->buildClientId('8.8.8.8', 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)');
 
-    $job3 = new TrackShortUrlVisitJob(
-        shortUrlId: 1,
-        ipAddress: '8.8.8.8',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)'
-    );
-
-    // Use reflection to access the private sendGa4Hit method or verify GA4 client ID determination
-    $ref = new ReflectionClass(TrackShortUrlVisitJob::class);
-    $method = $ref->getMethod('sendGa4Hit');
-    $method->setAccessible(true);
+    expect($clientId1)->toBe($clientId2)
+        ->and($clientId1)->not->toBe($clientId3);
 
     $shortUrl = ShortUrl::create([
         'destination_url' => 'https://example.com/ga4',
         'url_key' => 'ga4test',
-        'ga_tracking_id' => 'G-12345',
+        'ga_tracking_id' => 'G-TEST12345',
     ]);
     app(ShortUrlSettingsManager::class)->set([
         'ga4_api_secret' => 'secret_secret_123',
@@ -95,28 +81,26 @@ it('generates a deterministic privacy-safe GA4 client ID', function () {
     $visit = new ShortUrlVisit([
         'device_type' => 'desktop',
         'country' => 'Poland',
+        'country_code' => 'PL',
         'browser' => 'Chrome',
+        'referer_url' => 'https://google.com',
+        'visited_at' => now(),
     ]);
 
-    // Send first hit
-    $method->invoke($job1, $shortUrl, $visit);
-    // Send second hit (same IP/UA)
-    $method->invoke($job2, $shortUrl, $visit);
-    // Send third hit (different IP/UA)
-    $method->invoke($job3, $shortUrl, $visit);
+    $ga4->send($shortUrl, $visit, '192.168.1.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)');
 
-    $requests = Http::recorded();
-    expect($requests)->toHaveCount(3);
+    Http::assertSent(function ($request) {
+        $body = json_decode($request->body(), true);
+        $events = collect($body['events'] ?? [])->pluck('name')->all();
 
-    $body1 = json_decode($requests[0][0]->body(), true);
-    $body2 = json_decode($requests[1][0]->body(), true);
-    $body3 = json_decode($requests[2][0]->body(), true);
-
-    // Client ID 1 and 2 must match exactly since they originate from the same user (deterministic hash)
-    expect($body1['client_id'])->toBe($body2['client_id']);
-
-    // Client ID 3 must be different
-    expect($body1['client_id'])->not->toBe($body3['client_id']);
+        return str_contains($request->url(), 'measurement_id=G-TEST12345')
+            && isset($body['timestamp_micros'])
+            && in_array('page_view', $events, true)
+            && in_array('click', $events, true)
+            && in_array('short_url_visit', $events, true)
+            && ($body['events'][0]['params']['session_id'] ?? null) !== null
+            && ($body['events'][0]['params']['engagement_time_msec'] ?? 0) >= 100;
+    });
 });
 
 it('signs outgoing webhooks with X-ShortUrl-Signature when secret is configured', function () {
@@ -218,12 +202,12 @@ it('runs database-level daily stats aggregation successfully', function () {
         ->where('date', $yesterday.' 00:00:00')
         ->first();
 
-    expect($stats->device_stats)->toBe(['desktop' => 2, 'mobile' => 1])
-        ->and($stats->browser_stats)->toBe(['Chrome' => 2, 'Safari' => 1])
-        ->and($stats->os_stats)->toBe(['iOS' => 1, 'macOS' => 2])
-        ->and($stats->country_stats)->toBe(['PL' => 3])
-        ->and($stats->city_stats)->toBe(['Krakow (PL)' => 1, 'Warsaw (PL)' => 2])
-        ->and($stats->language_stats)->toBe(['en' => 1, 'pl' => 2]);
+    expect($stats->device_stats)->toMatchArray(['desktop' => 2, 'mobile' => 1])
+        ->and($stats->browser_stats)->toMatchArray(['Chrome' => 2, 'Safari' => 1])
+        ->and($stats->os_stats)->toMatchArray(['iOS' => 1, 'macOS' => 2])
+        ->and($stats->country_stats)->toMatchArray(['PL' => 3])
+        ->and($stats->city_stats)->toMatchArray(['Krakow (PL)' => 1, 'Warsaw (PL)' => 2])
+        ->and($stats->language_stats)->toMatchArray(['en' => 1, 'pl' => 2]);
 });
 
 it('anonymizes IP address correctly for IPv4 and IPv6', function () {

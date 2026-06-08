@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -38,8 +39,8 @@ it('rejects invalid scrape meta urls', function () {
 });
 
 if (! function_exists('createShortUrlUser')) {
-    function createShortUrlUser(): \App\Models\User
+    function createShortUrlUser(): User
     {
-        return \App\Models\User::factory()->create();
+        return User::factory()->create();
     }
 }

@@ -28,12 +28,46 @@ class UrlMetaScraper
 
     private const string USER_AGENT = 'Mozilla/5.0 (compatible; FilamentShortUrl/1.0; +https://github.com/janczakb/filament-short-url)';
 
+    public function __construct(
+        private readonly RedirectUrlResolver $redirectUrlResolver,
+    ) {}
+
     /**
      * Determine whether a URL is safe to fetch remotely (HTTP(S) + SSRF checks).
      */
     public function isScrapableUrl(string $url): bool
     {
         return $this->isValidHttpUrl($url) && $this->isSafeScrapingUrl($url);
+    }
+
+    /**
+     * Validate outbound HTTP(S) URLs for webhooks and similar server-side requests.
+     *
+     * Uses hostname blocklists and DNS resolution to reject private/reserved targets.
+     */
+    public function isAllowedOutboundUrl(string $url): bool
+    {
+        if (! $this->isValidHttpUrl($url)) {
+            return false;
+        }
+
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || empty($parts['host'])) {
+            return false;
+        }
+
+        $host = strtolower($parts['host']);
+
+        if ($this->isBlockedHostname($host)) {
+            return false;
+        }
+
+        if (str_ends_with($host, '.local') || str_ends_with($host, '.internal')) {
+            return false;
+        }
+
+        return $this->resolvesToPublicIps($host);
     }
 
     /**
@@ -144,7 +178,7 @@ class UrlMetaScraper
                     return null;
                 }
 
-                $currentUrl = $this->resolveRedirectUrl($currentUrl, $location);
+                $currentUrl = $this->redirectUrlResolver->resolve($currentUrl, $location);
 
                 continue;
             }
@@ -327,30 +361,6 @@ class UrlMetaScraper
         return $scheme.'://'.$host.($directory !== '' ? $directory.'/' : '/').ltrim($relativeUrl, '/');
     }
 
-    private function resolveRedirectUrl(string $currentUrl, string $location): string
-    {
-        if ($this->isValidHttpUrl($location)) {
-            return $location;
-        }
-
-        $parts = parse_url($currentUrl) ?: [];
-        $scheme = $parts['scheme'] ?? 'https';
-        $host = $parts['host'] ?? '';
-
-        if (str_starts_with($location, '//')) {
-            return $scheme.':'.$location;
-        }
-
-        if (str_starts_with($location, '/')) {
-            return $scheme.'://'.$host.$location;
-        }
-
-        $path = $parts['path'] ?? '/';
-        $directory = rtrim(str_replace('\\', '/', dirname($path)), '/');
-
-        return $scheme.'://'.$host.($directory !== '' ? $directory.'/' : '/').ltrim($location, '/');
-    }
-
     private function isValidHttpUrl(string $url): bool
     {
         if (! filter_var($url, FILTER_VALIDATE_URL)) {
@@ -376,6 +386,14 @@ class UrlMetaScraper
             return false;
         }
 
+        return $this->resolvesToPublicIps($host);
+    }
+
+    /**
+     * Ensure a hostname or literal IP resolves only to public, non-reserved addresses.
+     */
+    private function resolvesToPublicIps(string $host): bool
+    {
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             return $this->isPublicIp($host);
         }

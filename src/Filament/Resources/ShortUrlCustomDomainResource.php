@@ -107,6 +107,10 @@ class ShortUrlCustomDomainResource extends Resource
             ->modifyQueryUsing(fn ($query) => $query
                 ->withCount('shortUrls')
                 ->withSum('shortUrls as total_clicks', 'total_visits')
+                ->when(
+                    config('filament-short-url.user.model') && auth()->check(),
+                    fn ($q) => $q->where('user_id', auth()->id())
+                )
             )
             ->filters([])
             ->actions([
@@ -153,6 +157,19 @@ class ShortUrlCustomDomainResource extends Resource
                             ->label(__('filament-short-url::default.action_delete_domain'))
                             ->icon('heroicon-o-trash')
                             ->color('danger')
+                            ->before(function (ShortUrlCustomDomain $record, DeleteAction $action): void {
+                                if (! $record->shortUrls()->exists()) {
+                                    return;
+                                }
+
+                                Notification::make()
+                                    ->title('Cannot delete domain with assigned links.')
+                                    ->danger()
+                                    ->send();
+
+                                $action->cancel();
+                            })
+                            ->requiresConfirmation(fn (ShortUrlCustomDomain $record): bool => $record->shortUrls()->exists())
                             ->modalHeading(__('filament-short-url::default.action_delete_domain'))
                             ->modalDescription(__('filament-short-url::default.delete_domain_confirmation_desc'))
                             ->modalSubmitActionLabel(__('filament-short-url::default.action_delete_domain'))

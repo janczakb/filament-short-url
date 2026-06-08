@@ -4,7 +4,8 @@ namespace Bjanczak\FilamentShortUrl\Jobs;
 
 use Bjanczak\FilamentShortUrl\Events\ShortUrlVisited;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
-use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
+use Bjanczak\FilamentShortUrl\Services\Ga4MeasurementProtocolService;
+use Bjanczak\FilamentShortUrl\Services\LiveFeedBroadcaster;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTracker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,8 +13,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Request;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Queued job for recording short URL visits.
@@ -49,6 +48,9 @@ class TrackShortUrlVisitJob implements ShouldQueue
         public readonly bool $isQrScan = false,
         public readonly ?string $browserLanguage = null,
         public readonly ?string $selectedVariant = null,
+        /** @var array{is_proxy?: bool, is_bot?: bool}|null */
+        public readonly ?array $precomputedProxyDetection = null,
+        public readonly bool $skipTotalIncrement = false,
     ) {
         $this->onQueue(config('filament-short-url.queue_name', 'default'));
     }
@@ -85,12 +87,16 @@ class TrackShortUrlVisitJob implements ShouldQueue
             isQrScan: $this->isQrScan,
             browserLanguage: $this->browserLanguage,
             selectedVariant: $this->selectedVariant,
+            precomputedProxyDetection: $this->precomputedProxyDetection,
+            skipTotalIncrement: $this->skipTotalIncrement,
         );
 
         // Null means the tracker detected a bot/crawler — nothing to dispatch.
         if ($visit === null) {
             return;
         }
+
+        LiveFeedBroadcaster::publish($shortUrl->id, (int) $visit->id);
 
         // Skip webhooks and GA4 for proxy/VPN visits. The visit is still persisted
         // to the database for audit purposes, but external integrations should only
@@ -137,61 +143,12 @@ class TrackShortUrlVisitJob implements ShouldQueue
 
         // Optional GA4 Measurement Protocol integration
         if ($shortUrl->ga_tracking_id && config('filament-short-url.ga4.api_secret')) {
-            $this->sendGa4Hit($shortUrl, $visit);
-        }
-    }
-
-    private function sendGa4Hit(ShortUrl $shortUrl, ShortUrlVisit $visit): void
-    {
-        $apiSecret = config('filament-short-url.ga4.api_secret');
-        $firebaseAppId = config('filament-short-url.ga4.firebase_app_id');
-
-        // GA4 Measurement Protocol requires a client_id. We generate a deterministic UUID
-        // based on the visitor IP and User Agent to allow sessions/retention tracking
-        // without violating privacy (the IP and UA are hashed and cannot be reversed).
-        $hash = md5($this->ipAddress.'|'.$this->userAgent);
-        $clientId = sprintf('%08s-%04s-%04s-%04s-%12s',
-            substr($hash, 0, 8),
-            substr($hash, 8, 4),
-            substr($hash, 12, 4),
-            substr($hash, 16, 4),
-            substr($hash, 20, 12)
-        );
-
-        $payload = [
-            'client_id' => $clientId,
-            'events' => [
-                [
-                    'name' => 'short_url_visit',
-                    'params' => [
-                        'url_key' => $shortUrl->url_key,
-                        'destination_url' => $shortUrl->destination_url,
-                        'device_type' => $visit->device_type ?? 'unknown',
-                        'country' => $visit->country ?? 'unknown',
-                        'browser' => $visit->browser ?? 'unknown',
-                    ],
-                ],
-            ],
-        ];
-
-        $queryParams = ['api_secret' => $apiSecret];
-        if ($firebaseAppId) {
-            $queryParams['firebase_app_id'] = $firebaseAppId;
-        } else {
-            $queryParams['measurement_id'] = $shortUrl->ga_tracking_id;
-        }
-
-        try {
-            Http::timeout(5)
-                ->post(
-                    'https://www.google-analytics.com/mp/collect?'.http_build_query($queryParams),
-                    $payload
-                );
-        } catch (\Throwable $e) {
-            Log::warning('[FilamentShortUrl] GA4 Measurement Protocol hit failed', [
-                'url_key' => $shortUrl->url_key,
-                'error' => $e->getMessage(),
-            ]);
+            app(Ga4MeasurementProtocolService::class)->send(
+                $shortUrl,
+                $visit,
+                $this->ipAddress,
+                $this->userAgent,
+            );
         }
     }
 }

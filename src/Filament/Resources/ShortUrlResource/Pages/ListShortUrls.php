@@ -3,6 +3,7 @@
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Support\PasswordOpenGraphGuard;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlGlobalOverview;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
@@ -11,6 +12,9 @@ use Filament\Actions\CreateAction;
 use Filament\Forms;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\HtmlString;
 
 class ListShortUrls extends ManageRecords
@@ -42,7 +46,7 @@ class ListShortUrls extends ManageRecords
                         $data['url_key'] = $service->generateKey();
                     }
 
-                    return $data;
+                    return PasswordOpenGraphGuard::sanitizeSaveData($data);
                 })
                 ->after(function (ShortUrl $record): void {
                     $id = json_encode($record->id);
@@ -142,7 +146,7 @@ class ListShortUrls extends ManageRecords
                     $logoHideBackground = $qrDefaults['logo_hide_background'] ?? true;
                     $logoShape = $qrDefaults['logo_shape'] ?? 'square';
 
-                    $qrOptionsJson = json_encode([
+                    $qrOptions = [
                         'type' => 'svg',
                         'width' => 200,
                         'height' => 200,
@@ -160,9 +164,7 @@ class ListShortUrls extends ManageRecords
                             'logoShape' => $logoShape,
                         ],
                         'qrOptions' => ['errorCorrectionLevel' => $logo ? 'H' : 'M'],
-                    ]);
-
-                    $escapedQrOptions = e($qrOptionsJson);
+                    ];
 
                     $viewData = compact(
                         'shortUrl',
@@ -170,7 +172,7 @@ class ListShortUrls extends ManageRecords
                         'destHost',
                         'urlKey',
                         'eid',
-                        'escapedQrOptions',
+                        'qrOptions',
                         'successTitle',
                         'successSubtitle',
                         'successHelper',
@@ -207,5 +209,18 @@ class ListShortUrls extends ManageRecords
             'archived' => Tab::make(__('filament-short-url::default.tab_archived_links'))
                 ->modifyQueryUsing(fn ($query) => $query->where('is_archived', true)),
         ];
+    }
+
+    protected function paginateTableQuery(Builder $query): Paginator
+    {
+        $paginator = parent::paginateTableQuery($query);
+
+        if ($paginator instanceof AbstractPaginator) {
+            ShortUrl::preloadBufferedCountersForIds(
+                $paginator->getCollection()->pluck('id')->all()
+            );
+        }
+
+        return $paginator;
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Bjanczak\FilamentShortUrl\Jobs;
 
+use Bjanczak\FilamentShortUrl\Services\OutboundUrlValidator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,6 +40,27 @@ class SendWebhookJob implements ShouldQueue
      */
     public function handle(): void
     {
+        if (! app(OutboundUrlValidator::class)->isAllowed($this->url)) {
+            Log::warning('[FilamentShortUrl] Webhook blocked by outbound URL policy', [
+                'url' => $this->url,
+                'event' => $this->event,
+            ]);
+
+            return;
+        }
+
+        if (
+            (bool) config('filament-short-url.webhook_signing_required', true)
+            && blank(config('filament-short-url.webhook_signing_secret'))
+        ) {
+            Log::warning('[FilamentShortUrl] Webhook delivery skipped — signing secret is not configured.', [
+                'url' => $this->url,
+                'event' => $this->event,
+            ]);
+
+            return;
+        }
+
         try {
             $headers = [
                 'Content-Type' => 'application/json',
@@ -52,8 +74,13 @@ class SendWebhookJob implements ShouldQueue
             }
 
             $response = Http::timeout(10)
+                ->withOptions(['allow_redirects' => false])
                 ->withHeaders($headers)
                 ->post($this->url, $this->payload);
+
+            if ($response->redirect()) {
+                throw new \RuntimeException('Webhook redirects are not allowed');
+            }
 
             if ($response->failed()) {
                 Log::warning('[FilamentShortUrl] Webhook delivery returned client/server error', [

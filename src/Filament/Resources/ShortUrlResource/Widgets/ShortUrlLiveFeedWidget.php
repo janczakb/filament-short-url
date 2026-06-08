@@ -5,6 +5,7 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\Concerns\HasStatsFilters;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
+use Bjanczak\FilamentShortUrl\Services\LiveFeedBroadcaster;
 use Filament\Widgets\Widget;
 
 class ShortUrlLiveFeedWidget extends Widget
@@ -27,7 +28,27 @@ class ShortUrlLiveFeedWidget extends Widget
     protected string $view = 'filament-short-url::widgets.live-feed';
 
     /**
-     * Called on every wire:poll tick.
+     * Called when the SSE stream reports a newer visit id.
+     */
+    public function onStreamUpdate(int $latestId): void
+    {
+        if (! $this->record) {
+            $this->skipRender();
+
+            return;
+        }
+
+        if ($latestId <= $this->latestVisitId) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->latestVisitId = $latestId;
+    }
+
+    /**
+     * Called on every wire:poll tick (legacy) or from SSE client.
      *
      * Does a single O(1) MAX(id) query against the composite index.
      * If nothing changed since the last render → skipRender() → ~100-byte response.
@@ -61,7 +82,10 @@ class ShortUrlLiveFeedWidget extends Widget
     protected function getViewData(): array
     {
         if (! $this->record) {
-            return ['visits' => []];
+            return [
+                'visits' => [],
+                'usesRedisPush' => LiveFeedBroadcaster::usesRedisPush(),
+            ];
         }
 
         // BUG FIX #1: Include latestVisitId in the cache key.
@@ -132,6 +156,6 @@ class ShortUrlLiveFeedWidget extends Widget
                     ->max('id');
         }
 
-        return ['visits' => $visits];
+        return ['visits' => $visits, 'usesRedisPush' => LiveFeedBroadcaster::usesRedisPush()];
     }
 }

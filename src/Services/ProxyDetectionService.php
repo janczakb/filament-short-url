@@ -38,8 +38,8 @@ class ProxyDetectionService
         }
 
         $driver = config('filament-short-url.vpn_detection.driver', 'ip-api');
-        // Aggressive 800ms timeout to avoid hanging the redirect thread on API lag
-        $timeout = 0.8;
+        $timeout = (float) config('filament-short-url.vpn_detection.timeout', 2);
+        $cacheTtl = (int) config('filament-short-url.vpn_detection.cache_ttl', 86400);
 
         try {
             if ($driver === 'vpnapi') {
@@ -48,18 +48,18 @@ class ProxyDetectionService
                 $result = $this->queryIpApi($ip, $timeout);
             }
 
-            $cacheTtl = (int) config('filament-short-url.vpn_detection.cache_ttl', 86400);
             Cache::put($cacheKey, $result, $cacheTtl);
 
             return $result;
         } catch (\Throwable $e) {
             Log::warning("Proxy detection failed or timed out for IP: {$ip}. Error: ".$e->getMessage());
+            $blockWith403 = config('filament-short-url.vpn_detection.block_action') === 'block_with_403';
+            $fallback = $blockWith403
+                ? ['is_proxy' => true, 'is_bot' => false]
+                : ['is_proxy' => false, 'is_bot' => false];
+            Cache::put($cacheKey, $fallback, 60);
 
-            // Do NOT cache failure results as safe. If we cached 'is_proxy => false' on API
-            // errors, a malicious actor could deliberately trigger API rate-limiting to obtain
-            // a guaranteed bypass window for their IP. Instead we fail-open without caching,
-            // allowing a fresh check on the next request.
-            return ['is_proxy' => false, 'is_bot' => false];
+            return $fallback;
         }
     }
 

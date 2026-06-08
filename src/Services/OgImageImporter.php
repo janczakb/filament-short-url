@@ -25,6 +25,7 @@ class OgImageImporter
     public function __construct(
         private readonly UrlMetaScraper $metaScraper,
         private readonly OgImageProcessor $imageProcessor,
+        private readonly RedirectUrlResolver $redirectUrlResolver,
     ) {}
 
     /**
@@ -90,7 +91,7 @@ class OgImageImporter
                     return null;
                 }
 
-                $currentUrl = $this->resolveRedirectUrl($currentUrl, $location);
+                $currentUrl = $this->redirectUrlResolver->resolve($currentUrl, $location);
 
                 continue;
             }
@@ -132,29 +133,5 @@ class OgImageImporter
             'image/avif',
             'application/octet-stream',
         ], true);
-    }
-
-    private function resolveRedirectUrl(string $currentUrl, string $location): string
-    {
-        if (filter_var($location, FILTER_VALIDATE_URL)) {
-            return $location;
-        }
-
-        $parts = parse_url($currentUrl) ?: [];
-        $scheme = $parts['scheme'] ?? 'https';
-        $host = $parts['host'] ?? '';
-
-        if (str_starts_with($location, '//')) {
-            return $scheme.':'.$location;
-        }
-
-        if (str_starts_with($location, '/')) {
-            return $scheme.'://'.$host.$location;
-        }
-
-        $path = $parts['path'] ?? '/';
-        $directory = rtrim(str_replace('\\', '/', dirname($path)), '/');
-
-        return $scheme.'://'.$host.($directory !== '' ? $directory.'/' : '/').ltrim($location, '/');
     }
 }

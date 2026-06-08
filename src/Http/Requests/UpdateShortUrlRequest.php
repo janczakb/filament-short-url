@@ -8,12 +8,20 @@
 
 namespace Bjanczak\FilamentShortUrl\Http\Requests;
 
+use Bjanczak\FilamentShortUrl\Http\Requests\Concerns\ShortUrlApiAttributes;
+use Bjanczak\FilamentShortUrl\Http\Support\ApiLinkScope;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Rules\OutboundUrl;
+use Bjanczak\FilamentShortUrl\Rules\SafeUrl;
 use Bjanczak\FilamentShortUrl\Services\SafeBrowsingService;
+use Bjanczak\FilamentShortUrl\Support\CustomDomainValidator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateShortUrlRequest extends FormRequest
 {
+    use ShortUrlApiAttributes;
+
     /**
      * Cache for the resolved ShortUrl model.
      */
@@ -36,18 +44,7 @@ class UpdateShortUrlRequest extends FormRequest
             return $this->shortUrlModel;
         }
 
-        $idOrKey = $this->route('idOrKey');
-        if (is_numeric($idOrKey)) {
-            $this->shortUrlModel = ShortUrl::findOrFail((int) $idOrKey);
-        } else {
-            $link = ShortUrl::where('url_key', $idOrKey)->first();
-
-            if (! $link) {
-                abort(404, 'Short URL not found.');
-            }
-
-            $this->shortUrlModel = $link;
-        }
+        $this->shortUrlModel = ApiLinkScope::find($this, $this->route('idOrKey'));
 
         return $this->shortUrlModel;
     }
@@ -80,6 +77,7 @@ class UpdateShortUrlRequest extends FormRequest
     {
         $model = $this->getModel();
         $safeBrowsing = app(SafeBrowsingService::class);
+        $safeUrlRule = app(SafeUrl::class);
 
         $countries = __('filament-short-url::countries');
         $countryRule = is_array($countries) && ! empty($countries)
@@ -91,14 +89,7 @@ class UpdateShortUrlRequest extends FormRequest
             ? 'in:'.implode(',', array_merge(array_keys($languages), array_map('strtoupper', array_keys($languages))))
             : 'string|max:10';
 
-        $safeBrowsingRule = function (string $attribute, $value, \Closure $fail) use ($safeBrowsing) {
-            if (empty($value)) {
-                return;
-            }
-            if (! $safeBrowsing->isSafe($value)) {
-                $fail(__('filament-short-url::default.safe_browsing_error'));
-            }
-        };
+        $safeBrowsingRule = $safeUrlRule;
 
         $isLegacyRules = is_array($this->input('targeting_rules')) && isset($this->input('targeting_rules')['type']);
 
@@ -382,6 +373,7 @@ class UpdateShortUrlRequest extends FormRequest
             $defaultDisabled ? 'required' : 'nullable',
             'integer',
             'exists:short_url_custom_domains,id,is_active,1,is_verified,1',
+            CustomDomainValidator::ownershipClosure(CustomDomainValidator::ownerUserIdFromRequest($this)),
         ];
 
         if (config('filament-short-url.lock_url_key', false)) {
@@ -401,7 +393,13 @@ class UpdateShortUrlRequest extends FormRequest
             'string',
             'alpha_dash',
             'max:32',
-            'unique:short_urls,url_key,'.$model->id,
+            Rule::unique('short_urls', 'url_key')
+                ->ignore($model->id)
+                ->where(function ($query) use ($model) {
+                    $domainScopeId = (int) ($this->input('custom_domain_id', $model->custom_domain_id) ?? 0);
+
+                    return $query->where('domain_scope_id', $domainScopeId);
+                }),
         ];
 
         if (config('filament-short-url.lock_url_key', false)) {
@@ -430,15 +428,16 @@ class UpdateShortUrlRequest extends FormRequest
             'single_use' => 'sometimes|required|boolean',
             'forward_query_params' => 'sometimes|required|boolean',
             'max_visits' => 'nullable|integer|min:1',
-            'expiration_redirect_url' => 'nullable|url|max:255',
+            'expiration_redirect_url' => ['nullable', 'url', 'max:255', $safeUrlRule],
             'activated_at' => $activatedAtRule,
             'expires_at' => 'nullable|date|after_or_equal:activated_at',
-            'webhook_url' => 'nullable|url|max:2048',
+            'webhook_url' => ['nullable', 'url', 'max:2048', $safeUrlRule, app(OutboundUrl::class)],
         ];
 
         $rules = array_merge($rules, $targetingRules);
 
-        return array_merge($rules, [
+        return array_merge($rules, $this->apiAttributeRules(), [
+            'external_id' => 'nullable|string|max:255|unique:short_urls,external_id,'.$model->id,
             'password' => 'nullable|string|max:255',
             'show_warning_page' => 'sometimes|required|boolean',
             'auto_open_app_mobile' => 'sometimes|required|boolean',

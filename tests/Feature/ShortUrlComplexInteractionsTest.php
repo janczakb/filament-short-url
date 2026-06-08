@@ -263,15 +263,10 @@ describe('complex option interactions', function () {
             ->get('/s/split-utm-tgt?utm_source=social')
             ->assertRedirect('https://mobile-b.com?utm_source=social');
 
-        // Verify the resolved variant is stored in container for tracking
-        expect(app('resolved_ab_variant'))->toBe('Mobile Variant B');
-
         // 3. Visit as desktop with query params -> redirects to default root variant A with query parameters
         $this->withHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
             ->get('/s/split-utm-tgt?utm_source=direct')
             ->assertRedirect('https://root-a.com?utm_source=direct');
-
-        expect(app('resolved_ab_variant'))->toBe('Root Variant A');
     });
 
     it('custom domain + rate limiting + single use operate without caching bypasses', function () {

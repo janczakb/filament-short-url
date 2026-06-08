@@ -8,12 +8,33 @@
 
 namespace Bjanczak\FilamentShortUrl\Services;
 
+use Bjanczak\FilamentShortUrl\Services\Redis\PluginRedisConnection;
+use Bjanczak\FilamentShortUrl\Services\Stats\StatsScalingProfile;
+use Bjanczak\FilamentShortUrl\Services\Stats\TodayStatsBuffer;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class ShortUrlSettingsManager
 {
+    /** @var list<string> Internal keys written by commands — never purge on settings save. */
+    private const SYSTEM_SETTING_KEYS = [
+        'last_aggregation_date',
+    ];
+
+    /** @var list<string> Secret fields that keep their stored value when the form submits empty/masked placeholders. */
+    private const SECRET_SETTING_KEYS = [
+        'ga4_api_secret',
+        'redis_password',
+        'vpnapi_key',
+        'google_safe_browsing_api_key',
+        'webhook_signing_secret',
+        'bot_debug_secret',
+    ];
+
     private ?array $cache = null;
 
     /**
@@ -50,9 +71,9 @@ class ShortUrlSettingsManager
             }
         };
 
-        // Cache the settings indefinitely (31536000 seconds = 1 year) in multi-server environments
+        // Cache settings briefly to keep cross-node changes fresh.
         $stored = app()->bound('cache')
-            ? cache()->remember('filament-short-url:settings', 31536000, $readFromDb)
+            ? cache()->remember('filament-short-url:settings', 3600, $readFromDb)
             : $readFromDb();
 
         if (! is_array($stored)) {
@@ -76,6 +97,11 @@ class ShortUrlSettingsManager
             'ga4_firebase_app_id' => config('filament-short-url.ga4.firebase_app_id'),
             'queue_connection' => config('filament-short-url.queue_connection', 'sync'),
             'queue_name' => config('filament-short-url.queue_name', 'default'),
+            'redis_host' => config('filament-short-url.redis.host', config('database.redis.default.host', '127.0.0.1')),
+            'redis_port' => (int) config('filament-short-url.redis.port', config('database.redis.default.port', 6379)),
+            'redis_password' => config('filament-short-url.redis.password', config('database.redis.default.password')),
+            'redis_database' => (int) config('filament-short-url.redis.database', config('database.redis.default.database', 0)),
+            'redis_key_prefix' => config('filament-short-url.redis.prefix', config('database.redis.options.prefix', '')),
             'cache_ttl' => config('filament-short-url.cache_ttl', 3600),
             'counter_buffering_enabled' => config('filament-short-url.counter_buffering.enabled', false),
             'trust_cdn_headers' => config('filament-short-url.trust_cdn_headers', false),
@@ -112,8 +138,14 @@ class ShortUrlSettingsManager
             'vpn_detection_driver' => config('filament-short-url.vpn_detection.driver', 'ip-api'),
             'vpnapi_key' => config('filament-short-url.vpn_detection.vpnapi_key'),
             'vpn_block_action' => config('filament-short-url.vpn_detection.block_action', 'flag_only'),
+            'vpn_detection_cache_ttl' => config('filament-short-url.vpn_detection.cache_ttl', 86400),
+            'vpn_detection_timeout' => config('filament-short-url.vpn_detection.timeout', 2),
             'safe_browsing_enabled' => config('filament-short-url.safe_browsing.enabled', false),
             'google_safe_browsing_api_key' => config('filament-short-url.safe_browsing.api_key'),
+            'click_deduplication_enabled' => config('filament-short-url.click_deduplication.enabled', false),
+            'click_deduplication_hours' => config('filament-short-url.click_deduplication.hours', 1),
+            'bot_verify_google_bot_ip' => config('filament-short-url.bot_detection.verify_google_bot_ip', false),
+            'bot_debug_secret' => config('filament-short-url.bot_detection.debug_secret'),
             // Deep Linking v2.1
             'deep_linking_enabled' => config('filament-short-url.deep_linking.enabled', false),
             'aasa_json' => config('filament-short-url.deep_linking.aasa_json'),
@@ -122,6 +154,10 @@ class ShortUrlSettingsManager
             'webhook_signing_secret' => null,
             'enable_fallback_route' => config('filament-short-url.enable_fallback_route', true),
         ], $stored);
+
+        if (($this->cache['geo_ip_driver'] ?? '') === 'headers') {
+            $this->cache['trust_cdn_headers'] = true;
+        }
 
         return $this->cache;
     }
@@ -161,6 +197,11 @@ class ShortUrlSettingsManager
             'ga4_firebase_app_id',
             'queue_connection',
             'queue_name',
+            'redis_host',
+            'redis_port',
+            'redis_password',
+            'redis_database',
+            'redis_key_prefix',
             'cache_ttl',
             'counter_buffering_enabled',
             'trust_cdn_headers',
@@ -197,8 +238,14 @@ class ShortUrlSettingsManager
             'vpn_detection_driver',
             'vpnapi_key',
             'vpn_block_action',
+            'vpn_detection_cache_ttl',
+            'vpn_detection_timeout',
             'safe_browsing_enabled',
             'google_safe_browsing_api_key',
+            'click_deduplication_enabled',
+            'click_deduplication_hours',
+            'bot_verify_google_bot_ip',
+            'bot_debug_secret',
             // Deep Linking v2.1
             'deep_linking_enabled',
             'aasa_json',
@@ -208,6 +255,8 @@ class ShortUrlSettingsManager
         ];
 
         $filtered = array_intersect_key($data, array_flip($keys));
+        $filtered = $this->preserveUnchangedSecrets($filtered);
+        $this->assertWebhookSigningConfigured($filtered);
 
         // Format datatypes properly
         if (isset($filtered['redirect_status_code'])) {
@@ -227,6 +276,12 @@ class ShortUrlSettingsManager
         }
         if (isset($filtered['geo_ip_stats_cache_ttl'])) {
             $filtered['geo_ip_stats_cache_ttl'] = (int) $filtered['geo_ip_stats_cache_ttl'];
+        }
+        if (isset($filtered['redis_port'])) {
+            $filtered['redis_port'] = (int) $filtered['redis_port'];
+        }
+        if (isset($filtered['redis_database'])) {
+            $filtered['redis_database'] = (int) $filtered['redis_database'];
         }
         if (isset($filtered['cache_ttl'])) {
             $filtered['cache_ttl'] = (int) $filtered['cache_ttl'];
@@ -312,6 +367,28 @@ class ShortUrlSettingsManager
         if (isset($filtered['deep_linking_enabled'])) {
             $filtered['deep_linking_enabled'] = (bool) $filtered['deep_linking_enabled'];
         }
+        if (isset($filtered['vpn_detection_cache_ttl'])) {
+            $filtered['vpn_detection_cache_ttl'] = (int) $filtered['vpn_detection_cache_ttl'];
+        }
+        if (isset($filtered['vpn_detection_timeout'])) {
+            $filtered['vpn_detection_timeout'] = (float) $filtered['vpn_detection_timeout'];
+        }
+
+        if (isset($filtered['click_deduplication_enabled'])) {
+            $filtered['click_deduplication_enabled'] = (bool) $filtered['click_deduplication_enabled'];
+        }
+
+        if (isset($filtered['click_deduplication_hours'])) {
+            $filtered['click_deduplication_hours'] = (int) $filtered['click_deduplication_hours'];
+        }
+
+        if (isset($filtered['bot_verify_google_bot_ip'])) {
+            $filtered['bot_verify_google_bot_ip'] = (bool) $filtered['bot_verify_google_bot_ip'];
+        }
+
+        if (($filtered['geo_ip_driver'] ?? null) === 'headers') {
+            $filtered['trust_cdn_headers'] = true;
+        }
 
         $newKeys = [];
         if (isset($filtered['api_keys']) && is_array($filtered['api_keys'])) {
@@ -360,12 +437,18 @@ class ShortUrlSettingsManager
                     // (e.g. saving only the QR tab) would destroy unrelated settings
                     // such as API keys, webhook secrets, etc.
                     DB::table('short_url_settings')
-                        ->whereNotIn('key', $keys)
+                        ->whereNotIn('key', array_merge($keys, self::SYSTEM_SETTING_KEYS))
                         ->delete();
                 });
             }
         } catch (\Throwable $e) {
-            // Ignore / log database persist errors
+            report($e);
+            Log::error('[FilamentShortUrl] Failed to persist settings.', [
+                'error' => $e->getMessage(),
+            ]);
+            session()->flash('error', __('filament-short-url::default.error_failed_to_save_settings'));
+
+            throw $e;
         }
 
         if (app()->bound('cache')) {
@@ -390,12 +473,48 @@ class ShortUrlSettingsManager
         $newPrefix = $filtered['route_prefix'] ?? null;
         if ($oldPrefix !== null && $newPrefix !== null && $oldPrefix !== $newPrefix) {
             try {
-                if (app()->routesAreCached()) {
-                    Artisan::call('route:clear');
-                }
+                Artisan::call('route:clear');
             } catch (\Throwable) {
                 // Ignore route clear errors during boot/test
             }
+        }
+    }
+
+    /**
+     * Temporarily apply unsaved form values (e.g. Settings test buttons), then restore.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public function withPreviewSettings(array $overrides, callable $callback): mixed
+    {
+        $current = $this->all();
+        $preview = array_merge($current, $overrides);
+
+        foreach (self::SECRET_SETTING_KEYS as $key) {
+            if (! array_key_exists($key, $overrides)) {
+                continue;
+            }
+
+            $value = $overrides[$key];
+
+            if ($value === null || $value === '' || (is_string($value) && str_contains($value, '••••'))) {
+                $preview[$key] = $current[$key] ?? null;
+            }
+        }
+
+        $savedCache = $this->cache;
+        $this->cache = $preview;
+
+        try {
+            $this->applyConfigOverrides();
+            $this->purgeRedisConnections();
+
+            return $callback($preview);
+        } finally {
+            $this->cache = $savedCache;
+            $this->applyConfigOverrides();
+            $this->purgeRedisConnections();
+            $this->forgetRuntimeSingletons();
         }
     }
 
@@ -421,8 +540,12 @@ class ShortUrlSettingsManager
             'filament-short-url.queue_connection' => $settings['queue_connection'],
             'filament-short-url.queue_name' => $settings['queue_name'],
             'filament-short-url.cache_ttl' => $settings['cache_ttl'],
-            'filament-short-url.counter_buffering.enabled' => $settings['counter_buffering_enabled'],
-            'filament-short-url.trust_cdn_headers' => $settings['trust_cdn_headers'],
+            'filament-short-url.counter_buffering.enabled' => ($settings['queue_connection'] ?? 'sync') === 'redis'
+                ? true
+                : (bool) ($settings['counter_buffering_enabled'] ?? false),
+            'filament-short-url.trust_cdn_headers' => ($settings['geo_ip_driver'] ?? '') === 'headers'
+                ? true
+                : (bool) $settings['trust_cdn_headers'],
             'filament-short-url.pruning.enabled' => $settings['pruning_enabled'],
             'filament-short-url.pruning.retention_days' => $settings['pruning_retention_days'],
             'filament-short-url.rate_limiting.enabled' => $settings['rate_limiting_enabled'],
@@ -446,6 +569,7 @@ class ShortUrlSettingsManager
             'filament-short-url.qr_defaults.gradient_to' => $settings['qr_gradient_to'],
             'filament-short-url.qr_defaults.gradient_type' => $settings['qr_gradient_type'],
             'filament-short-url.global_webhook_url' => $settings['global_webhook_url'] ?? null,
+            'filament-short-url.global_webhook_enabled' => (bool) ($settings['global_webhook_enabled'] ?? false),
             'filament-short-url.webhook_events' => $settings['webhook_events'] ?? ['visited'],
             'filament-short-url.api_enabled' => (bool) ($settings['api_enabled'] ?? false),
             'filament-short-url.site_name' => $settings['site_name'] ?? null,
@@ -456,16 +580,154 @@ class ShortUrlSettingsManager
             'filament-short-url.vpn_detection.driver' => $settings['vpn_detection_driver'] ?? 'ip-api',
             'filament-short-url.vpn_detection.vpnapi_key' => $settings['vpnapi_key'] ?? null,
             'filament-short-url.vpn_detection.block_action' => $settings['vpn_block_action'] ?? 'flag_only',
-            'filament-short-url.vpn_detection.cache_ttl' => 86400,
-            'filament-short-url.vpn_detection.timeout' => 2,
+            'filament-short-url.vpn_detection.cache_ttl' => (int) ($settings['vpn_detection_cache_ttl'] ?? 86400),
+            'filament-short-url.vpn_detection.timeout' => (float) ($settings['vpn_detection_timeout'] ?? 2),
             'filament-short-url.safe_browsing.enabled' => (bool) ($settings['safe_browsing_enabled'] ?? false),
             'filament-short-url.safe_browsing.api_key' => $settings['google_safe_browsing_api_key'] ?? null,
+            'filament-short-url.safe_browsing.check_on_redirect' => (bool) config('filament-short-url.safe_browsing.check_on_redirect', true),
+            'filament-short-url.safe_browsing.redirect_cache_ttl' => (int) config('filament-short-url.safe_browsing.redirect_cache_ttl', 3600),
+            'filament-short-url.click_deduplication.enabled' => (bool) ($settings['click_deduplication_enabled'] ?? false),
+            'filament-short-url.click_deduplication.hours' => (int) ($settings['click_deduplication_hours'] ?? 1),
+            'filament-short-url.bot_detection.verify_google_bot_ip' => (bool) ($settings['bot_verify_google_bot_ip'] ?? false),
+            'filament-short-url.bot_detection.debug_secret' => $settings['bot_debug_secret'] ?? null,
             // Deep Linking v2.1
             'filament-short-url.deep_linking.enabled' => (bool) ($settings['deep_linking_enabled'] ?? false),
             'filament-short-url.deep_linking.aasa_json' => $settings['aasa_json'] ?? null,
             'filament-short-url.deep_linking.assetlinks_json' => $settings['assetlinks_json'] ?? null,
             // Webhook signing secret
             'filament-short-url.webhook_signing_secret' => $settings['webhook_signing_secret'] ?? null,
+            'filament-short-url.webhook_signing_required' => (bool) config('filament-short-url.webhook_signing_required', true),
+            'filament-short-url.scope_links_to_user' => (bool) config('filament-short-url.scope_links_to_user', true),
+            'filament-short-url.redis.host' => $settings['redis_host'] ?? config('database.redis.default.host', '127.0.0.1'),
+            'filament-short-url.redis.port' => (int) ($settings['redis_port'] ?? config('database.redis.default.port', 6379)),
+            'filament-short-url.redis.password' => $settings['redis_password'] ?? config('database.redis.default.password'),
+            'filament-short-url.redis.database' => (int) ($settings['redis_database'] ?? config('database.redis.default.database', 0)),
+            'filament-short-url.redis.prefix' => $settings['redis_key_prefix'] ?? config('database.redis.options.prefix', ''),
         ]);
+
+        $this->applyRedisInfrastructureOverrides($settings);
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function applyRedisInfrastructureOverrides(array $settings): void
+    {
+        if (($settings['queue_connection'] ?? 'sync') !== 'redis') {
+            return;
+        }
+
+        $redisConnectionName = (string) (config('queue.connections.redis.connection') ?? 'default');
+        $baseRedis = config("database.redis.{$redisConnectionName}", config('database.redis.default', []));
+
+        if (! is_array($baseRedis)) {
+            $baseRedis = [];
+        }
+
+        $host = filled($settings['redis_host'] ?? null)
+            ? (string) $settings['redis_host']
+            : (string) ($baseRedis['host'] ?? '127.0.0.1');
+        $port = (int) ($settings['redis_port'] ?? $baseRedis['port'] ?? 6379);
+        $password = array_key_exists('redis_password', $settings)
+            ? $settings['redis_password']
+            : ($baseRedis['password'] ?? null);
+        $database = (int) ($settings['redis_database'] ?? $baseRedis['database'] ?? 0);
+        $prefix = array_key_exists('redis_key_prefix', $settings)
+            ? (string) ($settings['redis_key_prefix'] ?? '')
+            : (string) config('database.redis.options.prefix', '');
+
+        config([
+            "database.redis.{$redisConnectionName}" => array_merge($baseRedis, [
+                'host' => $host,
+                'port' => $port,
+                'password' => $password,
+                'database' => $database,
+            ]),
+            'database.redis.options.prefix' => $prefix,
+            'queue.connections.redis' => array_merge(
+                is_array(config('queue.connections.redis')) ? config('queue.connections.redis') : [],
+                [
+                    'driver' => 'redis',
+                    'connection' => $redisConnectionName,
+                    'queue' => (string) ($settings['queue_name'] ?? config('filament-short-url.queue_name', 'default')),
+                    'retry_after' => (int) (config('queue.connections.redis.retry_after') ?? 90),
+                    'block_for' => config('queue.connections.redis.block_for'),
+                    'after_commit' => (bool) (config('queue.connections.redis.after_commit') ?? false),
+                ],
+            ),
+        ]);
+    }
+
+    private function purgeRedisConnections(): void
+    {
+        try {
+            $connectionName = (string) (config('queue.connections.redis.connection') ?? 'default');
+            Redis::purge($connectionName);
+        } catch (\Throwable) {
+            // Ignore during boot/tests when Redis is unavailable.
+        }
+    }
+
+    private function forgetRuntimeSingletons(): void
+    {
+        app()->forgetInstance(PluginRedisConnection::class);
+        app()->forgetInstance(VisitCounterBuffer::class);
+        app()->forgetInstance(TodayStatsBuffer::class);
+        app()->forgetInstance(StatsScalingProfile::class);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filtered
+     */
+    private function assertWebhookSigningConfigured(array $filtered): void
+    {
+        if (! (bool) config('filament-short-url.webhook_signing_required', true)) {
+            return;
+        }
+
+        $globalEnabled = (bool) ($filtered['global_webhook_enabled'] ?? $this->get('global_webhook_enabled', false));
+
+        if (! $globalEnabled) {
+            return;
+        }
+
+        $secret = $filtered['webhook_signing_secret'] ?? null;
+
+        if (is_string($secret) && str_contains($secret, '••••')) {
+            $secret = $this->get('webhook_signing_secret');
+        }
+
+        if (blank($secret)) {
+            throw ValidationException::withMessages([
+                'data.webhook_signing_secret' => __('filament-short-url::default.webhook_signing_secret_required'),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $filtered
+     * @return array<string, mixed>
+     */
+    private function preserveUnchangedSecrets(array $filtered): array
+    {
+        foreach (self::SECRET_SETTING_KEYS as $key) {
+            if (! array_key_exists($key, $filtered)) {
+                continue;
+            }
+
+            $value = $filtered[$key];
+
+            if ($value === null || $value === '') {
+                unset($filtered[$key]);
+
+                continue;
+            }
+
+            if (is_string($value) && str_contains($value, '••••')) {
+                unset($filtered[$key]);
+            }
+        }
+
+        return $filtered;
     }
 }

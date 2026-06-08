@@ -1,34 +1,18 @@
 @php
-    $ogTitle = $get('og_title') ?: null;
-    $ogDescription = $get('og_description') ?: null;
-
-    // Resolve the OG image url
-    $ogImage = null;
-    $ogImageState = $get('og_image');
-    if ($ogImageState) {
-        if (is_array($ogImageState)) {
-            $first = reset($ogImageState);
-            if ($first) {
-                if (is_string($first)) {
-                    $ogImage = \Illuminate\Support\Facades\Storage::disk('public')->url($first);
-                } elseif (method_exists($first, 'temporaryUrl')) {
-                    $ogImage = $first->temporaryUrl();
-                }
-            }
-        } elseif (is_string($ogImageState)) {
-            $ogImage = \Illuminate\Support\Facades\Storage::disk('public')->url($ogImageState);
-        }
-    } else {
-        $ogImage = $get('og_image_scraped') ?: null;
-    }
-    $isScraping = $get('is_scraping') ?: false;
+    $ogTitle = $ogTitle ?? ($get('og_title') ?: null);
+    $ogDescription = $ogDescription ?? ($get('og_description') ?: null);
+    $ogImageUrl = $ogImageUrl ?? null;
+    $isScraping = $isScraping ?? ($get('is_scraping') ?: false);
 @endphp
 
 <div
     class="sidebar-social-container"
+    wire:key="fsu-social-preview-{{ md5(json_encode([$ogTitle, $ogDescription, $ogImageUrl, (bool) $isScraping])) }}"
     x-data="{ scraping: @js((bool) $isScraping), passwordProtected: @js((bool) $isPasswordProtected) }"
     x-on:fsu-scraping-start.window="scraping = true"
     x-on:fsu-scraping-end.window="scraping = false"
+    x-on:fsu-password-protection-changed.window="passwordProtected = !!$event.detail.protected"
+    x-on:fsu-og-image-updated.window="scraping = false"
 >
 
     {{-- Header: Title only (no "i" icon) --}}
@@ -115,9 +99,9 @@
                 </svg>
             </button>
 
-            @if ($ogImage)
+            @if ($ogImageUrl)
                 {{-- OG Image preview --}}
-                <img src="{{ $ogImage }}" alt="OG Preview" class="absolute inset-0 w-full h-full object-cover">
+                <img src="{{ $ogImageUrl }}" alt="OG Preview" class="absolute inset-0 w-full h-full object-cover">
             @else
                 {{-- Empty state: photo icon + text --}}
                 <div class="flex flex-col items-center gap-2 text-neutral-400 dark:text-neutral-500 select-none pointer-events-none">

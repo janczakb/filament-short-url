@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Stats and queue">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="45%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#164e63"/>
+    </linearGradient>
+    <radialGradient id="orb1" cx="20%" cy="15%" r="55%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="85%" cy="25%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb3" cx="50%" cy="90%" r="45%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="blur80" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="80"/>
+    </filter>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#020617" flood-opacity="0.55"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#e2e8f0" fill-opacity="0.9"/>
+    </marker>
+  </defs>
+  <rect width="960" height="540" fill="url(#bg)"/>
+  <ellipse cx="180" cy="80" rx="220" ry="160" fill="url(#orb1)" filter="url(#blur80)"/>
+  <ellipse cx="820" cy="120" rx="200" ry="150" fill="url(#orb2)" filter="url(#blur80)"/>
+  <ellipse cx="480" cy="480" rx="260" ry="180" fill="url(#orb3)" filter="url(#blur80)"/>
+  <text x="480" y="44" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#f8fafc" letter-spacing="-0.6">Stats pipeline and queue modes</text>
+  <text x="480" y="72" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="14" fill="#cbd5e1" fill-opacity="0.85">Visits, aggregation cron, panel vs API stats gap</text>
+<text x="480" y="98" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="15" fill="#e2e8f0" font-weight="700">Visit tracking</text>
+  <g filter="url(#shadow)">
+    <rect x="60" y="112" width="160" height="48" rx="16" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="60" y="112" width="160" height="48" rx="16" fill="url(#shine)" pointer-events="none"/>
+    <rect x="60" y="112" width="160" height="3" rx="1.5" fill="#38bdf8" fill-opacity="0.85"/>
+    <text x="140" y="142" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0" font-weight="600">Redirect</text>
+  </g><line x1="220" y1="136" x2="280" y2="136" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="280" y="112" width="160" height="48" rx="16" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="280" y="112" width="160" height="48" rx="16" fill="url(#shine)" pointer-events="none"/>
+    <rect x="280" y="112" width="160" height="3" rx="1.5" fill="#818cf8" fill-opacity="0.85"/>
+    <text x="360" y="142" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0" font-weight="600">TrackJob</text>
+  </g><line x1="440" y1="136" x2="540" y2="136" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="540" y="112" width="160" height="48" rx="16" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="540" y="112" width="160" height="48" rx="16" fill="url(#shine)" pointer-events="none"/>
+    <rect x="540" y="112" width="160" height="3" rx="1.5" fill="#38bdf8" fill-opacity="0.85"/>
+    <text x="620" y="142" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0" font-weight="600">visits table</text>
+  </g><line x1="700" y1="136" x2="740" y2="136" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="740" y="112" width="120" height="48" rx="16" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="740" y="112" width="120" height="48" rx="16" fill="url(#shine)" pointer-events="none"/>
+    <rect x="740" y="112" width="120" height="3" rx="1.5" fill="#38bdf8" fill-opacity="0.85"/>
+    <text x="800" y="142" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0" font-weight="600">Buffer</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="120" y="180" width="340" height="110" rx="22" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="120" y="180" width="340" height="110" rx="22" fill="url(#shine)" pointer-events="none"/>
+    <rect x="120" y="180" width="340" height="3" rx="1.5" fill="#34d399" fill-opacity="0.85"/>
+    <text x="290" y="210" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="15" fill="#6ee7b7" font-weight="700">sync (default)</text>
+    <text x="290" y="234" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Job runs inside redirect</text>
+    <text x="290" y="256" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Works without queue worker</text>
+    <text x="290" y="278" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#64748b">GeoIP, webhook, GA4 add latency</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="500" y="180" width="340" height="110" rx="22" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="500" y="180" width="340" height="110" rx="22" fill="url(#shine)" pointer-events="none"/>
+    <rect x="500" y="180" width="340" height="3" rx="1.5" fill="#60a5fa" fill-opacity="0.85"/>
+    <text x="670" y="210" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="15" fill="#93c5fd" font-weight="700">redis / database</text>
+    <text x="670" y="234" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">302 sent first</text>
+    <text x="670" y="256" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Requires queue:work</text>
+    <text x="670" y="278" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#64748b">Settings - General</text>
+  </g><text x="480" y="318" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="14" fill="#e2e8f0" font-weight="700">Aggregation (schedule:run)</text>
+  <g filter="url(#shadow)">
+    <rect x="140" y="332" width="200" height="44" rx="14" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="140" y="332" width="200" height="44" rx="14" fill="url(#shine)" pointer-events="none"/>
+    <rect x="140" y="332" width="200" height="3" rx="1.5" fill="#f87171" fill-opacity="0.85"/>
+    <text x="240" y="360" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0">Raw visits 90d</text>
+  </g><line x1="340" y1="354" x2="400" y2="354" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="400" y="332" width="240" height="44" rx="14" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="400" y="332" width="240" height="44" rx="14" fill="url(#shine)" pointer-events="none"/>
+    <rect x="400" y="332" width="240" height="3" rx="1.5" fill="#fbbf24" fill-opacity="0.85"/>
+    <text x="520" y="360" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0">AggregateAndPrune</text>
+  </g><line x1="640" y1="354" x2="700" y2="354" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="700" y="332" width="200" height="44" rx="14" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="700" y="332" width="200" height="44" rx="14" fill="url(#shine)" pointer-events="none"/>
+    <rect x="700" y="332" width="200" height="3" rx="1.5" fill="#4ade80" fill-opacity="0.85"/>
+    <text x="800" y="360" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0">daily_stats</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="80" y="400" width="800" height="90" rx="24" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="80" y="400" width="800" height="90" rx="24" fill="url(#shine)" pointer-events="none"/>
+    <rect x="80" y="400" width="800" height="3" rx="1.5" fill="#818cf8" fill-opacity="0.85"/>
+    <text x="480" y="430" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="600">Filament: FilteredStatsCollector + cross-dimensional rollups</text>
+    <text x="480" y="454" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">API stats: date_from / date_to only (cross-filters = open gap)</text>
+    <text x="480" y="476" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#64748b">Long-range reports use rollups after raw prune</text>
+  </g>
+</svg>

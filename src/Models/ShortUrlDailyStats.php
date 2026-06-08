@@ -27,6 +27,10 @@ use Illuminate\Support\Carbon;
  * @property array|null $utm_source_stats
  * @property array|null $utm_medium_stats
  * @property array|null $utm_campaign_stats
+ * @property array|null $utm_terms
+ * @property array|null $utm_contents
+ * @property array|null $browser_versions
+ * @property array|null $os_versions
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -39,6 +43,9 @@ class ShortUrlDailyStats extends Model
         'date',
         'visits_count',
         'unique_visits_count',
+        'all_visits_count',
+        'bot_visits_count',
+        'proxy_visits_count',
         'device_stats',
         'browser_stats',
         'os_stats',
@@ -48,9 +55,16 @@ class ShortUrlDailyStats extends Model
         'utm_source_stats',
         'utm_medium_stats',
         'utm_campaign_stats',
+        'utm_terms',
+        'utm_contents',
+        'browser_versions',
+        'os_versions',
         'qr_visits_count',
         'language_stats',
         'variant_stats',
+        'cross_dimensional_stats',
+        'cross_filter_pairs',
+        'filter_qr_counts',
     ];
 
     /** @var array<string, string> */
@@ -58,6 +72,9 @@ class ShortUrlDailyStats extends Model
         'date' => 'date',
         'visits_count' => 'integer',
         'unique_visits_count' => 'integer',
+        'all_visits_count' => 'integer',
+        'bot_visits_count' => 'integer',
+        'proxy_visits_count' => 'integer',
         'device_stats' => 'array',
         'browser_stats' => 'array',
         'os_stats' => 'array',
@@ -67,9 +84,16 @@ class ShortUrlDailyStats extends Model
         'utm_source_stats' => 'array',
         'utm_medium_stats' => 'array',
         'utm_campaign_stats' => 'array',
+        'utm_terms' => 'array',
+        'utm_contents' => 'array',
+        'browser_versions' => 'array',
+        'os_versions' => 'array',
         'qr_visits_count' => 'integer',
         'language_stats' => 'array',
         'variant_stats' => 'array',
+        'cross_dimensional_stats' => 'array',
+        'cross_filter_pairs' => 'array',
+        'filter_qr_counts' => 'array',
     ];
 
     public function shortUrl(): BelongsTo

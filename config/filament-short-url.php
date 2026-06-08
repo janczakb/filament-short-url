@@ -63,6 +63,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Custom Domains
+    |--------------------------------------------------------------------------
+    | enforce_dns_on_activate: when true, activating a domain (or changing its
+    | hostname while active) requires a passing DNS check against app.url.
+    */
+    'custom_domains' => [
+        'enforce_dns_on_activate' => env('SHORT_URL_CUSTOM_DOMAIN_ENFORCE_DNS', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Geo-IP Settings
     |--------------------------------------------------------------------------
     | Country detection from visitor IP addresses.
@@ -120,7 +131,8 @@ return [
     | Queue Connection
     |--------------------------------------------------------------------------
     | Visit tracking is dispatched to a queue for ultra-fast redirects.
-    | Set to null to run synchronously (not recommended in production).
+    | Default is `sync` (no background worker required). Switch to `database` or
+    | `redis` in Settings or via SHORT_URL_QUEUE when you run a queue worker.
     */
     'queue_connection' => env('SHORT_URL_QUEUE', 'sync'),
 
@@ -132,6 +144,22 @@ return [
     |
     */
     'queue_name' => env('SHORT_URL_QUEUE_NAME', 'default'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Redis (Settings override when Queue Connection = redis)
+    |--------------------------------------------------------------------------
+    | Defaults from .env; overridden at runtime from Settings → General when
+    | queue_connection is redis. Used for queue driver, visit counters, stats,
+    | and live feed — independent of CACHE_STORE.
+    */
+    'redis' => [
+        'host' => env('REDIS_HOST', '127.0.0.1'),
+        'port' => (int) env('REDIS_PORT', 6379),
+        'password' => env('REDIS_PASSWORD'),
+        'database' => (int) env('REDIS_DB', 0),
+        'prefix' => env('REDIS_PREFIX', ''),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -197,6 +225,58 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Developer REST API
+    |--------------------------------------------------------------------------
+    | Enable programmatic access to short URLs via /api/short-url/* endpoints.
+    | API keys are managed in the Filament settings panel.
+    |
+    */
+    'api_enabled' => env('SHORT_URL_API_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | VPN & Proxy Detection
+    |--------------------------------------------------------------------------
+    | Detect VPN, proxy, and Tor connections on incoming visits.
+    |
+    */
+    'vpn_detection' => [
+        'enabled' => env('SHORT_URL_VPN_DETECTION', false),
+        'driver' => env('SHORT_URL_VPN_DRIVER', 'ip-api'),
+        'vpnapi_key' => env('SHORT_URL_VPNAPI_KEY'),
+        'block_action' => env('SHORT_URL_VPN_BLOCK_ACTION', 'flag_only'),
+        'cache_ttl' => 86400,
+        'timeout' => 2,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Google Safe Browsing
+    |--------------------------------------------------------------------------
+    | Block phishing and malware URLs at creation time.
+    |
+    */
+    'safe_browsing' => [
+        'enabled' => env('SHORT_URL_SAFE_BROWSING', false),
+        'api_key' => env('SHORT_URL_SAFE_BROWSING_KEY'),
+        'check_on_redirect' => env('SHORT_URL_SAFE_BROWSING_ON_REDIRECT', true),
+        'redirect_cache_ttl' => (int) env('SHORT_URL_SAFE_BROWSING_REDIRECT_CACHE_TTL', 3600),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Click Deduplication
+    |--------------------------------------------------------------------------
+    | Ignore repeated clicks from the same IP within the configured window.
+    |
+    */
+    'click_deduplication' => [
+        'enabled' => env('SHORT_URL_CLICK_DEDUP', false),
+        'hours' => (int) env('SHORT_URL_CLICK_DEDUP_HOURS', 1),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Data Pruning & Aggregation
     |--------------------------------------------------------------------------
     | To keep the database clean and fast, raw visit logs can be aggregated
@@ -235,14 +315,55 @@ return [
     |--------------------------------------------------------------------------
     | Redirect Route Middleware
     |--------------------------------------------------------------------------
-    | The middleware list applied to the short URL redirect route.
-    | By default, standard web middleware and rate limiting are applied.
+    | Middleware applied to the main short URL redirect route (/s/{key}).
+    | Intentionally excludes the "web" group (sessions/cookies) for a lean
+    | hot path. Password routes always load "web" separately (/s-auth/{key}).
+    | Add "web" here only if your app requires session on every redirect.
     |
     */
     'middleware' => [
-        'web',
         'throttle:120,1',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Link ownership scoping
+    |--------------------------------------------------------------------------
+    | When true, authenticated Filament users only see links they created
+    | (short_urls.user_id). Disable for shared admin panels.
+    |
+    */
+    'scope_links_to_user' => env('SHORT_URL_SCOPE_TO_USER', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Max visits pessimistic locking
+    |--------------------------------------------------------------------------
+    | When remaining slots are above this threshold, use a lock-free UPDATE path.
+    | Near the cap, a row lock is used to stay exact under concurrent traffic.
+    */
+    'max_visits_pessimistic_remaining' => (int) env('SHORT_URL_MAX_VISITS_PESSIMISTIC_REMAINING', 5),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Live feed (SSE)
+    |--------------------------------------------------------------------------
+    */
+    'live_feed' => [
+        'sse_interval_seconds' => (int) env('SHORT_URL_LIVE_FEED_SSE_INTERVAL', 3),
+        'sse_max_duration_seconds' => (int) env('SHORT_URL_LIVE_FEED_SSE_MAX_DURATION', 120),
+        // When the cache store is Redis, SSE blocks on pub/sub instead of sleep-polling.
+        'use_redis_push' => env('SHORT_URL_LIVE_FEED_REDIS_PUSH', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhook signing
+    |--------------------------------------------------------------------------
+    | Require a signing secret before dispatching global webhooks.
+    |
+    */
+    'webhook_signing_required' => env('SHORT_URL_WEBHOOK_SIGNING_REQUIRED', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -268,6 +389,113 @@ return [
         'name_column' => 'name',
         'email_column' => 'email',
         'avatar_column' => 'avatar_url', // can be attribute/method on model or null to auto-detect HasAvatar
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Bot Detection
+    |--------------------------------------------------------------------------
+    | Patterns used to identify crawlers and link-preview bots. Specific tokens
+    | avoid false positives from real browsers (e.g. Chrome never matches "googlebot").
+    |
+    */
+    'bot_detection' => [
+        'user_agent_contains' => [
+            'facebookexternalhit',
+            'meta-externalagent',
+            'meta-externalfetcher',
+            'meta-externalads',
+            'meta-webindexer',
+            'Googlebot',
+            'Google-InspectionTool',
+            'GoogleOther',
+            'Storebot-Google',
+            'bingbot',
+            'BingPreview',
+            'DuckDuckBot',
+            'Slurp',
+            'Baiduspider',
+            'YandexBot',
+            'Applebot',
+            'Applebot-Extended',
+            'Twitterbot',
+            'LinkedInBot',
+            'linkedinbot',
+            'Slackbot',
+            'Slack-ImgProxy',
+            'Discordbot',
+            'TelegramBot',
+            'WhatsApp',
+            'Pinterestbot',
+            'Embedly',
+            'Iframely',
+            'SkypeUriPreview',
+            'facebookcatalog',
+            'MetaInspector',
+            'vkShare',
+            'Tumblr',
+            'redditbot',
+            'Snap URL Preview',
+            'Snapchat',
+            'ChatGPT-User',
+            'Claude-Web',
+            'anthropic-ai',
+            'PerplexityBot',
+            'Bytespider',
+            'GPTBot',
+            'OAI-SearchBot',
+            'HeadlessChrome',
+            'Go-http-client',
+            'python-requests',
+            'axios/',
+            'GuzzleHttp',
+            'PostmanRuntime',
+            'Insomnia',
+            'Scrapy',
+            'FeedBurner',
+            'W3C_Validator',
+            'Validator.nu',
+            'PocketParser',
+            'BitlyBot',
+            'rogerbot',
+            'SemrushBot',
+            'AhrefsBot',
+            'MJ12bot',
+            'DotBot',
+            'PetalBot',
+            'Sogou',
+            'ia_archiver',
+            'archive.org_bot',
+            'Wayback',
+            'UptimeRobot',
+            'StatusCake',
+            'Pingdom',
+            'GTmetrix',
+            'Bluesky',
+            'thirdLandingPageFeInfra',
+            'ShortLinkTranslate',
+        ],
+        'user_agent_regex' => [
+            '/bot[\s\/;\)]/i',
+            '/crawler[\s\/;\)]/i',
+            '/spider[\s\/;\)]/i',
+            '/\bscraper\b/i',
+            '/\bslurp\b/i',
+            '/\bpreview\b/i',
+            '/^curl\//i',
+            '/^wget\//i',
+            '/\bPHP\/[\d.]+/i',
+        ],
+        'referer_contains' => [
+            'url.emailprotection.link',
+            'urlsand.com',
+            'statics.teams.cdn.office.net',
+            'security-za.m.mimecastprotect.com',
+            'deref-mail.com',
+            'deref-gmx.com',
+        ],
+        'verify_google_bot_ip' => env('SHORT_URL_VERIFY_GOOGLEBOT_IP', false),
+        'debug_secret' => env('SHORT_URL_BOT_DEBUG_SECRET'),
     ],
 
 ];

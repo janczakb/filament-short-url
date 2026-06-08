@@ -12,6 +12,7 @@ use GeoIp2\Database\Reader;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Resolves country information from an IP address or pre-resolved headers.
@@ -87,7 +88,8 @@ class GeoIpService
                 return $this->fetchFromApi($ip) ?? $empty;
             }
 
-            return $empty;
+            // headers driver: CDN country is resolved upstream; fall back offline when missing.
+            return $this->lookupOfflineFallback($ip) ?? $empty;
         });
 
         self::$runtimeCache[$cacheKey] = $result;
@@ -144,6 +146,21 @@ class GeoIpService
         ];
 
         return $countries[$code] ?? $code;
+    }
+
+    /**
+     * MaxMind first, then ip-api.com (rate-limited) when CDN headers are unavailable.
+     *
+     * @return array{country: string|null, country_code: string|null, city: string|null}|null
+     */
+    private function lookupOfflineFallback(string $ip): ?array
+    {
+        $maxMind = $this->lookupMaxMind($ip);
+        if ($maxMind !== null && ! empty($maxMind['country_code'])) {
+            return $maxMind;
+        }
+
+        return $this->fetchFromApi($ip);
     }
 
     /**
@@ -212,6 +229,16 @@ class GeoIpService
      */
     private function fetchFromApi(string $ip): ?array
     {
+        $rateKey = 'fsu_geo_ip_api:'.now()->format('YmdHi');
+
+        if (RateLimiter::tooManyAttempts($rateKey, 40)) {
+            Log::warning('[FilamentShortUrl] ip-api.com rate limit guard tripped — skipping lookup.');
+
+            return null;
+        }
+
+        RateLimiter::hit($rateKey, 60);
+
         $timeout = (int) config('filament-short-url.geo_ip.timeout', 3);
 
         try {

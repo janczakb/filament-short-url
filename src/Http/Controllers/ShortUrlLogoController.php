@@ -8,14 +8,8 @@
 
 namespace Bjanczak\FilamentShortUrl\Http\Controllers;
 
-use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
-use Bjanczak\FilamentShortUrl\Models\ShortUrl;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 

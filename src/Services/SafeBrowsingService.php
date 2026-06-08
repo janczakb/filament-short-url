@@ -69,7 +69,7 @@ class SafeBrowsingService
             if ($response->failed()) {
                 Log::warning('Google Safe Browsing API request failed with status: '.$response->status());
 
-                return true; // Default to safe if API is down
+                return ! $this->shouldFailClosed();
             }
 
             $matches = $response->json('matches', []);
@@ -79,7 +79,27 @@ class SafeBrowsingService
         } catch (\Throwable $e) {
             Log::warning('Google Safe Browsing check failed: '.$e->getMessage());
 
-            return true; // Default to safe on exception
+            return ! $this->shouldFailClosed();
         }
+    }
+
+    private function shouldFailClosed(): bool
+    {
+        return (bool) config('filament-short-url.safe_browsing.enabled', false);
+    }
+
+    /**
+     * Cached Safe Browsing lookup for redirect-time checks.
+     */
+    public function isSafeCached(string $url): bool
+    {
+        if (! $this->shouldFailClosed() || ! (bool) config('filament-short-url.safe_browsing.check_on_redirect', true)) {
+            return true;
+        }
+
+        $ttl = (int) config('filament-short-url.safe_browsing.redirect_cache_ttl', 3600);
+        $cacheKey = 'filament-short-url:safe-browsing:'.hash('sha256', $url);
+
+        return cache()->remember($cacheKey, max(60, $ttl), fn (): bool => $this->isSafe($url));
     }
 }

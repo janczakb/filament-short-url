@@ -10,9 +10,11 @@ use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\ShortU
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Tables\ShortUrlsTable;
 use Bjanczak\FilamentShortUrl\FilamentShortUrlPlugin;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Support\LinkUserScope;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ShortUrlResource extends Resource
 {
@@ -86,6 +88,14 @@ class ShortUrlResource extends Resource
         } catch (\Throwable) {
             return static::$navigationSort;
         }
+    }
+
+    /**
+     * @return Builder<ShortUrl>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return LinkUserScope::applyToQuery(parent::getEloquentQuery());
     }
 
     public static function form(Schema $schema): Schema

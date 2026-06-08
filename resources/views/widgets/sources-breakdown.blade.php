@@ -63,7 +63,7 @@
                     <div class="space-y-3.5">
                         @forelse ($visitsByReferer as $referer => $count)
                             @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'referer_host', value: '{{ addslashes($referer) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'referer_host', value: @json($referer) })">
                                 <div class="flex items-center justify-between text-sm">
                                     <span class="font-medium text-gray-700 dark:text-gray-300">{{ $referer }}</span>
                                     <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white">{{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span></span>
@@ -94,7 +94,7 @@
                                 <div class="space-y-3.5 mt-2">
                                     @forelse ($utmSources as $source => $count)
                                         @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_source', value: '{{ addslashes($source) }}' })">
+                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_source', value: @json($source) })">
                                             <span class="font-medium text-gray-700 dark:text-gray-300 truncate mr-2">{{ $source }}</span>
                                             <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white shrink-0">
                                                 {{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span>
@@ -115,7 +115,7 @@
                                 <div class="space-y-3.5 mt-2">
                                     @forelse ($utmMediums as $medium => $count)
                                         @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_medium', value: '{{ addslashes($medium) }}' })">
+                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_medium', value: @json($medium) })">
                                             <span class="font-medium text-gray-700 dark:text-gray-300 truncate mr-2">{{ $medium }}</span>
                                             <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white shrink-0">
                                                 {{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span>
@@ -136,7 +136,7 @@
                                 <div class="space-y-3.5 mt-2">
                                     @forelse ($utmCampaigns as $campaign => $count)
                                         @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_campaign', value: '{{ addslashes($campaign) }}' })">
+                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_campaign', value: @json($campaign) })">
                                             <span class="font-medium text-gray-700 dark:text-gray-300 truncate mr-2">{{ $campaign }}</span>
                                             <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white shrink-0">
                                                 {{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span>
@@ -157,7 +157,7 @@
                                 <div class="space-y-3.5 mt-2">
                                     @forelse ($utmTerms as $term => $count)
                                         @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_term', value: '{{ addslashes($term) }}' })">
+                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_term', value: @json($term) })">
                                             <span class="font-medium text-gray-700 dark:text-gray-300 truncate mr-2">{{ $term }}</span>
                                             <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white shrink-0">
                                                 {{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span>
@@ -178,7 +178,7 @@
                                 <div class="space-y-3.5 mt-2">
                                     @forelse ($utmContents as $content => $count)
                                         @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_content', value: '{{ addslashes($content) }}' })">
+                                        <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'utm_content', value: @json($content) })">
                                             <span class="font-medium text-gray-700 dark:text-gray-300 truncate mr-2">{{ $content }}</span>
                                             <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white shrink-0">
                                                 {{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span>

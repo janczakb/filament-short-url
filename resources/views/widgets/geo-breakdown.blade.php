@@ -44,7 +44,7 @@
                                     $translatedCountry = strtoupper($code);
                                 }
                             @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'country_code', value: '{{ addslashes($code) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'country_code', value: @json($code) })">
                                 <div class="flex items-center justify-between text-sm">
                                     <span class="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
                                         @if ($code)
@@ -76,7 +76,7 @@
                     <div class="space-y-3.5">
                         @forelse ($visitsByCity as $city => $count)
                             @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'city', value: '{{ addslashes($city) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'city', value: @json($city) })">
                                 <div class="flex items-center justify-between text-sm">
                                     <span class="font-medium text-gray-700 dark:text-gray-300">{{ $city }}</span>
                                     <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white">{{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span></span>
@@ -106,7 +106,7 @@
                                 $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; 
                                 $langName = \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlLanguagesWidget::getLanguageTranslation($langCode);
                             @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'browser_language', value: '{{ addslashes($langCode) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'browser_language', value: @json($langCode) })">
                                 <div class="flex items-center justify-between text-sm">
                                     <span class="font-medium text-gray-700 dark:text-gray-300">{{ $langName }} ({{ strtoupper($langCode) }})</span>
                                     <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white">{{ number_format($count) }} <span class="text-gray-400 dark:text-gray-500">({{ $pct }}%)</span></span>

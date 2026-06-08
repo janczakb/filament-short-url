@@ -18,7 +18,7 @@ trait HasTargeting
 
         // Legacy rotation support
         if (is_array($rules) && isset($rules['type']) && $rules['type'] === 'rotation') {
-            return $this->resolveSplitTarget($rules['rotation'] ?? [], $this->destination_url ?? '');
+            return $this->resolveSplitTarget($rules['rotation'] ?? [], $this->destination_url ?? '', $request);
         }
 
         // Map legacy targeting rules format to new format on the fly
@@ -123,7 +123,7 @@ trait HasTargeting
                 if ($ruleMatches) {
                     $destType = $rule['destination_type'] ?? 'single';
                     if ($destType === 'split') {
-                        return $this->resolveSplitTarget($rule['variants'] ?? [], $this->destination_url ?? '');
+                        return $this->resolveSplitTarget($rule['variants'] ?? [], $this->destination_url ?? '', $request);
                     }
 
                     if (! empty($rule['url'])) {
@@ -135,7 +135,7 @@ trait HasTargeting
 
         // Fallback to default destination URL
         if (($this->destination_type ?? 'single') === 'split') {
-            return $this->resolveSplitTarget($this->rotation_variants ?? [], $this->destination_url ?? '');
+            return $this->resolveSplitTarget($this->rotation_variants ?? [], $this->destination_url ?? '', $request);
         }
 
         return $this->destination_url ?? '';
@@ -144,7 +144,7 @@ trait HasTargeting
     /**
      * Resolve destination URL from a split testing configuration.
      */
-    public function resolveSplitTarget(array $variants, string $fallbackUrl): string
+    public function resolveSplitTarget(array $variants, string $fallbackUrl, ?Request $request = null): string
     {
         if (empty($variants)) {
             return $fallbackUrl;
@@ -169,8 +169,9 @@ trait HasTargeting
         $selectedUrl = $selected['url'] ?? $fallbackUrl;
         $selectedLabel = $selected['label'] ?? $selectedUrl;
 
-        // Share the selected variant with the application container so the tracker can access it
-        app()->instance('resolved_ab_variant', $selectedLabel);
+        if ($request !== null) {
+            $request->attributes->set('fsu_resolved_ab_variant', $selectedLabel);
+        }
 
         return $selectedUrl;
     }

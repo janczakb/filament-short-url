@@ -4,10 +4,7 @@ namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\Concerns\HasStatsFilters;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
-use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
 use Filament\Widgets\Widget;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class ShortUrlWorldMapWidget extends Widget
 {
@@ -29,7 +26,7 @@ class ShortUrlWorldMapWidget extends Widget
     }
 
     /**
-     * Build a country_code → visit count map, merging daily stats and today's raw visits.
+     * Build a country_code → visit count map via the shared stats cache layer.
      *
      * @return array<string, int>
      */
@@ -39,45 +36,21 @@ class ShortUrlWorldMapWidget extends Widget
             return [];
         }
 
-        $dateFromClean = $this->dateFrom ? Carbon::parse($this->dateFrom)->toDateString() : null;
-        $dateToClean = $this->dateTo ? Carbon::parse($this->dateTo)->toDateString() : null;
-        $today = Carbon::today()->toDateString();
+        $stats = $this->record->getCachedStats(
+            dateFrom: $this->dateFrom,
+            dateTo: $this->dateTo,
+            filters: $this->filters,
+        );
 
-        $filtersHash = md5(json_encode($this->filters));
-        $cacheTtl = (int) config('filament-short-url.geo_ip.stats_cache_ttl', 300);
-        $cacheKey = "short_url_world_map_{$this->record->id}_".($dateFromClean ?: 'all').'_'.($dateToClean ?: 'all').'_'.$filtersHash;
+        $countries = $stats['visitsByCountry'] ?? [];
 
-        return cache()->remember($cacheKey, $cacheTtl, function () use ($dateFromClean, $dateToClean) {
-            $counts = [];
+        if (! is_array($countries)) {
+            return [];
+        }
 
-            $query = ShortUrlVisit::query()
-                ->select('country_code', DB::raw('COUNT(*) as cnt'))
-                ->where('short_url_id', $this->record->id)
-                ->whereNotNull('country_code')
-                ->where('country_code', '!=', '')
-                ->where('is_bot', false)
-                ->where('is_proxy', false);
+        arsort($countries);
 
-            if ($dateFromClean) {
-                $query->where('visited_at', '>=', $dateFromClean.' 00:00:00');
-            }
-            if ($dateToClean) {
-                $query->where('visited_at', '<=', $dateToClean.' 23:59:59');
-            }
-
-            $this->record->applyStatsFilters($query, $this->filters);
-
-            foreach ($query->groupBy('country_code')->get() as $row) {
-                $code = strtoupper(trim($row->country_code));
-                if ($code) {
-                    $counts[$code] = (int) $row->cnt;
-                }
-            }
-
-            arsort($counts);
-
-            return $counts;
-        });
+        return $countries;
     }
 
     /**
@@ -89,21 +62,27 @@ class ShortUrlWorldMapWidget extends Widget
         $max = max(1, ...array_values($countryData) ?: [1]);
         $total = array_sum($countryData);
 
-        // Normalise to 0–100 for CSS opacity/intensity
         $normalized = [];
         foreach ($countryData as $code => $count) {
             $normalized[$code] = round(($count / $max) * 100);
         }
 
-        // Load and clean up raw SVG map on the server-side where paths are reliable
         $svgPath = dirname(__FILE__, 6).'/resources/views/widgets/world-map.svg';
-        $svgContent = '';
-        if (file_exists($svgPath)) {
-            $svgContent = file_get_contents($svgPath);
-            // Remove XML declaration and DOCTYPE tags
-            $svgContent = preg_replace('/<\?xml[^>]*\?>/i', '', $svgContent);
-            $svgContent = preg_replace('/<!DOCTYPE[^>]*>/i', '', $svgContent);
-        }
+        $svgContent = cache()->remember('filament-short-url:world-map-svg', 86400, function () use ($svgPath): string {
+            if (! file_exists($svgPath)) {
+                return '';
+            }
+
+            $content = file_get_contents($svgPath);
+            if (! is_string($content)) {
+                return '';
+            }
+
+            $content = preg_replace('/<\?xml[^>]*\?>/i', '', $content) ?? $content;
+            $content = preg_replace('/<!DOCTYPE[^>]*>/i', '', $content) ?? $content;
+
+            return $content;
+        });
 
         return [
             'countryData' => $countryData,

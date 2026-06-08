@@ -21,7 +21,7 @@ class AuthenticateShortUrlApi
     {
         if (! config('filament-short-url.api_enabled', false)) {
             return response()->json([
-                'error' => 'The Developer API is currently disabled. Enable it in Short URL Settings → API & Webhooks.',
+                'error' => __('filament-short-url::default.api_disabled'),
             ], 503);
         }
 
@@ -35,7 +35,7 @@ class AuthenticateShortUrlApi
 
         if (empty($apiKey)) {
             return response()->json([
-                'error' => 'Unauthorized. API Key is missing.',
+                'error' => __('filament-short-url::default.api_key_missing'),
             ], 401);
         }
 
@@ -50,35 +50,32 @@ class AuthenticateShortUrlApi
                 continue;
             }
 
-            // Check hashed key (new format) or fall back to plaintext key (legacy format)
+            // Accept only hashed key format.
             $storedHash = $keyObj['hashed_key'] ?? null;
-            if ($storedHash) {
-                if (hash_equals($storedHash, $hashedInput)) {
-                    $valid = true;
-                    $matchedKey = $keyObj;
-                    break;
-                }
-            } else {
-                $storedPlain = $keyObj['key'] ?? '';
-                if ($storedPlain !== '' && hash_equals($storedPlain, $apiKey)) {
-                    $valid = true;
-                    $matchedKey = $keyObj;
-                    break;
-                }
+            if ($storedHash && hash_equals($storedHash, $hashedInput)) {
+                $valid = true;
+                $matchedKey = $keyObj;
+                break;
             }
         }
 
         if (! $valid || ! $matchedKey) {
             return response()->json([
-                'error' => 'Unauthorized. Invalid or inactive API Key.',
+                'error' => __('filament-short-url::default.api_key_invalid'),
             ], 401);
+        }
+
+        if ((bool) config('filament-short-url.scope_links_to_user', true) && empty($matchedKey['owner_user_id'])) {
+            return response()->json([
+                'error' => __('filament-short-url::default.api_key_owner_required'),
+            ], 403);
         }
 
         // 1. API Scope Authorization (backward compatible with read-write)
         $scope = $matchedKey['scope'] ?? 'links:read-write';
         if ($scope === 'links:read-only' && ! $request->isMethod('GET')) {
             return response()->json([
-                'error' => 'Forbidden. This API key has read-only permissions.',
+                'error' => __('filament-short-url::default.api_key_read_only'),
             ], 403);
         }
 
@@ -92,7 +89,7 @@ class AuthenticateShortUrlApi
                 $retryAfter = RateLimiter::availableIn($limiterKey);
 
                 return response()->json([
-                    'error' => 'Too many requests. API key rate limit exceeded.',
+                    'error' => __('filament-short-url::default.api_rate_limit_exceeded'),
                 ], 429, [
                     'Retry-After' => $retryAfter,
                 ]);
@@ -100,6 +97,8 @@ class AuthenticateShortUrlApi
 
             RateLimiter::hit($limiterKey, 60);
         }
+
+        $request->attributes->set('fsu_api_key', $matchedKey);
 
         return $next($request);
     }

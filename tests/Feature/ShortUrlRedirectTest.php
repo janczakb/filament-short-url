@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ViewShortUrlStats;
 use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
 use Bjanczak\FilamentShortUrl\Jobs\TrackShortUrlVisitJob;
@@ -11,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -214,6 +216,9 @@ it('resolves country from edge CDN headers offline', function () {
 });
 
 it('caches stats page calculations', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
     $shortUrl = createShortUrl(['url_key' => 'cachestats']);
 
     $page = new ViewShortUrlStats;
@@ -850,6 +855,11 @@ it('dispatches limit_reached webhook when link reaches its click limit', functio
     Queue::fake([SendWebhookJob::class]);
     cache()->forget('filament-short-url:settings');
 
+    config([
+        'filament-short-url.webhook_events' => ['limit_reached', 'visited'],
+        'filament-short-url.webhook_signing_required' => false,
+    ]);
+
     $shortUrl = createShortUrl([
         'url_key' => 'limit-reach-webhook',
         'max_visits' => 1,
@@ -871,6 +881,11 @@ it('dispatches limit_reached webhook when link reaches its click limit', functio
 it('dispatches expired webhook when user attempts to visit an expired link', function () {
     Queue::fake([SendWebhookJob::class]);
     cache()->forget('filament-short-url:settings');
+
+    config([
+        'filament-short-url.webhook_events' => ['expired'],
+        'filament-short-url.webhook_signing_required' => false,
+    ]);
 
     $shortUrl = createShortUrl([
         'url_key' => 'expired-webhook-test',
@@ -913,7 +928,7 @@ it('serves cloaked iframe redirect page for users', function () {
 
     $this->get('/s/cloaked1')
         ->assertStatus(200)
-        ->assertSee('<iframe src="https://example.com"')
+        ->assertSee('<iframe src="https://example.com"', false)
         ->assertSee('noindex, nofollow');
 });
 
@@ -952,4 +967,67 @@ it('serves og tags to bot user agent', function () {
     ])
         ->assertStatus(200)
         ->assertSee('My Branded Shortlink');
+});
+
+it('redirects bots without custom og metadata', function () {
+    createShortUrl([
+        'url_key' => 'plainbot',
+        'track_visits' => false,
+    ]);
+
+    $this->get('/s/plainbot', [
+        'User-Agent' => 'facebookexternalhit/1.1',
+    ])->assertRedirect('https://example.com');
+});
+
+it('does not send redirect instructions to bots with custom og metadata', function () {
+    createShortUrl([
+        'url_key' => 'ogbot2',
+        'og_title' => 'Preview Title',
+        'track_visits' => false,
+    ]);
+
+    $response = $this->get('/s/ogbot2', [
+        'User-Agent' => 'facebookexternalhit/1.1',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertSee('Preview Title')
+        ->assertDontSee('http-equiv="refresh"', false)
+        ->assertDontSee('window.location.replace', false);
+});
+
+it('adds x-robots-tag on redirects when search indexing is disabled', function () {
+    createShortUrl([
+        'url_key' => 'noindex1',
+        'do_index' => false,
+        'track_visits' => false,
+    ]);
+
+    $this->get('/s/noindex1')
+        ->assertRedirect('https://example.com')
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+});
+
+it('serves enhanced og metadata for bots', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('short-urls/og/test.webp', 'fake');
+
+    createShortUrl([
+        'url_key' => 'ogrich',
+        'og_title' => 'Rich Preview',
+        'og_description' => 'Rich description',
+        'og_image' => 'short-urls/og/test.webp',
+        'do_index' => true,
+        'track_visits' => false,
+    ]);
+
+    $this->get('/s/ogrich', [
+        'User-Agent' => 'facebookexternalhit/1.1',
+    ])
+        ->assertStatus(200)
+        ->assertSee('property="og:site_name"', false)
+        ->assertSee('property="og:image:width"', false)
+        ->assertSee('property="og:image:height"', false)
+        ->assertSee('rel="canonical"', false);
 });

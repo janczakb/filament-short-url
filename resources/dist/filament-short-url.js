@@ -488,7 +488,7 @@ document.addEventListener('alpine:init', () => {
                 domain = this.domains[domainId];
             }
 
-            if (this.routePrefix) {
+            if (this.routePrefix && !domainId) {
                 return `${this.protocol}://${domain}/${this.routePrefix}/${key}`;
             }
 

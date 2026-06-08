@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-label="Webhooks and HMAC">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="45%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#164e63"/>
+    </linearGradient>
+    <radialGradient id="orb1" cx="20%" cy="15%" r="55%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="85%" cy="25%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb3" cx="50%" cy="90%" r="45%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="blur80" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="80"/>
+    </filter>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#020617" flood-opacity="0.55"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#e2e8f0" fill-opacity="0.9"/>
+    </marker>
+  </defs>
+  <rect width="960" height="500" fill="url(#bg)"/>
+  <ellipse cx="180" cy="80" rx="220" ry="160" fill="url(#orb1)" filter="url(#blur80)"/>
+  <ellipse cx="820" cy="120" rx="200" ry="150" fill="url(#orb2)" filter="url(#blur80)"/>
+  <ellipse cx="480" cy="440" rx="260" ry="180" fill="url(#orb3)" filter="url(#blur80)"/>
+  <text x="480" y="44" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#f8fafc" letter-spacing="-0.6">Webhooks and HMAC signing</text>
+  <text x="480" y="72" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="14" fill="#cbd5e1" fill-opacity="0.85">Global events, per-link URL override, SSRF-safe dispatch</text>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="96" width="360" height="140" rx="22" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="60" y="96" width="360" height="140" rx="22" fill="url(#shine)" pointer-events="none"/>
+    <rect x="60" y="96" width="360" height="3" rx="1.5" fill="#c084fc" fill-opacity="0.85"/>
+    <text x="240" y="128" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="15" fill="#e2e8f0" font-weight="700">Global webhook</text>
+    <text x="240" y="152" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Settings: URL, enabled, events</text>
+    <text x="240" y="174" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#e2e8f0">visited | created | expired | limit</text>
+    <text x="240" y="196" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#ddd6fe">Signing secret required (v5.2)</text>
+    <rect x="120" y="208" width="240" height="22" rx="11" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.35"/><text x="240.0" y="223.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9">Events are global, not per-link</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="540" y="96" width="360" height="140" rx="22" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="540" y="96" width="360" height="140" rx="22" fill="url(#shine)" pointer-events="none"/>
+    <rect x="540" y="96" width="360" height="3" rx="1.5" fill="#38bdf8" fill-opacity="0.85"/>
+    <text x="720" y="128" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="15" fill="#e2e8f0" font-weight="700">Per-link webhook URL</text>
+    <text x="720" y="152" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">short_urls.webhook_url override</text>
+    <text x="720" y="174" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#e2e8f0">SSRF re-check in SendWebhookJob</text>
+    <text x="720" y="196" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#e2e8f0">allow_redirects=false</text>
+  </g><line x1="480" y1="236" x2="480" y2="262" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="200" y="262" width="560" height="54" rx="18" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="200" y="262" width="560" height="54" rx="18" fill="url(#shine)" pointer-events="none"/>
+    <rect x="200" y="262" width="560" height="3" rx="1.5" fill="#34d399" fill-opacity="0.85"/>
+    <text x="480" y="286" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="14" fill="#e2e8f0" font-weight="700">SendWebhookJob</text>
+    <text x="480" y="304" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#94a3b8">Header: X-Short-Url-Signature sha256=... (HMAC body)</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="80" y="336" width="800" height="120" rx="24" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="80" y="336" width="800" height="120" rx="24" fill="url(#shine)" pointer-events="none"/>
+    <rect x="80" y="336" width="800" height="3" rx="1.5" fill="#fb923c" fill-opacity="0.85"/>
+    <text x="480" y="368" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="15" fill="#fed7aa" font-weight="700">Audit fixes (v5.2)</text>
+    <text x="480" y="394" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0">Before: optional secret allowed unsigned webhooks</text>
+    <text x="480" y="418" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0">After: Settings rejects enable without secret</text>
+    <text x="480" y="442" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Safe Browsing on save + redirect | lock_url_key server-side</text>
+  </g>
+</svg>

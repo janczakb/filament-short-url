@@ -1,11 +1,10 @@
 @php
     $matchedAppId = \Bjanczak\FilamentShortUrl\Services\AppLinkingEngine::matchApp($destinationUrl);
     $apps = \Bjanczak\FilamentShortUrl\Services\AppLinkingEngine::getSupportedApps();
+    $appCount = count($apps);
 @endphp
 
-<div class="mt-4 space-y-3">
-
-    {{-- Matched App Banner --}}
+<div class="app-linking-preview">
     @if ($matchedAppId && isset($apps[$matchedAppId]))
         @php
             $matchedApp = $apps[$matchedAppId];
@@ -13,106 +12,100 @@
             $matchedFavicon = "https://icons.duckduckgo.com/ip2/{$matchedDomain}.ico";
             $deepLink = \Bjanczak\FilamentShortUrl\Services\AppLinkingEngine::convertToScheme($destinationUrl, $matchedAppId);
         @endphp
-        <div class="p-3.5 rounded-xl bg-emerald-500/8 border border-emerald-500/40 dark:border-emerald-500/30 dark:bg-emerald-500/5">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-9 h-9 rounded-[10px] bg-white dark:bg-neutral-800 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center shadow-sm flex-shrink-0">
-                    <img src="{{ $matchedFavicon }}" alt="{{ $matchedApp['name'] }}" class="w-5 h-5 object-contain" onerror="this.src='https://icons.duckduckgo.com/ip2/google.com.ico'">
+
+        <div class="app-linking-status app-linking-status--matched">
+            <div class="app-linking-status-main">
+                <div class="app-linking-status-icon app-linking-status-icon--matched">
+                    <img
+                        src="{{ $matchedFavicon }}"
+                        alt="{{ $matchedApp['name'] }}"
+                        loading="lazy"
+                        onerror="this.src='https://icons.duckduckgo.com/ip2/google.com.ico'"
+                    >
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate">{{ $matchedApp['name'] }}</span>
-                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold uppercase tracking-wider shrink-0">
-                            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+
+                <div class="app-linking-status-copy">
+                    <div class="app-linking-status-title-row">
+                        <p class="app-linking-status-title">{{ $matchedApp['name'] }}</p>
+                        <span class="app-linking-status-badge app-linking-status-badge--success">
                             {{ __('filament-short-url::default.app_linking_auto_open') }}
                         </span>
                     </div>
-                    <p class="text-[10px] text-emerald-600/80 dark:text-emerald-500 mt-0.5 leading-snug">
+                    <p class="app-linking-status-desc">
                         {!! __('filament-short-url::default.app_linking_matched_description', ['app' => e($matchedApp['name'])]) !!}
                     </p>
                 </div>
             </div>
-            <div class="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-2.5 py-1.5 break-all select-all border border-emerald-100 dark:border-emerald-900/30">
-                {{ $deepLink }}
+
+            <div class="app-linking-deep-link">
+                <span class="app-linking-deep-link-label">{{ __('filament-short-url::default.app_linking_deep_link_label') }}</span>
+                <code class="app-linking-deep-link-value">{{ $deepLink }}</code>
             </div>
         </div>
     @else
-        {{-- Standard Web Redirect notice --}}
-        <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-neutral-100/80 dark:bg-neutral-800/30 border border-neutral-200 dark:border-neutral-700/50">
-            <div class="w-7 h-7 rounded-lg bg-white dark:bg-neutral-800 flex items-center justify-center flex-shrink-0 border border-neutral-200 dark:border-neutral-700">
-                <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+        <div class="app-linking-status app-linking-status--browser">
+            <div class="app-linking-status-icon app-linking-status-icon--browser">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-2.247m0 0A8.966 8.966 0 0 1 3 12c0-1.264.26-2.467.732-3.553" />
                 </svg>
             </div>
-            <span class="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
-                {{ __('filament-short-url::default.app_linking_standard_redirect') }}
-            </span>
+
+            <div class="app-linking-status-copy">
+                <p class="app-linking-status-title">{{ __('filament-short-url::default.app_linking_standard_redirect') }}</p>
+            </div>
         </div>
     @endif
 
-    {{-- Supported Apps Section --}}
-    <div class="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50 overflow-hidden">
+    <div class="app-linking-catalog">
+        <div class="app-linking-catalog-header">
+            <div class="app-linking-catalog-heading">
+                <p class="app-linking-catalog-title">{{ __('filament-short-url::default.app_linking_supported_apps') }}</p>
+                <p class="app-linking-catalog-subtitle">
+                    {{ __('filament-short-url::default.app_linking_preconfigured_count', ['count' => $appCount]) }}
+                </p>
+            </div>
 
-        {{-- Header --}}
-        <div class="flex items-center justify-between px-3 py-2.5 border-b border-neutral-100 dark:border-neutral-800">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                {{ __('filament-short-url::default.app_linking_supported_apps') }}
-            </span>
-            <div class="flex items-center gap-1">
-                <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 tracking-wide">iOS</span>
-                <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 tracking-wide">Android</span>
+            <div class="app-linking-os-badges" aria-label="{{ __('filament-short-url::default.app_linking_supported_os') }}">
+                <span class="app-linking-os-badge">iOS</span>
+                <span class="app-linking-os-badge">Android</span>
             </div>
         </div>
 
-        {{-- iOS-style App Grid --}}
-        <div class="p-2 grid grid-cols-4 gap-1">
+        <div class="app-linking-grid">
             @foreach ($apps as $appId => $app)
                 @php
                     $isMatched = ($appId === $matchedAppId);
                     $appDomain = explode('/', $app['domains'][0])[0];
                     $appFavicon = "https://icons.duckduckgo.com/ip2/{$appDomain}.ico";
                 @endphp
-                <div class="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-colors relative
-                    {{ $isMatched
-                        ? 'bg-emerald-50 dark:bg-emerald-500/10'
-                        : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50' }}">
-                    {{-- App Icon --}}
-                    <div class="w-10 h-10 rounded-[10px] flex items-center justify-center
-                        {{ $isMatched
-                            ? 'bg-white dark:bg-neutral-800 shadow-sm ring-1 ring-emerald-400/30'
-                            : 'bg-neutral-100 dark:bg-neutral-800' }}">
+
+                <div @class([
+                    'app-linking-app',
+                    'app-linking-app--matched' => $isMatched,
+                ])>
+                    <div class="app-linking-app-icon-wrap">
                         <img
                             src="{{ $appFavicon }}"
-                            alt="{{ $app['name'] }}"
-                            class="w-6 h-6 object-contain"
+                            alt=""
+                            class="app-linking-app-icon"
+                            loading="lazy"
                             onerror="this.src='https://icons.duckduckgo.com/ip2/google.com.ico'"
                         >
+                        @if ($isMatched)
+                            <span class="app-linking-app-check" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        @endif
                     </div>
-                    {{-- App Name --}}
-                    <span class="text-[9px] font-medium text-center leading-tight
-                        {{ $isMatched
-                            ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
-                            : 'text-neutral-500 dark:text-neutral-400' }}"
-                        style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;">
-                        {{ $app['name'] }}
-                    </span>
-                    {{-- Matched checkmark badge --}}
-                    @if ($isMatched)
-                        <span class="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
-                            <svg class="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        </span>
-                    @endif
+                    <span class="app-linking-app-name">{{ $app['name'] }}</span>
                 </div>
             @endforeach
         </div>
 
-        {{-- Footer hint --}}
-        <div class="px-3 py-2 border-t border-neutral-100 dark:border-neutral-800">
-            <p class="text-[10px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
-                {{ __('filament-short-url::default.app_linking_supported_apps_helper') }}
-            </p>
-        </div>
+        <p class="app-linking-footnote">
+            {{ __('filament-short-url::default.app_linking_supported_apps_helper') }}
+        </p>
     </div>
 </div>

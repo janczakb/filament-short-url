@@ -90,7 +90,7 @@ it('returns correct short URL link string based on custom domain association', f
     config(['app.url' => 'https://maindomain.com']);
     config(['filament-short-url.route_prefix' => 's']);
 
-    expect($shortUrl->getShortUrl())->toBe('https://links.acme.com/s/promo');
+    expect($shortUrl->getShortUrl())->toBe('https://links.acme.com/promo');
     expect($standardUrl->getShortUrl())->toBe('https://maindomain.com/s/stdkey');
 });
 

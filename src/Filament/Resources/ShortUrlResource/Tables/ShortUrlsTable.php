@@ -3,7 +3,9 @@
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Tables;
 
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource;
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Support\PasswordOpenGraphGuard;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
+use Bjanczak\FilamentShortUrl\Support\LockedUrlKeyGuard;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -12,6 +14,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -84,6 +87,11 @@ class ShortUrlsTable
                         ->stickyModalHeader()
                         ->modalCancelAction(false)
                         ->extraModalWindowAttributes(['class' => 'update-link-modal modal-fsl'])
+                        ->mutateRecordDataUsing(fn (array $data): array => PasswordOpenGraphGuard::sanitizeRecordDataForFill($data))
+                        ->mutateFormDataUsing(fn (array $data, ShortUrl $record): array => LockedUrlKeyGuard::sanitizeSaveData(
+                            PasswordOpenGraphGuard::sanitizeSaveData($data),
+                            $record,
+                        ))
                         ->modalFooterActions(static fn (EditAction $action): array => [
                             Action::make('save_changes')
                                 ->label(__('filament-actions::edit.single.modal.actions.save.label'))
@@ -111,6 +119,10 @@ class ShortUrlsTable
                                     $record = $action->getRecord();
                                     $livewire = $action->getLivewire();
                                     $state = $livewire->getMountedTableActionForm()->getState();
+                                    $state = LockedUrlKeyGuard::sanitizeSaveData(
+                                        PasswordOpenGraphGuard::sanitizeSaveData($state),
+                                        $record,
+                                    );
 
                                     $action->process(function () use ($record, $state) {
                                         $record->update($state);
@@ -157,6 +169,61 @@ class ShortUrlsTable
                         ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_stats').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">S</span></div>'))
                         ->icon('heroicon-o-chart-bar')
                         ->url(fn (ShortUrl $record): string => ShortUrlResource::getUrl('stats', ['record' => $record])),
+
+                    Action::make('publicStats')
+                        ->label(fn () => new HtmlString('<div class="flex items-center justify-between w-full min-w-[140px] text-left"><span>'.__('filament-short-url::default.action_public_stats').'</span><span class="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded px-1.5 py-0.5 ml-auto font-mono">P</span></div>'))
+                        ->icon('heroicon-o-globe-alt')
+                        ->modalHeading(__('filament-short-url::default.public_stats_modal_title'))
+                        ->modalDescription(__('filament-short-url::default.public_stats_modal_description'))
+                        ->modalWidth('lg')
+                        ->modalSubmitActionLabel(__('filament-short-url::default.public_stats_save'))
+                        ->fillForm(fn (ShortUrl $record): array => [
+                            'public_stats_enabled' => (bool) $record->public_stats_enabled,
+                            'public_stats_password' => '',
+                        ])
+                        ->form([
+                            Forms\Components\Toggle::make('public_stats_enabled')
+                                ->label(__('filament-short-url::default.public_stats_enabled_label'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('public_stats_password')
+                                ->label(__('filament-short-url::default.public_stats_password_label'))
+                                ->password()
+                                ->revealable()
+                                ->maxLength(255)
+                                ->visible(fn (Get $get): bool => (bool) $get('public_stats_enabled'))
+                                ->helperText(__('filament-short-url::default.public_stats_password_helper')),
+
+                            Forms\Components\Placeholder::make('public_stats_disabled_hint')
+                                ->hiddenLabel()
+                                ->visible(fn (Get $get): bool => ! (bool) $get('public_stats_enabled'))
+                                ->content(__('filament-short-url::default.public_stats_disabled_hint')),
+
+                            Forms\Components\Placeholder::make('public_stats_url')
+                                ->label(__('filament-short-url::default.public_stats_link_label'))
+                                ->visible(fn (Get $get): bool => (bool) $get('public_stats_enabled'))
+                                ->content(fn (ShortUrl $record) => view('filament-short-url::table.public-stats-url-field', ['record' => $record])),
+                        ])
+                        ->action(function (ShortUrl $record, array $data, Action $action): void {
+                            $payload = [
+                                'public_stats_enabled' => (bool) $data['public_stats_enabled'],
+                            ];
+
+                            if (! $payload['public_stats_enabled']) {
+                                $payload['public_stats_password'] = null;
+                            } elseif (filled($data['public_stats_password'] ?? null)) {
+                                $payload['public_stats_password'] = $data['public_stats_password'];
+                            }
+
+                            $record->update($payload);
+
+                            $action->successNotificationTitle(
+                                $payload['public_stats_enabled']
+                                    ? __('filament-short-url::default.public_stats_saved_enabled')
+                                    : __('filament-short-url::default.public_stats_saved_disabled')
+                            );
+                            $action->success();
+                        }),
 
                     ActionGroup::make([
                         Action::make('move')

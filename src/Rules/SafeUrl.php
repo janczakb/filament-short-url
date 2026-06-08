@@ -29,6 +29,10 @@ class SafeUrl implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        if (empty($value)) {
+            return;
+        }
+
         if (! $this->safeBrowsing->isSafe($value)) {
             $fail(__('filament-short-url::default.safe_browsing_error'));
         }

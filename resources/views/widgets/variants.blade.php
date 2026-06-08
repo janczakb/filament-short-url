@@ -18,7 +18,7 @@
                         }
                     }
                 @endphp
-                <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'selected_variant', value: '{{ addslashes($variant) }}' })">
+                <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'selected_variant', value: @json($variant) })">
                     <div class="flex items-center justify-between text-sm">
                         <span class="font-medium text-gray-700 dark:text-gray-300">{{ $variant }}</span>
                         <span class="font-mono text-xs font-semibold text-gray-900 dark:text-white">

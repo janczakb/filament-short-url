@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" role="img" aria-label="Redirect lifecycle">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="45%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#164e63"/>
+    </linearGradient>
+    <radialGradient id="orb1" cx="20%" cy="15%" r="55%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="85%" cy="25%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb3" cx="50%" cy="90%" r="45%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="blur80" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="80"/>
+    </filter>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#020617" flood-opacity="0.55"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#e2e8f0" fill-opacity="0.9"/>
+    </marker>
+  </defs>
+  <rect width="960" height="680" fill="url(#bg)"/>
+  <ellipse cx="180" cy="80" rx="220" ry="160" fill="url(#orb1)" filter="url(#blur80)"/>
+  <ellipse cx="820" cy="120" rx="200" ry="150" fill="url(#orb2)" filter="url(#blur80)"/>
+  <ellipse cx="480" cy="600" rx="260" ry="180" fill="url(#orb3)" filter="url(#blur80)"/>
+  <text x="480" y="44" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#f8fafc" letter-spacing="-0.6">Redirect lifecycle</text>
+  <text x="480" y="72" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="14" fill="#cbd5e1" fill-opacity="0.85">GET /s/[key] from click to destination</text>
+
+  <g filter="url(#shadow)">
+    <rect x="280" y="96" width="400" height="54" rx="18" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="280" y="96" width="400" height="54" rx="18" fill="url(#shine)" pointer-events="none"/>
+    <rect x="280" y="96" width="400" height="3" rx="1.5" fill="#818cf8" fill-opacity="0.85"/>
+    <text x="480" y="120" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="600">Visitor click</text>
+    <text x="480" y="138" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Start of request</text>
+  </g><line x1="480" y1="150" x2="480" y2="168" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="280" y="168" width="400" height="54" rx="18" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="280" y="168" width="400" height="54" rx="18" fill="url(#shine)" pointer-events="none"/>
+    <rect x="280" y="168" width="400" height="3" rx="1.5" fill="#fbbf24" fill-opacity="0.85"/>
+    <text x="480" y="192" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="600">Throttle only</text>
+    <text x="480" y="210" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">No web middleware, no session cookie</text>
+  </g><line x1="480" y1="222" x2="480" y2="240" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="280" y="240" width="400" height="54" rx="18" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="280" y="240" width="400" height="54" rx="18" fill="url(#shine)" pointer-events="none"/>
+    <rect x="280" y="240" width="400" height="3" rx="1.5" fill="#a78bfa" fill-opacity="0.85"/>
+    <text x="480" y="264" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="600">findByKey(host)</text>
+    <text x="480" y="282" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">Cache hit or single DB resolve</text>
+  </g><line x1="480" y1="294" x2="480" y2="312" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="280" y="312" width="400" height="54" rx="18" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="280" y="312" width="400" height="54" rx="18" fill="url(#shine)" pointer-events="none"/>
+    <rect x="280" y="312" width="400" height="3" rx="1.5" fill="#f87171" fill-opacity="0.85"/>
+    <text x="480" y="336" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="600">Safe Browsing cache</text>
+    <text x="480" y="354" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">isSafeCached(destination) when enabled</text>
+  </g><line x1="480" y1="366" x2="480" y2="384" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="280" y="384" width="400" height="54" rx="18" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="280" y="384" width="400" height="54" rx="18" fill="url(#shine)" pointer-events="none"/>
+    <rect x="280" y="384" width="400" height="3" rx="1.5" fill="#34d399" fill-opacity="0.85"/>
+    <text x="480" y="408" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="600">max_visits lock</text>
+    <text x="480" y="426" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#94a3b8">lockForUpdate plus isActive()</text>
+  </g><line x1="480" y1="456" x2="480" y2="476" stroke="#e2e8f0" stroke-opacity="0.35" stroke-width="2" marker-end="url(#arrow)"/><polygon points="480,476 410,514 550,514" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.35"/><text x="480" y="504" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0" font-weight="600">Response path</text>
+  <g filter="url(#shadow)">
+    <rect x="48" y="528" width="272" height="88" rx="20" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="48" y="528" width="272" height="88" rx="20" fill="url(#shine)" pointer-events="none"/>
+    <rect x="48" y="528" width="272" height="3" rx="1.5" fill="#fb923c" fill-opacity="0.85"/>
+    <text x="184" y="556" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="700">Password</text>
+    <text x="184" y="576" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">/s-auth/[key] + web</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="344" y="528" width="272" height="88" rx="20" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="344" y="528" width="272" height="88" rx="20" fill="url(#shine)" pointer-events="none"/>
+    <rect x="344" y="528" width="272" height="3" rx="1.5" fill="#facc15" fill-opacity="0.85"/>
+    <text x="480" y="556" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="700">Interstitial</text>
+    <text x="480" y="576" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">warning, pixels, cloak, OG</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="640" y="528" width="272" height="88" rx="20" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="640" y="528" width="272" height="88" rx="20" fill="url(#shine)" pointer-events="none"/>
+    <rect x="640" y="528" width="272" height="3" rx="1.5" fill="#4ade80" fill-opacity="0.85"/>
+    <text x="776" y="556" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" fill="#e2e8f0" font-weight="700">Simple 302</text>
+    <text x="776" y="576" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#94a3b8">TrackJob then redirect</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="120" y="636" width="720" height="48" rx="16" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="120" y="636" width="720" height="48" rx="16" fill="url(#shine)" pointer-events="none"/>
+    <text x="480" y="664" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#cbd5e1">TrackShortUrlVisitJob: GeoIP, VPN, visit, webhook, GA4 (sync default or async queue)</text>
+  </g>
+</svg>

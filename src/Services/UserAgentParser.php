@@ -18,6 +18,10 @@ namespace Bjanczak\FilamentShortUrl\Services;
  */
 class UserAgentParser
 {
+    public function __construct(
+        private readonly BotDetector $botDetector,
+    ) {}
+
     /**
      * @return array{
      *     browser: string|null,
@@ -157,14 +161,9 @@ class UserAgentParser
 
     private function parseDeviceType(string $ua): string
     {
-        // Robots first
-        $robots = ['Googlebot', 'bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebookexternalhit', 'Twitterbot', 'Applebot', 'linkedinbot', 'slackbot', 'discordbot', 'telegrambot', 'whatsapp', 'curl', 'python-requests', 'Go-http-client'];
-        foreach ($robots as $robot) {
-            if (stripos($ua, $robot) !== false) {
-                return 'robot';
-            }
+        if ($this->botDetector->isBotUserAgent($ua)) {
+            return 'robot';
         }
-
         // Tablets before phones — iPad + Android tablets
         if (
             stripos($ua, 'iPad') !== false ||

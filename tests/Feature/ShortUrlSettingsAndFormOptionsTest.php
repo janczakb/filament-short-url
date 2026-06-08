@@ -8,9 +8,11 @@
  * Tests live inside the plugin so they ship with the package.
  */
 
+use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Fields\QrDesignerSidebarField;
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
+use Filament\Forms\Components\Slider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +64,7 @@ describe('settings manager', function () {
             ->and($mgr->get('rate_limiting_enabled'))->toBeFalse()
             ->and($mgr->get('pruning_enabled'))->toBeTrue()
             ->and($mgr->get('pruning_retention_days'))->toBe(90)
-            ->and($mgr->get('trust_cdn_headers'))->toBeFalse()
+            ->and($mgr->get('trust_cdn_headers'))->toBeTrue()
             ->and($mgr->get('api_enabled'))->toBeFalse()
             ->and($mgr->get('global_webhook_enabled'))->toBeFalse()
             ->and($mgr->get('vpn_detection_enabled'))->toBeFalse();
@@ -826,7 +828,7 @@ describe('settings option: counter_buffering', function () {
 
         // DB should not have changed yet (buffered)
         $link->refresh();
-        expect($link->total_visits)->toBe($originalVisits);
+        expect((int) $link->getAttributes()['total_visits'])->toBe($originalVisits);
 
         // Cache buffer should have count=1
         $prefix = config('filament-short-url.counter_buffering.cache_key_prefix', 'filament-short-url:buffer:');
@@ -1262,11 +1264,11 @@ describe('performance: redirect hot path', function () {
 
 describe('qr designer action options and fields', function () {
     it('has correct sliders and configuration', function () {
-        $action = \Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Fields\QrDesignerSidebarField::buildDesignQrAction();
+        $action = QrDesignerSidebarField::buildDesignQrAction();
 
         expect($action)->not->toBeNull();
 
-        $ref = new \ReflectionProperty($action, 'schema');
+        $ref = new ReflectionProperty($action, 'schema');
         $ref->setAccessible(true);
         $formSchema = $ref->getValue($action) ?: [];
         $sliders = [];
@@ -1274,7 +1276,7 @@ describe('qr designer action options and fields', function () {
 
         $searchComponents = function ($components) use (&$sliders, &$hasHideBackground, &$searchComponents) {
             foreach ($components as $component) {
-                if ($component instanceof \Filament\Forms\Components\Slider) {
+                if ($component instanceof Slider) {
                     $sliders[$component->getName()] = $component;
                 }
                 if (method_exists($component, 'getName') && $component->getName() === 'logo_hide_background') {
@@ -1302,4 +1304,3 @@ describe('qr designer action options and fields', function () {
             ->and($logoMarginSlider->getStep())->toBe(1);
     });
 });
-

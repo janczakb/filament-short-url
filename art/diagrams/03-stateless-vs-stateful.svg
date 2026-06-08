@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" role="img" aria-label="Stateless vs stateful">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="45%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#164e63"/>
+    </linearGradient>
+    <radialGradient id="orb1" cx="20%" cy="15%" r="55%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="85%" cy="25%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb3" cx="50%" cy="90%" r="45%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="blur80" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="80"/>
+    </filter>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#020617" flood-opacity="0.55"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#e2e8f0" fill-opacity="0.9"/>
+    </marker>
+  </defs>
+  <rect width="960" height="460" fill="url(#bg)"/>
+  <ellipse cx="180" cy="80" rx="220" ry="160" fill="url(#orb1)" filter="url(#blur80)"/>
+  <ellipse cx="820" cy="120" rx="200" ry="150" fill="url(#orb2)" filter="url(#blur80)"/>
+  <ellipse cx="480" cy="400" rx="260" ry="180" fill="url(#orb3)" filter="url(#blur80)"/>
+  <text x="480" y="44" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#f8fafc" letter-spacing="-0.6">Stateless vs stateful routes</text>
+  <text x="480" y="72" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="14" fill="#cbd5e1" fill-opacity="0.85">Lean clicks vs session-backed password unlock</text>
+
+  <g filter="url(#shadow)">
+    <rect x="48" y="96" width="416" height="280" rx="28" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="48" y="96" width="416" height="280" rx="28" fill="url(#shine)" pointer-events="none"/>
+    <rect x="48" y="96" width="416" height="3" rx="1.5" fill="#34d399" fill-opacity="0.85"/>
+    <text x="76" y="132" text-anchor="start" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="17" fill="#e2e8f0" font-weight="700">Every redirect click</text>
+    <rect x="76" y="148" width="88" height="22" rx="11" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.35"/><text x="120.0" y="163.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9">STATELESS</text>
+    <text x="76" y="188" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#e2e8f0">GET /s/[key]</text>
+    <text x="76" y="210" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#e2e8f0">GET /[key] on custom domain</text>
+    <text x="76" y="232" text-anchor="start" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0">Middleware: throttle:120,1</text>
+    <text x="76" y="254" text-anchor="start" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0">No cookies, no CSRF</text>
+    <rect x="128" y="284" width="200" height="24" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.35"/><text x="228.0" y="300.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9">Fixed in v5.2</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="496" y="96" width="416" height="280" rx="28" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="496" y="96" width="416" height="280" rx="28" fill="url(#shine)" pointer-events="none"/>
+    <rect x="496" y="96" width="416" height="3" rx="1.5" fill="#60a5fa" fill-opacity="0.85"/>
+    <text x="524" y="132" text-anchor="start" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="17" fill="#e2e8f0" font-weight="700">Password unlock only</text>
+    <rect x="524" y="148" width="88" height="22" rx="11" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.35"/><text x="568.0" y="163.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9">SESSION</text>
+    <text x="524" y="188" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#e2e8f0">GET /s-auth/[key]</text>
+    <text x="524" y="210" text-anchor="start" font-family="ui-monospace,Menlo,monospace" font-size="12" fill="#e2e8f0">GET /auth/[key] on custom domain</text>
+    <text x="524" y="232" text-anchor="start" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0">Middleware: web + throttle</text>
+    <text x="524" y="254" text-anchor="start" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#e2e8f0">Unlock remembered per session</text>
+    <rect x="576" y="284" width="200" height="24" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.35"/><text x="676.0" y="300.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9">By design</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="48" y="396" width="864" height="44" rx="16" fill="#ffffff" fill-opacity="0.11" stroke="#ffffff" stroke-opacity="0.38" stroke-width="1.2"/>
+    <rect x="48" y="396" width="864" height="44" rx="16" fill="url(#shine)" pointer-events="none"/>
+    <rect x="48" y="396" width="864" height="3" rx="1.5" fill="#f87171" fill-opacity="0.85"/>
+    <text x="480" y="424" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#fecaca">Old audit: web on /s/[key] sent cookies on every click. Republish config if middleware still includes web.</text>
+  </g>
+</svg>

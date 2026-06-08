@@ -7,6 +7,8 @@ use Bjanczak\FilamentShortUrl\Services\ShortUrlSettingsManager;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    config(['filament-short-url.scope_links_to_user' => false]);
+
     // Enable REST API and inject mock keys
     app(ShortUrlSettingsManager::class)->set([
         'api_enabled' => true,
@@ -74,6 +76,8 @@ it('allows API requests with a valid key', function () {
 
 it('allows creating a short link programmatically via POST', function () {
     Queue::fake([SendWebhookJob::class]);
+
+    config(['filament-short-url.webhook_events' => ['created']]);
 
     $pixel = ShortUrlPixel::create([
         'name' => 'Meta Pixel Test',

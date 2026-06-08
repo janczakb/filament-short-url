@@ -53,15 +53,14 @@ class GeoIpTab
                             ->live()
                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled')),
 
-                        Placeholder::make('geoip_headers_warning')
+                        Placeholder::make('geoip_headers_info')
                             ->content(function () {
-                                $html = __('filament-short-url::default.settings_geoip_headers_warning');
+                                $html = __('filament-short-url::default.settings_geoip_headers_info');
 
                                 return new HtmlString($html);
                             })
                             ->visible(fn (Get $get): bool => (bool) $get('geo_ip_enabled') &&
-                                $get('geo_ip_driver') === 'headers' &&
-                                ! (bool) $get('trust_cdn_headers')
+                                $get('geo_ip_driver') === 'headers'
                             )
                             ->columnSpanFull(),
 

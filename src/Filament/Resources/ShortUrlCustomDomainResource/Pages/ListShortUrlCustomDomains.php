@@ -25,6 +25,13 @@ class ListShortUrlCustomDomains extends ManageRecords
                 ->modalWidth('md')
                 ->modalAutofocus(false)
                 ->closeModalByClickingAway(false)
+                ->mutateFormDataUsing(function (array $data): array {
+                    if (auth()->check()) {
+                        $data['user_id'] = auth()->id();
+                    }
+
+                    return $data;
+                })
                 ->after(function ($livewire, $record) {
                     $livewire->dispatch('mount-dns-setup-modal', recordId: $record->id);
                 }),

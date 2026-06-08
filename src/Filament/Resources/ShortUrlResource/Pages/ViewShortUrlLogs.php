@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Enums\PaginationMode;
 use Filament\Tables\Table;
 
 class ViewShortUrlLogs extends Page implements HasForms, HasTable
@@ -39,7 +40,12 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(ShortUrlVisit::query()->where('short_url_id', $this->record->id))
+            ->query(
+                ShortUrlVisit::query()
+                    ->where('short_url_id', $this->record->id)
+                    ->orderByDesc('visited_at')
+                    ->orderByDesc('id')
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('visited_at')
                     ->label(__('filament-short-url::default.stats_col_time'))
@@ -193,7 +199,18 @@ class ViewShortUrlLogs extends Page implements HasForms, HasTable
             ])
             ->defaultSort('visited_at', 'desc')
             ->paginated([10, 25, 50, 100])
+            ->paginationMode(PaginationMode::Cursor)
+            ->queryStringIdentifier('shortUrlVisitLogs')
             ->filters([
+                Tables\Filters\TernaryFilter::make('counted_in_stats')
+                    ->label(__('filament-short-url::default.stats_filter_counted_in_stats'))
+                    ->default(true)
+                    ->queries(
+                        true: fn ($query) => $query->where('is_bot', false)->where('is_proxy', false),
+                        false: fn ($query) => $query,
+                        blank: fn ($query) => $query,
+                    ),
+
                 Tables\Filters\SelectFilter::make('device_type')
                     ->label(__('filament-short-url::default.stats_col_device'))
                     ->options([

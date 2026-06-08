@@ -8,6 +8,7 @@
 
 namespace Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Schemas\Fields;
 
+use Bjanczak\FilamentShortUrl\Filament\Forms\Components\SegmentControl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlCustomDomain;
 use Bjanczak\FilamentShortUrl\Services\OgImageProcessor;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTempStorage;
@@ -24,7 +25,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\RawJs;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -151,8 +151,8 @@ class QrDesignerSidebarField
                     'bg_transparent' => $parentOpts['bg_transparent'] ?? false,
                     'background_color' => $parentOpts['background_color'] ?? $defaults['background_color'] ?? '#ffffff',
                     'eye_config_enabled' => $parentOpts['eye_config_enabled'] ?? false,
-                    'eye_square_style' => $parentOpts['eye_square_style'] ?? 'square',
-                    'eye_dot_style' => $parentOpts['eye_dot_style'] ?? 'square',
+                    'eye_square_style' => filled($parentOpts['eye_square_style'] ?? null) ? $parentOpts['eye_square_style'] : 'square',
+                    'eye_dot_style' => filled($parentOpts['eye_dot_style'] ?? null) ? $parentOpts['eye_dot_style'] : 'square',
                     'eye_color' => $parentOpts['eye_color'] ?? '#000000',
                     'logo_file' => $parentLogo ? [$parentLogo] : [],
                     'logo_shape' => $parentOpts['logo_shape'] ?? 'square',
@@ -174,42 +174,25 @@ class QrDesignerSidebarField
                                 ->collapsible()
                                 ->compact()
                                 ->schema([
-                                    ToggleButtons::make('dot_style')
+                                    SegmentControl::make('dot_style')
                                         ->label(__('filament-short-url::default.qr_label_style'))
-                                        ->options([
-                                            'square' => __('filament-short-url::default.qr_option_square'),
-                                            'dots' => __('filament-short-url::default.qr_option_dots'),
-                                            'rounded' => __('filament-short-url::default.qr_option_rounded'),
-                                            'classy' => __('filament-short-url::default.qr_option_classy'),
-                                            'classy-rounded' => __('filament-short-url::default.qr_option_classy_rounded'),
-                                            'extra-rounded' => __('filament-short-url::default.qr_option_extra_rounded'),
-                                        ])
-                                        ->icons([
-                                            'square' => 'fsu-qr-dots-square',
-                                            'dots' => 'fsu-qr-dots-dots',
-                                            'rounded' => 'fsu-qr-dots-rounded',
-                                            'classy' => 'fsu-qr-dots-classy',
-                                            'classy-rounded' => 'fsu-qr-dots-classy-rounded',
-                                            'extra-rounded' => 'fsu-qr-dots-extra-rounded',
-                                        ])
-                                        ->tooltips([
-                                            'square' => __('filament-short-url::default.qr_option_square'),
-                                            'dots' => __('filament-short-url::default.qr_option_dots'),
-                                            'rounded' => __('filament-short-url::default.qr_option_rounded'),
-                                            'classy' => __('filament-short-url::default.qr_option_classy'),
-                                            'classy-rounded' => __('filament-short-url::default.qr_option_classy_rounded'),
-                                            'extra-rounded' => __('filament-short-url::default.qr_option_extra_rounded'),
-                                        ])
-                                        ->extraAttributes([
-                                            'class' => '[&_svg]:w-[25px] [&_svg]:h-[25px]',
-                                        ])
-                                        ->hiddenButtonLabels()
-                                        ->grouped()
+                                        ->options(self::qrIconSegmentOptions([
+                                            ['square', 'qr_option_square', 'fsu-qr-dots-square'],
+                                            ['dots', 'qr_option_dots', 'fsu-qr-dots-dots'],
+                                            ['rounded', 'qr_option_rounded', 'fsu-qr-dots-rounded'],
+                                            ['classy', 'qr_option_classy', 'fsu-qr-dots-classy'],
+                                            ['classy-rounded', 'qr_option_classy_rounded', 'fsu-qr-dots-classy-rounded'],
+                                            ['extra-rounded', 'qr_option_extra_rounded', 'fsu-qr-dots-extra-rounded'],
+                                        ]))
+                                        ->iconOnly()
+                                        ->size('lg')
+                                        ->separators(false)
                                         ->required()
-                                        ->live(),
+                                        ->live()
+                                        ->extraFieldWrapperAttributes(['class' => 'qr-segment-icon-only qr-segment-icon-only--style']),
 
-                                    ToggleButtons::make('color_mode')
-                                        ->hiddenLabel()
+                                    SegmentControl::make('color_mode')
+                                        ->label(__('filament-short-url::default.qr_label_color'))
                                         ->options([
                                             'solid' => __('filament-short-url::default.qr_label_single_color'),
                                             'gradient' => __('filament-short-url::default.qr_label_gradient'),
@@ -218,7 +201,7 @@ class QrDesignerSidebarField
                                             'solid' => 'heroicon-o-paint-brush',
                                             'gradient' => 'heroicon-o-sparkles',
                                         ])
-                                        ->grouped()
+                                        ->fullWidth()
                                         ->required()
                                         ->live(),
 
@@ -298,57 +281,33 @@ class QrDesignerSidebarField
                                         ->label(__('filament-short-url::default.qr_label_custom_eye_config'))
                                         ->live(),
 
-                                    ToggleButtons::make('eye_square_style')
+                                    SegmentControl::make('eye_square_style')
                                         ->label(__('filament-short-url::default.qr_label_eye_square_style'))
-                                        ->options([
-                                            '' => __('filament-short-url::default.qr_option_none'),
-                                            'square' => __('filament-short-url::default.qr_option_square'),
-                                            'dot' => __('filament-short-url::default.qr_option_dot'),
-                                            'extra-rounded' => __('filament-short-url::default.qr_option_extra_rounded'),
-                                        ])
-                                        ->icons([
-                                            '' => 'fsu-qr-eye-square-none',
-                                            'square' => 'fsu-qr-eye-square-square',
-                                            'dot' => 'fsu-qr-eye-square-dot',
-                                            'extra-rounded' => 'fsu-qr-eye-square-extra-rounded',
-                                        ])
-                                        ->tooltips([
-                                            '' => __('filament-short-url::default.qr_option_none'),
-                                            'square' => __('filament-short-url::default.qr_option_square'),
-                                            'dot' => __('filament-short-url::default.qr_option_dot'),
-                                            'extra-rounded' => __('filament-short-url::default.qr_option_extra_rounded'),
-                                        ])
-                                        ->extraAttributes([
-                                            'class' => '[&_svg]:w-[25px] [&_svg]:h-[25px]',
-                                        ])
-                                        ->hiddenButtonLabels()
-                                        ->grouped()
+                                        ->options(self::qrIconSegmentOptions([
+                                            ['square', 'qr_option_square', 'fsu-qr-eye-square-square'],
+                                            ['dot', 'qr_option_dot', 'fsu-qr-eye-square-dot'],
+                                            ['extra-rounded', 'qr_option_extra_rounded', 'fsu-qr-eye-square-extra-rounded'],
+                                        ]))
+                                        ->default('square')
+                                        ->iconOnly()
+                                        ->size('lg')
+                                        ->separators(false)
                                         ->live()
+                                        ->extraFieldWrapperAttributes(['class' => 'qr-segment-icon-only'])
                                         ->visible(fn (Get $get) => $get('eye_config_enabled')),
 
-                                    ToggleButtons::make('eye_dot_style')
+                                    SegmentControl::make('eye_dot_style')
                                         ->label(__('filament-short-url::default.qr_label_eye_dot_style'))
-                                        ->options([
-                                            '' => __('filament-short-url::default.qr_option_none'),
-                                            'square' => __('filament-short-url::default.qr_option_square'),
-                                            'dot' => __('filament-short-url::default.qr_option_dot'),
-                                        ])
-                                        ->icons([
-                                            '' => 'fsu-qr-eye-dot-none',
-                                            'square' => 'fsu-qr-eye-dot-square',
-                                            'dot' => 'fsu-qr-eye-dot-dot',
-                                        ])
-                                        ->extraAttributes([
-                                            'class' => '[&_svg]:w-[25px] [&_svg]:h-[25px]',
-                                        ])
-                                        ->tooltips([
-                                            '' => __('filament-short-url::default.qr_option_none'),
-                                            'square' => __('filament-short-url::default.qr_option_square'),
-                                            'dot' => __('filament-short-url::default.qr_option_dot'),
-                                        ])
-                                        ->hiddenButtonLabels()
-                                        ->grouped()
+                                        ->options(self::qrIconSegmentOptions([
+                                            ['square', 'qr_option_square', 'fsu-qr-eye-dot-square'],
+                                            ['dot', 'qr_option_dot', 'fsu-qr-eye-dot-dot'],
+                                        ]))
+                                        ->default('square')
+                                        ->iconOnly()
+                                        ->size('lg')
+                                        ->separators(false)
                                         ->live()
+                                        ->extraFieldWrapperAttributes(['class' => 'qr-segment-icon-only'])
                                         ->visible(fn (Get $get) => $get('eye_config_enabled')),
 
                                     Grid::make(12)
@@ -471,8 +430,8 @@ class QrDesignerSidebarField
                     'bg_transparent' => (bool) ($data['bg_transparent'] ?? false),
                     'background_color' => $data['background_color'] ?? '#ffffff',
                     'eye_config_enabled' => (bool) ($data['eye_config_enabled'] ?? false),
-                    'eye_square_style' => $data['eye_square_style'] ?? 'square',
-                    'eye_dot_style' => $data['eye_dot_style'] ?? 'square',
+                    'eye_square_style' => filled($data['eye_square_style'] ?? null) ? $data['eye_square_style'] : 'square',
+                    'eye_dot_style' => filled($data['eye_dot_style'] ?? null) ? $data['eye_dot_style'] : 'square',
                     'eye_color' => $data['eye_color'] ?? '#000000',
                     'logo_shape' => $data['logo_shape'] ?? 'square',
                     'logo_size' => (float) ($data['logo_size'] ?? 0.55),
@@ -498,5 +457,26 @@ class QrDesignerSidebarField
                     'logo' => $logo,
                 ]);
             });
+    }
+
+    /**
+     * @param  array<int, array{0: string, 1: string, 2: string}>  $items
+     * @return array<string, array{label: string, icon: string, tooltip: string}>
+     */
+    private static function qrIconSegmentOptions(array $items): array
+    {
+        $options = [];
+
+        foreach ($items as [$value, $labelKey, $icon]) {
+            $label = __("filament-short-url::default.{$labelKey}");
+
+            $options[$value] = [
+                'label' => $label,
+                'icon' => $icon,
+                'tooltip' => $label,
+            ];
+        }
+
+        return $options;
     }
 }

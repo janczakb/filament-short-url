@@ -10,6 +10,7 @@ namespace Bjanczak\FilamentShortUrl\Services;
 
 use Bjanczak\FilamentShortUrl\Models\ShortUrl;
 use Bjanczak\FilamentShortUrl\Models\ShortUrlVisit;
+use Bjanczak\FilamentShortUrl\Services\Stats\StatsVisitRecorder;
 use Illuminate\Http\Request;
 
 /**
@@ -23,12 +24,13 @@ class ShortUrlTracker
         private readonly UserAgentParser $uaParser,
         private readonly GeoIpService $geoIp,
         private readonly ProxyDetectionService $proxyDetector,
+        private readonly BotDetector $botDetector,
     ) {}
 
     /**
      * Record a visit and return the created ShortUrlVisit model.
      *
-     * Returns null if the visit was from a bot/crawler (we don't track those).
+     * Returns null when the visit should not be tracked (bots, deduplicated clicks).
      */
     public function record(
         ShortUrl $shortUrl,
@@ -43,25 +45,33 @@ class ShortUrlTracker
         bool $isQrScan = false,
         ?string $browserLanguage = null,
         ?string $selectedVariant = null,
+        ?array $precomputedProxyDetection = null,
+        bool $skipTotalIncrement = false,
     ): ?ShortUrlVisit {
         $ip = ClientIpExtractor::getIp($request);
+
+        if ($this->botDetector->isBot($request)) {
+            return null;
+        }
 
         // HMAC-SHA256 keyed with app.key — plain SHA-256 is trivially reversible for
         // IPv4 (only ~4.3B unique values). The app.key salt makes this per-installation
         // and computationally infeasible to reverse without the secret.
         $ipHash = hash_hmac('sha256', $ip, config('app.key', ''));
         $ua = $request->userAgent() ?? '';
+
+        if ($this->isDuplicateClick($shortUrl->id, $ipHash)) {
+            return null;
+        }
+
         $parsed = $this->uaParser->parse($ua);
 
-        // Run bot & proxy/VPN detection
-        $isBot = $parsed['device_type'] === 'robot';
+        $isBot = false;
         $isProxy = false;
 
-        if (! $isBot) {
-            $detection = $this->proxyDetector->detect($ip);
-            $isBot = (bool) $detection['is_bot'];
-            $isProxy = (bool) $detection['is_proxy'];
-        }
+        $detection = $precomputedProxyDetection ?? $this->proxyDetector->detect($ip);
+        $isProxy = (bool) $detection['is_proxy'];
+        $isBot = (bool) ($detection['is_bot'] ?? false);
 
         $geo = config('filament-short-url.geo_ip.enabled', true)
             ? $this->geoIp->resolve($ip, $preResolvedCountryCode, $preResolvedCity)
@@ -71,11 +81,20 @@ class ShortUrlTracker
         // We check BEFORE insert to avoid a self-referential race.
         $isUnique = false;
         if (config('filament-short-url.counter_buffering.enabled', false)) {
-            $uniqueCacheKey = "filament-short-url:unique-visit:{$shortUrl->id}:{$ipHash}";
-            if (cache()->add($uniqueCacheKey, true, 86400)) {
-                $isUnique = ! ShortUrlVisit::where('short_url_id', $shortUrl->id)
-                    ->where('ip_hash', $ipHash)
-                    ->exists();
+            $existsInDatabase = ShortUrlVisit::where('short_url_id', $shortUrl->id)
+                ->where('ip_hash', $ipHash)
+                ->exists();
+
+            if (! $existsInDatabase) {
+                $buffer = app(VisitCounterBuffer::class);
+
+                if ($buffer->tryReserveUniqueVisit($shortUrl->id, $ipHash)) {
+                    $isUnique = true;
+                } else {
+                    $isUnique = ! ShortUrlVisit::where('short_url_id', $shortUrl->id)
+                        ->where('ip_hash', $ipHash)
+                        ->exists();
+                }
             }
         } else {
             $isUnique = ! ShortUrlVisit::where('short_url_id', $shortUrl->id)
@@ -145,10 +164,44 @@ class ShortUrlTracker
 
         // Increment stats only if it's NOT a bot or proxy/VPN to keep analytics clean
         if (! $isBot && ! $isProxy) {
-            $shortUrl->incrementVisits($isUnique, $isQrScan);
+            if ($skipTotalIncrement) {
+                $shortUrl->incrementVisits($isUnique, $isQrScan, incrementTotal: false);
+            } else {
+                $shortUrl->incrementVisits($isUnique, $isQrScan);
+            }
+
+            app(StatsVisitRecorder::class)->record($shortUrl, $visit, $isUnique);
         }
 
         return $visit;
+    }
+
+    private function isDuplicateClick(int $shortUrlId, string $ipHash): bool
+    {
+        if (! config('filament-short-url.click_deduplication.enabled', false)) {
+            return false;
+        }
+
+        $hours = max(1, (int) config('filament-short-url.click_deduplication.hours', 1));
+        $dedupKey = "filament-short-url:click-dedup:{$shortUrlId}:{$ipHash}";
+
+        return ! cache()->add($dedupKey, true, $hours * 3600);
+    }
+
+    /**
+     * Whether this request should be treated as a duplicate click for counter purposes.
+     */
+    public function isDuplicateRequest(int $shortUrlId, Request $request): bool
+    {
+        if (! config('filament-short-url.click_deduplication.enabled', false)) {
+            return false;
+        }
+
+        $ip = ClientIpExtractor::getIp($request);
+        $ipHash = hash_hmac('sha256', $ip, config('app.key', ''));
+        $dedupKey = "filament-short-url:click-dedup:{$shortUrlId}:{$ipHash}";
+
+        return cache()->has($dedupKey);
     }
 
     /**

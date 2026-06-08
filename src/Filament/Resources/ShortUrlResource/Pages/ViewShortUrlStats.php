@@ -12,10 +12,12 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Filament\Schemas\Schema;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\On;
 
 class ViewShortUrlStats extends Page implements HasForms
 {
+    use AuthorizesRequests;
     use InteractsWithForms;
 
     protected static string $resource = ShortUrlResource::class;
@@ -78,6 +80,8 @@ class ViewShortUrlStats extends Page implements HasForms
 
     public function mount(ShortUrl $record): void
     {
+        $this->authorize('view', $record);
+
         $this->record = $record;
 
         $this->form->fill([

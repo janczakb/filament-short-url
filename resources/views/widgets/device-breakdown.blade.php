@@ -46,7 +46,7 @@
                                     default => ucfirst($device),
                                 };
                             @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'device_type', value: '{{ addslashes($device) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors" x-on:click="$wire.dispatch('set-stats-filter', { key: 'device_type', value: @json($device) })">
                                 <div class="flex items-center justify-between text-sm">
                                     <span class="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-300">
                                         @if (strtolower($device) === 'desktop')
@@ -84,7 +84,7 @@
                     <div class="space-y-3.5">
                         @forelse ($visitsByBrowser as $browser => $count)
                             @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'browser', value: '{{ addslashes($browser) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'browser', value: @json($browser) })">
                                 <div class="flex flex-col min-w-0">
                                     <div class="flex items-center gap-2">
                                         <x-filament::icon :icon="$browserIcons[$browser] ?? 'heroicon-m-globe-alt'" class="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
@@ -124,7 +124,7 @@
                     <div class="space-y-3.5">
                         @forelse ($visitsByOs as $os => $count)
                             @php $pct = $totalVisits > 0 ? round(($count / $totalVisits) * 100, 1) : 0; @endphp
-                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'operating_system', value: '{{ addslashes($os) }}' })">
+                            <div class="group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 -mx-2 px-2 py-1.5 rounded-lg transition-colors flex items-center justify-between text-sm" x-on:click="$wire.dispatch('set-stats-filter', { key: 'operating_system', value: @json($os) })">
                                 <div class="flex flex-col min-w-0">
                                     <div class="flex items-center gap-2">
                                         <x-filament::icon :icon="$osIcons[$os] ?? 'heroicon-m-cpu-chip'" class="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />

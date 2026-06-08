@@ -9,3 +9,6 @@
 *.log
 .DS_Store
 Thumbs.db
+
+# Internal maintainer notes (not shipped)
+/AUDIT_IMPLEMENTATION.md

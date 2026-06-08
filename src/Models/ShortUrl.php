@@ -12,9 +12,15 @@ use App\Models\User;
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Widgets\ShortUrlGlobalOverview;
 use Bjanczak\FilamentShortUrl\Http\Resources\ShortUrlResource;
 use Bjanczak\FilamentShortUrl\Jobs\SendWebhookJob;
+use Bjanczak\FilamentShortUrl\Services\OutboundUrlValidator;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlBuilder;
+use Bjanczak\FilamentShortUrl\Services\ShortUrlPasswordHasher;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlService;
 use Bjanczak\FilamentShortUrl\Services\ShortUrlTempStorage;
+use Bjanczak\FilamentShortUrl\Services\VisitCounterBuffer;
+use Bjanczak\FilamentShortUrl\Support\HostNormalizer;
+use Bjanczak\FilamentShortUrl\Support\LockedUrlKeyGuard;
+use Bjanczak\FilamentShortUrl\Support\ShortUrlCacheInvalidator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +28,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -99,6 +106,7 @@ class ShortUrl extends Model
         'destination_type',
         'rotation_variants',
         'custom_domain_id',
+        'domain_scope_id',
         'folder_id',
         'is_archived',
         'og_title',
@@ -106,17 +114,28 @@ class ShortUrl extends Model
         'og_image',
         'is_cloaked',
         'do_index',
+        'external_id',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
+        'ref',
+        'public_stats_enabled',
+        'public_stats_password',
     ];
 
     /** @var array<string, string> */
     protected $casts = [
         'user_id' => 'integer',
         'custom_domain_id' => 'integer',
+        'domain_scope_id' => 'integer',
         'folder_id' => 'integer',
         'is_enabled' => 'boolean',
         'is_archived' => 'boolean',
         'is_cloaked' => 'boolean',
         'do_index' => 'boolean',
+        'public_stats_enabled' => 'boolean',
         'single_use' => 'boolean',
         'forward_query_params' => 'boolean',
         'auto_open_app_mobile' => 'boolean',
@@ -189,7 +208,7 @@ class ShortUrl extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query
+        $query = $query
             ->enabled()
             ->where(fn (Builder $q) => $q
                 ->whereNull('activated_at')
@@ -207,6 +226,58 @@ class ShortUrl extends Model
                 ->whereNull('max_visits')
                 ->orWhereRaw('total_visits < max_visits')
             );
+
+        if (config('filament-short-url.counter_buffering.enabled', false)) {
+            $overLimitIds = static::resolveIdsOverMaxVisitsWithBuffer();
+
+            if ($overLimitIds !== []) {
+                $query->whereNotIn($query->getModel()->getTable().'.id', $overLimitIds);
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Link IDs whose buffered counters push them at or over max_visits (buffering mode only).
+     *
+     * @return list<int>
+     */
+    public static function resolveIdsOverMaxVisitsWithBuffer(): array
+    {
+        if (! config('filament-short-url.counter_buffering.enabled', false)) {
+            return [];
+        }
+
+        try {
+            $buffer = app(VisitCounterBuffer::class);
+            $dirtyIds = $buffer->listDirtyIds();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if (! is_array($dirtyIds)) {
+            return [];
+        }
+
+        $dirtyIds = array_values(array_unique(array_filter(array_map('intval', $dirtyIds))));
+
+        if ($dirtyIds === []) {
+            return [];
+        }
+
+        $overLimitIds = [];
+
+        foreach (static::query()
+            ->whereIn('id', $dirtyIds)
+            ->whereNotNull('max_visits')
+            ->get(['id', 'max_visits', 'total_visits']) as $link) {
+            if ($link->getRealTimeTotalVisits() >= $link->max_visits) {
+                $overLimitIds[] = $link->id;
+            }
+        }
+
+        return $overLimitIds;
     }
 
     public function scopeExpired(Builder $query): Builder
@@ -219,41 +290,49 @@ class ShortUrl extends Model
     /**
      * Find by URL key — cached for ultra-fast redirects.
      * Cache is invalidated automatically via model events on save/delete.
+     *
+     * @param  ShortUrlCustomDomain|false|null  $resolvedDomain  Pass the resolved custom domain model, false for the default app domain, or null to resolve from the host.
      */
-    public static function findByKey(string $key, ?string $host = null): ?static
+    public static function findByKey(string $key, ?string $host = null, ShortUrlCustomDomain|false|null $resolvedDomain = null): ?static
     {
-        $host ??= request()?->getHost();
-        $mainDomain = parse_url(config('app.url'), PHP_URL_HOST);
+        $normalizedHost = HostNormalizer::normalize($host ?? request()?->getHost());
+        $mainDomain = HostNormalizer::normalize(parse_url(config('app.url'), PHP_URL_HOST));
 
         $ttl = config('filament-short-url.cache_ttl', 3600);
 
-        $query = static::where('url_key', $key)->with(['pixels', 'customDomain']);
+        $query = static::where('url_key', $key)->with(['customDomain']);
 
-        if ($host && strcasecmp($host, $mainDomain) !== 0) {
-            // Shared cache key with ShortUrlRedirectController \u2014 the controller warms this cache
-            // before calling findByKey(), so this lookup is typically a free cache hit.
-            $customDomain = cache()->remember(
-                "filament-short-url:custom-domain:{$host}",
-                300,
-                fn () => ShortUrlCustomDomain::where('domain', $host)
-                    ->where('is_active', true)
-                    ->first()
-            );
+        if ($resolvedDomain === null) {
+            if ($normalizedHost && strcasecmp($normalizedHost, $mainDomain) !== 0) {
+                $customDomain = cache()->remember(
+                    "filament-short-url:custom-domain:{$normalizedHost}",
+                    300,
+                    fn () => ShortUrlCustomDomain::resolveForHost($normalizedHost)
+                );
 
-            if ($customDomain) {
-                $query->where('custom_domain_id', $customDomain->id);
+                if ($customDomain) {
+                    $query->where('domain_scope_id', $customDomain->id);
+                } else {
+                    return null;
+                }
             } else {
-                return null;
+                $query->where('domain_scope_id', 0);
             }
+        } elseif ($resolvedDomain === false) {
+            $query->where('domain_scope_id', 0);
         } else {
-            $query->whereNull('custom_domain_id');
+            $query->where('domain_scope_id', $resolvedDomain->id);
         }
 
         if ($ttl <= 0) {
             return $query->first();
         }
 
-        $cacheKey = "filament-short-url:{$key}:".($host ?? 'default');
+        $cacheHost = $resolvedDomain instanceof ShortUrlCustomDomain
+            ? HostNormalizer::normalize($resolvedDomain->domain)
+            : ($normalizedHost ?? 'default');
+
+        $cacheKey = "filament-short-url:{$key}:".($cacheHost ?? 'default');
 
         return cache()->remember(
             $cacheKey,
@@ -276,6 +355,10 @@ class ShortUrl extends Model
         });
 
         static::saving(function (self $m) {
+            LockedUrlKeyGuard::assertModelCanPersistKeyChanges($m);
+
+            $m->domain_scope_id = $m->custom_domain_id ?? 0;
+
             if ($m->single_use || $m->max_visits !== null || $m->expires_at !== null) {
                 if ($m->single_use) {
                     $m->max_visits = null;
@@ -289,6 +372,26 @@ class ShortUrl extends Model
 
             if (empty($m->webhook_url)) {
                 $m->webhook_url = null;
+            }
+
+            if (filled($m->password)) {
+                $m->purgeOpenGraphMetadata();
+            }
+
+            if ($m->isDirty('password')) {
+                if (blank($m->password)) {
+                    $m->password = null;
+                } elseif (! app(ShortUrlPasswordHasher::class)->isHashed((string) $m->password)) {
+                    $m->password = app(ShortUrlPasswordHasher::class)->hash((string) $m->password);
+                }
+            }
+
+            if ($m->isDirty('public_stats_password')) {
+                if (blank($m->public_stats_password)) {
+                    $m->public_stats_password = null;
+                } elseif (! app(ShortUrlPasswordHasher::class)->isHashed((string) $m->public_stats_password)) {
+                    $m->public_stats_password = app(ShortUrlPasswordHasher::class)->hash((string) $m->public_stats_password);
+                }
             }
 
             $tempStorage = app(ShortUrlTempStorage::class);
@@ -329,42 +432,35 @@ class ShortUrl extends Model
         });
 
         static::saved(function (self $m) {
-            cache()->forget("filament-short-url:visits:{$m->id}");
-
-            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
-            $hosts = ['default'];
-            if ($appHost) {
-                $hosts[] = $appHost;
-            }
-
-            // Current domain
-            if ($m->custom_domain_id) {
-                $domain = ShortUrlCustomDomain::find($m->custom_domain_id);
-                if ($domain) {
-                    $hosts[] = $domain->domain;
-                }
-            }
-
-            // If custom domain changed, clear old domain cache too
-            if ($m->wasChanged('custom_domain_id')) {
-                $oldDomainId = $m->getOriginal('custom_domain_id');
-                if ($oldDomainId) {
-                    $oldDomain = ShortUrlCustomDomain::find($oldDomainId);
-                    if ($oldDomain) {
-                        $hosts[] = $oldDomain->domain;
-                    }
-                }
-            }
-
-            // Forget all redirect cache keys for this url_key
-            foreach ($hosts as $host) {
-                cache()->forget("filament-short-url:{$m->url_key}:{$host}");
-            }
+            ShortUrlCacheInvalidator::forget($m);
 
             if ($m->wasChanged('url_key')) {
                 $oldKey = $m->getOriginal('url_key');
                 if ($oldKey) {
-                    foreach ($hosts as $host) {
+                    $appHost = HostNormalizer::normalize(parse_url(config('app.url'), PHP_URL_HOST));
+                    $hosts = ['default'];
+                    if ($appHost) {
+                        $hosts[] = $appHost;
+                    }
+
+                    if ($m->custom_domain_id) {
+                        $domain = ShortUrlCustomDomain::find($m->custom_domain_id);
+                        if ($domain) {
+                            $hosts[] = HostNormalizer::normalize($domain->domain) ?? $domain->domain;
+                        }
+                    }
+
+                    if ($m->wasChanged('custom_domain_id')) {
+                        $oldDomainId = $m->getOriginal('custom_domain_id');
+                        if ($oldDomainId) {
+                            $oldDomain = ShortUrlCustomDomain::find($oldDomainId);
+                            if ($oldDomain) {
+                                $hosts[] = HostNormalizer::normalize($oldDomain->domain) ?? $oldDomain->domain;
+                            }
+                        }
+                    }
+
+                    foreach (array_unique($hosts) as $host) {
                         cache()->forget("filament-short-url:{$oldKey}:{$host}");
                     }
                 }
@@ -379,25 +475,8 @@ class ShortUrl extends Model
         });
 
         static::deleted(function (self $m) {
-            cache()->forget("filament-short-url:visits:{$m->id}");
+            ShortUrlCacheInvalidator::forget($m);
             cache()->forget(ShortUrlGlobalOverview::LINKS_CACHE_KEY);
-
-            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
-            $hosts = ['default'];
-            if ($appHost) {
-                $hosts[] = $appHost;
-            }
-
-            if ($m->custom_domain_id) {
-                $domain = ShortUrlCustomDomain::find($m->custom_domain_id);
-                if ($domain) {
-                    $hosts[] = $domain->domain;
-                }
-            }
-
-            foreach ($hosts as $host) {
-                cache()->forget("filament-short-url:{$m->url_key}:{$host}");
-            }
 
             if (! empty($m->qr_logo)) {
                 Storage::disk('public')->delete($m->qr_logo);
@@ -518,7 +597,7 @@ class ShortUrl extends Model
         $prefix = config('filament-short-url.route_prefix');
         $baseUrl = config('app.url');
 
-        if ($this->custom_domain_id && $this->customDomain) {
+        if ($this->usesCustomDomain() && $this->customDomain) {
             // Use https for custom domains in production; fall back to the app.url scheme
             // in other environments (local dev, staging). This prevents branded links from
             // using http:// when the developer hasn't yet updated their app.url to https.
@@ -527,11 +606,69 @@ class ShortUrl extends Model
             $baseUrl = $scheme.'://'.$this->customDomain->domain;
         }
 
-        if (! empty($prefix)) {
+        if (! $this->usesCustomDomain() && ! empty($prefix)) {
             return rtrim($baseUrl, '/').'/'.trim($prefix, '/').'/'.$this->url_key;
         }
 
         return rtrim($baseUrl, '/').'/'.$this->url_key;
+    }
+
+    public function getPublicStatsUrl(): string
+    {
+        $prefix = trim((string) config('filament-short-url.route_prefix', 's'), '/');
+        $baseUrl = config('app.url');
+
+        if ($this->usesCustomDomain() && $this->customDomain) {
+            $appScheme = parse_url($baseUrl, PHP_URL_SCHEME) ?: 'https';
+            $scheme = app()->isProduction() ? 'https' : $appScheme;
+            $baseUrl = $scheme.'://'.$this->customDomain->domain;
+        }
+
+        $path = ($prefix !== '' ? "{$prefix}/" : '').'public-stats/'.$this->url_key;
+
+        return rtrim($baseUrl, '/').'/'.$path;
+    }
+
+    public function purgeOpenGraphMetadata(): void
+    {
+        $imagePath = filled($this->og_image)
+            ? $this->og_image
+            : ($this->exists ? $this->getOriginal('og_image') : null);
+
+        if (filled($imagePath)) {
+            Storage::disk('public')->delete($imagePath);
+        }
+
+        $this->og_title = null;
+        $this->og_description = null;
+        $this->og_image = null;
+    }
+
+    public function hasPassword(): bool
+    {
+        return filled($this->password);
+    }
+
+    public function usesCustomDomain(): bool
+    {
+        return filled($this->custom_domain_id);
+    }
+
+    public function passwordAuthUrl(Request $request): string
+    {
+        if (! $this->usesCustomDomain()) {
+            return route('short-url.password-auth', ['key' => $this->url_key]);
+        }
+
+        $prefix = trim((string) config('filament-short-url.route_prefix', 's'), '/');
+        $authPrefix = $prefix !== '' ? "{$prefix}-auth" : 'auth';
+
+        return rtrim($request->getSchemeAndHttpHost(), '/')."/{$authPrefix}/{$this->url_key}";
+    }
+
+    public function verifyPassword(string $plain): bool
+    {
+        return app(ShortUrlPasswordHasher::class)->verify($plain, $this->password);
     }
 
     /**
@@ -544,14 +681,30 @@ class ShortUrl extends Model
         $events = config('filament-short-url.webhook_events', []);
 
         $webhooksToDispatch = [];
-        if (! empty($targetUrl)) {
+        if (! empty($targetUrl) && in_array($event, $events, true)) {
             $webhooksToDispatch[] = $targetUrl;
         }
-        if (! empty($globalUrl) && in_array($event, $events)) {
+        if (
+            config('filament-short-url.global_webhook_enabled', false)
+            && ! empty($globalUrl)
+            && in_array($event, $events, true)
+        ) {
             $webhooksToDispatch[] = $globalUrl;
         }
 
         if (empty($webhooksToDispatch)) {
+            return;
+        }
+
+        if (
+            (bool) config('filament-short-url.webhook_signing_required', true)
+            && blank(config('filament-short-url.webhook_signing_secret'))
+        ) {
+            Log::warning('[FilamentShortUrl] Webhook dispatch skipped — signing secret is not configured.', [
+                'event' => $event,
+                'short_url_id' => $this->id,
+            ]);
+
             return;
         }
 
@@ -575,6 +728,10 @@ class ShortUrl extends Model
         $connection = config('filament-short-url.queue_connection', 'sync');
 
         foreach (array_unique($webhooksToDispatch) as $url) {
+            if (! app(OutboundUrlValidator::class)->isAllowed($url)) {
+                continue;
+            }
+
             try {
                 $job = new SendWebhookJob(
                     url: $url,
