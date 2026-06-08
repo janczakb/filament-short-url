@@ -55,7 +55,7 @@ On top of basic link shortening it ships: per-link **SEO & Open Graph meta**, **
 - 🗂️ **Folders & Tags** — Assign each link to a folder and up to 5 tags. Click any folder or tag to navigate to a filtered link list.
 - 🗄️ **Link Archiving** — Soft-archive links instead of deleting them. Archived links are hidden by default and fully restorable.
 - 🛡️ **VPN, Proxy & Bot Filtering** — Optional VPN/proxy/Tor detection (flag or block) when enabled in **Settings → Advanced**. Known bot and social-preview crawlers are excluded from visit logs entirely (not logged or counted).
-- 🔍 **Google Safe Browsing** — When enabled in **Settings → Advanced**, target URLs are checked against Google's threat database on create and edit (Filament panel and REST API).
+- 🔍 **Google Safe Browsing** — When enabled in **Settings → Advanced**, target URLs are checked against Google's threat database on create, edit, **and redirect** (Filament panel, REST API, and cached redirect checks).
 - 🎨 **SVG QR Code Designer** — Full dot style, gradient, margin, and logo customization. Export as SVG or high-resolution PNG directly from the admin panel (client-side via QRCodeStyling — colors, gradients, and logo are preserved).
 - 📊 **QR Scan Tracking** — QR scans are recorded separately from regular web clicks via `?source=qr` or `?qr=1`. Shown as a distinct metric in analytics.
 - ✈️ **Browser Language Targeting** — Route visitors to different destinations based on their browser's `Accept-Language` header.
@@ -99,6 +99,7 @@ Self-hosted link management for Laravel/Filament — **not** a full Dub.co-style
 | Server-side GA4 (ad-block bypass) | ✅ | ❌ | ❌ | ❌ |
 | Live activity feed | ✅ | ❌ | ✅ | ❌ |
 | Cross-filtering analytics (panel) | ✅ | 💰 basic | ✅ | 💰 basic |
+| Public shareable stats page | ✅ | 💰 | 💰 | ❌ |
 | REST API | ✅ scoped keys | 💰 | ✅ deep | 💰 |
 | Webhooks (global event list) | ✅ HMAC-signed | 💰 Enterprise | ✅ per-workspace | 💰 |
 | Workspaces / team RBAC | ❌ | ✅ | ✅ | ✅ |
@@ -151,6 +152,13 @@ Install the package via Composer:
 composer require janczakb/filament-short-url
 ```
 
+> [!IMPORTANT]
+> **Required:** register the plugin's Filament assets immediately after install (and after every `composer update`). The admin panel relies on bundled **custom CSS and JavaScript** (QR designer, stats widgets, meta scraper, table actions). Without this step the plugin UI will not work correctly.
+>
+> ```bash
+> php artisan filament:assets
+> ```
+
 Publish and run the database migrations:
 
 ```bash
@@ -158,10 +166,25 @@ php artisan vendor:publish --tag=filament-short-url-migrations
 php artisan migrate
 ```
 
+Then register the plugin in your Filament panel — see [Setup](#setup).
+
+**Keep assets in sync:** add `@php artisan filament:assets` to `post-autoload-dump` in your host app's `composer.json` so updates re-publish CSS/JS automatically:
+
+```json
+"scripts": {
+    "post-autoload-dump": [
+        "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+        "@php artisan package:discover --ansi",
+        "@php artisan filament:assets"
+    ]
+}
+```
+
 ### Production checklist
 
 | Task | Why |
 |------|-----|
+| `php artisan filament:assets` | **Required** after install/update — publishes plugin CSS/JS to `public/` for Filament |
 | `* * * * * php artisan schedule:run` | Domain verification, counter sync, visit aggregation/pruning |
 | Queue worker (when async) | Default `sync` needs no worker. For **`redis`** or **`database`**, run `php artisan queue:work {connection} --queue={name}` matching **Settings → General** (not necessarily `QUEUE_CONNECTION` in `.env`). Use **Test queue worker** in Settings to verify. |
 | `SHORT_URL_SCOPE_TO_USER=true` | Filament users see only their own links (default) |
@@ -218,12 +241,13 @@ When updating from **v5.1.x or earlier**:
 
 ```bash
 composer update janczakb/filament-short-url
+php artisan filament:assets
 php artisan migrate
 ```
 
 ### Migration safety (v5.2.0)
 
-Three additive migrations ship with this release. They do **not** drop, rename, or rewrite existing rows. Your links, visit history, API keys, and settings remain intact.
+Four additive migrations ship with the v5.2.x schema wave. They do **not** drop, rename, or rewrite existing rows. Your links, visit history, API keys, and settings remain intact.
 
 | Migration | Purpose |
 |---|---|
@@ -260,17 +284,25 @@ Three additive migrations ship with this release. They do **not** drop, rename, 
 | `bot_visits_count` | Pre-aggregated bot traffic per day |
 | `proxy_visits_count` | Pre-aggregated VPN/proxy traffic per day |
 
-All three migrations use no `->after()` column ordering hints and no database-specific `ENUM` types, so they run cleanly on **SQLite, MySQL, and PostgreSQL**.
+#### `2026_06_11_000001`
+
+| Database change | Effect on existing installs |
+|---|---|
+| `cross_dimensional_stats` | JSON rollups for filtered dashboard widgets (cross-filter charts) |
+| `cross_filter_pairs` | Precomputed filter-pair aggregates for faster filtered stats |
+| `filter_qr_counts` | QR scan counts keyed by active dashboard filters |
+
+All four migrations use no `->after()` column ordering hints and no database-specific `ENUM` types, so they run cleanly on **SQLite, MySQL, and PostgreSQL**.
 
 **If you publish migrations to `database/migrations/`**, make sure both new files are present after `composer update`, then run `php artisan migrate`. If you never published migrations, the package service provider registers them automatically — `migrate` is still required once per release that adds schema changes.
 
-**Rollback:** `php artisan migrate:rollback --step=4` removes the v5.2.0 columns and indexes (one step per migration). Existing link data created before v5.2.0 is unaffected.
+**Rollback:** `php artisan migrate:rollback --step=4` removes the four v5.2.x additive migrations (`2026_06_08` through `2026_06_11`, one step per migration). Existing link data created before v5.2.0 is unaffected.
 
 ---
 
 ## Publishing Package Assets
 
-All assets are optional. Publish only what you need to customize:
+Optional publishes (config, translations, views). **`filament:assets` is not optional** — run it on every install and update (see [Installation](#installation)).
 
 ```bash
 # Config file → config/filament-short-url.php
@@ -281,12 +313,15 @@ php artisan vendor:publish --tag=filament-short-url-translations
 
 # Blade views (dashboard, QR designer, interstitials)
 php artisan vendor:publish --tag=filament-short-url-views
+```
 
-# Pre-compiled CSS → public/css/janczakb/filament-short-url/
+Register Filament assets (required — custom CSS/JS for QR designer, charts, scraper, etc.):
+
+```bash
 php artisan filament:assets
 ```
 
-The CSS file is pre-compiled and bundled in the package — you don't need to run `npm` or Tailwind for it.
+The CSS and JS are pre-compiled in the package — you do not need to run `npm` or Tailwind in the host app for the plugin assets themselves.
 
 **If you compile your own Filament theme** (Tailwind CSS v4), add an `@source` directive so Tailwind scans the plugin views:
 
@@ -295,17 +330,7 @@ The CSS file is pre-compiled and bundled in the package — you don't need to ru
 @source './vendor/janczakb/filament-short-url/resources/views/**/*.blade.php';
 ```
 
-**Tip:** Add `filament:assets` to `post-autoload-dump` in your `composer.json` so CSS stays up to date on every `composer install`:
-
-```json
-"scripts": {
-    "post-autoload-dump": [
-        "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-        "@php artisan package:discover --ansi",
-        "@php artisan filament:assets"
-    ]
-}
-```
+That `@source` directive is **only** for your own Filament theme build. It does not replace `php artisan filament:assets` — the plugin still needs its published CSS/JS bundle under `public/`.
 
 ---
 
@@ -1634,6 +1659,7 @@ The package automatically attaches the currently authenticated user's ID to ever
 | `SHORT_URL_DEEP_LINKING_ENABLED` | `deep_linking.enabled` | `false` | Enable serving domain association files for deep linking. |
 | `SHORT_URL_ENABLE_FALLBACK` | `enable_fallback_route` | `true` | Toggle registration of the global fallback redirection route. |
 | `SHORT_URL_API_ENABLED` | `api_enabled` | `false` | Enable the Developer REST API (`/api/short-url/*`). |
+| `SHORT_URL_SCOPE_TO_USER` | `scope_links_to_user` | `true` | Scope Filament links and API keys to `owner_user_id` / authenticated user. |
 | `SHORT_URL_VPN_DETECTION` | `vpn_detection.enabled` | `false` | Enable VPN/proxy detection on incoming visits. |
 | `SHORT_URL_VPN_DRIVER` | `vpn_detection.driver` | `'ip-api'` | VPN detection driver (`ip-api` or `vpnapi`). |
 | `SHORT_URL_VPNAPI_KEY` | `vpn_detection.vpnapi_key` | `null` | VPNAPI.io API key (when driver is `vpnapi`). |
@@ -1656,6 +1682,7 @@ The package automatically attaches the currently authenticated user's ID to ever
 
 | Command | Description |
 |---------|-------------|
+| `short-url:stress-redirect {key}` | In-process redirect benchmark (avg / min / p95 / max). Options: `--requests=`, `--warmup=`. |
 | `short-url:sync-counters` | Flushes buffered visit counts from cache to the database. Schedule every minute when counter buffering is enabled. |
 | `short-url:aggregate-and-prune` | Aggregates previous days' raw visits into `short_url_daily_stats` and prunes raw records older than the configured retention period. Schedule daily (e.g. at `02:00`). |
 | `short-url:verify-custom-domains` | Re-verifies DNS for all active custom domains. Schedule daily in production. |
@@ -1744,7 +1771,8 @@ echo $shortUrl->getShortUrl(); // https://yourdomain.com/s/promo2026
 *   `verifyPassword(string $plain): bool` — Verify a plain-text password against the stored hash (supports legacy plain-text values).
 *   `isActive(): bool` — Checks if the short URL is enabled and within its activation/expiration timestamps.
 *   `isExpired(): bool` — Checks if the URL has passed its expiration date.
-*   `getShortUrl(): string` — Resolves the complete URL string.
+*   `getShortUrl(): string` — Resolves the complete redirect URL string.
+*   `getPublicStatsUrl(): string` — Resolves the public stats page URL (`/s/public-stats/{key}` or custom-domain equivalent).
 *   `incrementVisits(bool $isUnique = false): void` — Atomically increments visit counts (with Redis buffering or queue fallback).
 *   `getCachedStats(): array` — Returns cached key metrics for dashboard charts. Automatically merges daily aggregated stats with today's raw visits.
 *   `resolveDestinationUrl(Request $request): string` — Evaluates active targeting rules (device, geo, rotation) and returns the correct destination URL for the current visitor.
@@ -2110,7 +2138,7 @@ Recent releases are summarized below. For the full version history (v1.2.0–v4.
 - **Analytics & Bot Detection section** — Click deduplication, Googlebot IP verification, and bot debug secret are editable in **Settings → Advanced** (previously `.env`-only).
 
 #### Database
-- **Additive migrations** — `2026_06_08_000001`, `2026_06_09_000001`, and `2026_06_10_000001` — safe upgrade from v5.1.x with no data loss. Cross-database: SQLite, MySQL, PostgreSQL.
+- **Additive migrations** — `2026_06_08_000001`, `2026_06_09_000001`, `2026_06_10_000001`, and `2026_06_11_000001` — safe upgrade from v5.1.x with no data loss. Cross-database: SQLite, MySQL, PostgreSQL.
 
 #### Performance & reliability
 - **`domain_scope_id`** — Composite unique `(url_key, domain_scope_id)` so the same slug can exist on the default domain and on custom domains independently.
