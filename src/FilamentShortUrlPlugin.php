@@ -16,9 +16,23 @@ use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlResource\Pages\ShortUrl
 use Bjanczak\FilamentShortUrl\Filament\Resources\ShortUrlTagResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 
 class FilamentShortUrlPlugin implements Plugin
 {
+    public const PACKAGE_NAME = 'janczakb/filament-short-url';
+
+    public const PACKAGE_URL = 'https://github.com/janczakb/filament-short-url';
+
+    public const AUTHOR_HANDLE = 'bjanczak';
+
+    public const AUTHOR_URL = 'https://github.com/janczakb';
+
+    public const POWERED_BY_LABEL = 'Powered by';
+
     protected ?string $navigationGroup = null;
 
     protected ?int $navigationSort = null;
@@ -67,7 +81,88 @@ class FilamentShortUrlPlugin implements Plugin
 
     public function boot(Panel $panel): void
     {
-        // Configuration is consumed by ShortUrlResource via FilamentShortUrlPlugin::get()
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::PAGE_END,
+            fn (): string => self::renderFooter(),
+        );
+    }
+
+    public static function renderFooter(): string
+    {
+        if (! self::shouldShowPluginFooter()) {
+            return '';
+        }
+
+        return View::make('filament-short-url::panel.footer')->render();
+    }
+
+    public static function version(): string
+    {
+        static $version = null;
+
+        if ($version !== null) {
+            return $version;
+        }
+
+        $composerPath = dirname(__DIR__).'/composer.json';
+
+        if (! is_readable($composerPath)) {
+            return $version = 'dev';
+        }
+
+        $decoded = json_decode((string) file_get_contents($composerPath), true);
+
+        return $version = is_array($decoded) && isset($decoded['version'])
+            ? (string) $decoded['version']
+            : 'dev';
+    }
+
+    public static function shouldShowPluginFooter(?Request $request = null): bool
+    {
+        if (! config('filament-short-url.enabled', true)) {
+            return false;
+        }
+
+        $request ??= request();
+
+        if ($request === null) {
+            return false;
+        }
+
+        foreach (self::pluginPathPrefixes() as $prefix) {
+            if (self::pathMatchesPluginPrefix(trim($request->path(), '/'), $prefix)) {
+                return true;
+            }
+        }
+
+        $routeName = $request->route()?->getName();
+
+        if (! is_string($routeName)) {
+            return false;
+        }
+
+        return str_starts_with($routeName, 'filament.')
+            && str_contains($routeName, 'short-url');
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function pluginPathPrefixes(): array
+    {
+        return [
+            'short-urls',
+            'short-url-pixels',
+            'short-url-custom-domains',
+            'short-url-folders',
+            'short-url-tags',
+            'short-url-settings',
+        ];
+    }
+
+    protected static function pathMatchesPluginPrefix(string $path, string $prefix): bool
+    {
+        return (bool) preg_match('#(?:^|/)'.preg_quote($prefix, '#').'(?:/|$)#', $path);
     }
 
     // ─── Fluent configuration API ────────────────────────────────────────────
