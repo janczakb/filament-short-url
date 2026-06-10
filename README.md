@@ -2211,4 +2211,4 @@ Older releases (v1.2.0–v4.0.0) are documented in **[CHANGELOG.md](CHANGELOG.md
 
 Permitted free use covers internal/personal use and single-client freelance deployment within defined limits. Commercial distribution, bundling, high-volume use (>1M qualified events/month), software transfer to third parties, and competing products require a separate written Commercial License from the Copyright Holder.
 
-Section 9 of the license excludes liability of the Copyright Holder toward licensees (B2B) and does not limit enforcement against license violators.
+Section 9 of the license excludes liability of the Copyright Holder toward licensees (B2B) and does not limit enforcement against license violators. 
